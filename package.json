@@ -1,0 +1,21 @@
+{
+  "name": "g",
+  "description": "Data structures for everybody",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Inviz/g.git"
+  },
+  "dependencies": {
+    "changesets": "*",
+    "diff_match_patch": "*"
+  },
+  "browserify": {
+      "transform": ["coffeeify"]
+  },
+  "keywords": [],
+  "scripts": {
+    "test": "grunt test"
+  },
+  "main": "./dist/Operation.js"
+}
