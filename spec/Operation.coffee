@@ -364,6 +364,47 @@ describe 'G.watch', ->
     expect(context.key.$preceeding.$preceeding.$succeeding).eql(context.key.$preceeding)
     expect(context.key.$preceeding.$preceeding.$preceeding).eql(undefined)
 
+ 
+  it 'should handle revoke effect from context with transform', ->
+
+    context = {'context', key: 'lol'}
+    subject = {'subject'}
+
+    # Callback causes two side effects
+    G.watch context, 'key', (value) ->
+      G(subject, 'mutated', value)
+      G(context, 'asis', value)
+      return
+
+
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated.valueOf()).to.eql('lol')
+    expect(context.asis.valueOf()).to.eql('lol')
+
+    callback = (value) ->
+      return value + 666
+    G.watch subject, 'mutated', callback, true
+
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated.valueOf()).to.eql('lol666')
+    expect(context.asis.valueOf()).to.eql('lol')
+
+    before = context.key
+    G.recall context.key
+    expect(context.key).to.eql(undefined)
+    expect(subject.mutated).to.eql(undefined)
+    expect(context.asis).to.eql(undefined)
+
+    G.unwatch subject, 'mutated', callback, true
+    expect(context.key).to.eql(undefined)
+    expect(subject.mutated).to.eql(undefined)
+    expect(context.asis).to.eql(undefined)
+
+    G.call before
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated.valueOf()).to.eql('lol')
+    expect(context.asis.valueOf()).to.eql('lol')
+
 
   it 'should handle transformations and side effects together', ->
     context = {'context', key: 'lol'}
@@ -391,8 +432,13 @@ describe 'G.watch', ->
     expect(context.asis.valueOf()).to.eql('lol')
     expect(subject.mutated.valueOf()).to.eql('lol123')
 
+    before = context.key
     G.recall context.key
 
 
     expect(context.asis).to.eql(undefined)
     expect(subject.mutated).to.eql(undefined)
+
+    G.call before
+    expect(context.asis.valueOf()).to.eql('lol')
+    expect(subject.mutated.valueOf()).to.eql('lol123')

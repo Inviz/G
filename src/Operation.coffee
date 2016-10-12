@@ -31,15 +31,32 @@ G = (context, key, value) ->
 G.call = (value, method) ->
   old = value.$context[value.$key]
 
-  if method
-    value = G.methods[method](value, old)
-  else
-    value = G.format(value, old)
+  # Transform value
+  value = G.format(value, old)
 
-  # Apply side effects if top value is changed
+  # If there was another value by the same key and method is given
+  if method && old?
+    # Previous value was primitive, remember it
+    if !old.$key
+      value.$default = old
+    else
+      # Update existing value with matching meta
+      if other = G.match(value, old)
+        value = G.update(value, old, other)
+
+      # Invoke method to put value at specific place in the stack
+      else
+        G.methods[method](value, old)
+
+
   if value != old && !value.failed
+    # Place operation into dependency graph
     G.record(value, old, method)
+
+    # Actually change value
     value.$context[value.$key] = value
+    
+    # Apply side effects and invoke observers
     G.affect(value, old)
 
   return value
@@ -49,6 +66,8 @@ G.call = (value, method) ->
 G.recall = (value, hard) ->
   # Only current value can be recalled
   old = value.$context[value.$key]
+  while value.$after && value.$after.$transform
+    value = value.$after
 
   if old == value
     # Revert to previous version
@@ -56,14 +75,18 @@ G.recall = (value, hard) ->
       return G.call(replacement)
     # Unset value
     else
+      # Remove side effects
       G.deaffect(value)
+
+      # Remove value from context
       delete value.$context[value.$key]
-      return
+
   else
     # Remove value from history
     if hard
       G.rebase(value, null)
-
+  
+  return
 
 # Create enriched operation object (from primitive)
 G.create = (context, key, value) ->

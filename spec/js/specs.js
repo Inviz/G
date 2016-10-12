@@ -452,8 +452,45 @@ describe('G.watch', function() {
     expect(context.key.$preceeding.$preceeding.$succeeding).eql(context.key.$preceeding);
     return expect(context.key.$preceeding.$preceeding.$preceeding).eql(void 0);
   });
+  it('should handle revoke effect from context with transform', function() {
+    var before, callback, context, subject;
+    context = {
+      'context': 'context',
+      key: 'lol'
+    };
+    subject = {
+      'subject': 'subject'
+    };
+    G.watch(context, 'key', function(value) {
+      G(subject, 'mutated', value);
+      G(context, 'asis', value);
+    });
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated.valueOf()).to.eql('lol');
+    expect(context.asis.valueOf()).to.eql('lol');
+    callback = function(value) {
+      return value + 666;
+    };
+    G.watch(subject, 'mutated', callback, true);
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated.valueOf()).to.eql('lol666');
+    expect(context.asis.valueOf()).to.eql('lol');
+    before = context.key;
+    G.recall(context.key);
+    expect(context.key).to.eql(void 0);
+    expect(subject.mutated).to.eql(void 0);
+    expect(context.asis).to.eql(void 0);
+    G.unwatch(subject, 'mutated', callback, true);
+    expect(context.key).to.eql(void 0);
+    expect(subject.mutated).to.eql(void 0);
+    expect(context.asis).to.eql(void 0);
+    G.call(before);
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated.valueOf()).to.eql('lol');
+    return expect(context.asis.valueOf()).to.eql('lol');
+  });
   return it('should handle transformations and side effects together', function() {
-    var callback, context, subject;
+    var before, callback, context, subject;
     context = {
       'context': 'context',
       key: 'lol'
@@ -476,9 +513,13 @@ describe('G.watch', function() {
     G.unwatch(context, 'key', callback, true);
     expect(context.asis.valueOf()).to.eql('lol');
     expect(subject.mutated.valueOf()).to.eql('lol123');
+    before = context.key;
     G.recall(context.key);
     expect(context.asis).to.eql(void 0);
-    return expect(subject.mutated).to.eql(void 0);
+    expect(subject.mutated).to.eql(void 0);
+    G.call(before);
+    expect(context.asis.valueOf()).to.eql('lol');
+    return expect(subject.mutated.valueOf()).to.eql('lol123');
   });
 });
 

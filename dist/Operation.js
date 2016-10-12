@@ -212,12 +212,19 @@ G = function(context, key, value) {
 };
 
 G.call = function(value, method) {
-  var old;
+  var old, other;
   old = value.$context[value.$key];
-  if (method) {
-    value = G.methods[method](value, old);
-  } else {
-    value = G.format(value, old);
+  value = G.format(value, old);
+  if (method && (old != null)) {
+    if (!old.$key) {
+      value.$default = old;
+    } else {
+      if (other = G.match(value, old)) {
+        value = G.update(value, old, other);
+      } else {
+        G.methods[method](value, old);
+      }
+    }
   }
   if (value !== old && !value.failed) {
     G.record(value, old, method);
@@ -230,6 +237,9 @@ G.call = function(value, method) {
 G.recall = function(value, hard) {
   var old, replacement;
   old = value.$context[value.$key];
+  while (value.$after && value.$after.$transform) {
+    value = value.$after;
+  }
   if (old === value) {
     if (replacement = value.$preceeding) {
       return G.call(replacement);
@@ -239,7 +249,7 @@ G.recall = function(value, hard) {
     }
   } else {
     if (hard) {
-      return G.rebase(value, null);
+      G.rebase(value, null);
     }
   }
 };
@@ -398,44 +408,21 @@ Property = {
     };
   },
   assign: function(value, old) {
-    return G.format(value, old);
+    return value;
   },
   set: function(value, old) {
-    var other;
-    value = G.format(value, old);
-    if (old != null) {
-      if (old.$key) {
-        if (other = G.match(value, old)) {
-          return G.update(value, old, other);
-        } else {
-          value.$preceeding = old;
-          old.$succeeding = value;
-        }
-      } else {
-        value.$default = old;
-      }
-    }
+    value.$preceeding = old;
+    old.$succeeding = value;
     return value;
   },
   preset: function(value, old) {
-    var first, other;
-    value = G.format(value, old);
-    if (old != null) {
-      if (old.$key) {
-        if (other = G.match(value, old)) {
-          return G.update(value, old, other);
-        } else {
-          first = old;
-          while (first.$preceeding) {
-            first = first.$preceeding;
-          }
-          first.$preceeding = value;
-          value.$succeeding = first;
-        }
-      } else {
-        value.$default = old;
-      }
+    var first;
+    first = old;
+    while (first.$preceeding) {
+      first = first.$preceeding;
     }
+    first.$preceeding = value;
+    value.$succeeding = first;
     return old;
   }
 };

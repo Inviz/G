@@ -23,49 +23,23 @@ Property =
 
   # Bypass stack of values and write over
   assign: (value, old) ->
-    return G.format(value, old)
+    return value
 
   # Reassignment - Sets operation as head of the stack
   set: (value, old) ->
-    # Apply value transformations
-    value = G.format(value, old)
 
-    if old?
-      if old.$key
-        # Update existing value 
-        if other = G.match(value, old)
-          return G.update(value, old, other)
-        # Push value on top of the stack
-        else
-          value.$preceeding = old
-          old.$succeeding = value
-      # Previous value was primitive, keep it
-      else
-        value.$default = old 
+    value.$preceeding = old
+    old.$succeeding = value
 
     return value
 
   # Preassignment - Puts value at stack bottom, will not fire callbacks
   preset: (value, old) ->
-    # Apply value transformations
-    value = G.format(value, old)
-
-    if old?
-      if old.$key
-        # Update existing value 
-        if other = G.match(value, old)
-          return G.update(value, old, other)
-        # Shift value to the bottom of the stack
-        else
-          first = old
-          while first.$preceeding
-            first = first.$preceeding
-          first.$preceeding = value
-          value.$succeeding = first
-      # Previous value was primitive, keep it
-      else
-        value.$default = old 
-
+    first = old
+    while first.$preceeding
+      first = first.$preceeding
+    first.$preceeding = value
+    value.$succeeding = first
     return old
 
 module.exports = Property
