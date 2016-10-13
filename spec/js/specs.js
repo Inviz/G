@@ -549,7 +549,7 @@ describe('G.watch', function() {
     return expect(context.key.$preceeding.$preceeding.$preceeding).eql(void 0);
   });
   return it('should handle revoke effect from context with transform', function() {
-    var before, callback, context, subject;
+    var before, callback, context, subject, watcher;
     context = {
       'context': 'context',
       key: 'lol'
@@ -557,10 +557,11 @@ describe('G.watch', function() {
     subject = {
       'subject': 'subject'
     };
-    G.watch(context, 'key', function(value) {
+    watcher = function(value) {
       G(subject, 'mutated', value);
       G(context, 'asis', value);
-    });
+    };
+    G.watch(context, 'key', watcher);
     expect(context.key.valueOf()).to.eql('lol');
     expect(subject.mutated.valueOf()).to.eql('lol');
     expect(context.asis.valueOf()).to.eql('lol');
@@ -583,6 +584,18 @@ describe('G.watch', function() {
     G.call(before);
     expect(context.key.valueOf()).to.eql('lol');
     expect(subject.mutated.valueOf()).to.eql('lol');
+    expect(context.asis.valueOf()).to.eql('lol');
+    G.unwatch(context, 'key', watcher);
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated).to.eql(void 0);
+    expect(context.asis).to.eql(void 0);
+    G.watch(subject, 'mutated', callback, true);
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated).to.eql(void 0);
+    expect(context.asis).to.eql(void 0);
+    G.watch(context, 'key', watcher);
+    expect(context.key.valueOf()).to.eql('lol');
+    expect(subject.mutated.valueOf()).to.eql('lol666');
     return expect(context.asis.valueOf()).to.eql('lol');
   });
 });

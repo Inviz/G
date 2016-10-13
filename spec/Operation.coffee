@@ -466,11 +466,12 @@ describe 'G.watch', ->
     context = {'context', key: 'lol'}
     subject = {'subject'}
 
-    # Callback causes two side effects
-    G.watch context, 'key', (value) ->
+    # Watcher causes two side effects
+    watcher = (value) ->
       G(subject, 'mutated', value)
       G(context, 'asis', value)
       return
+    G.watch context, 'key', watcher
 
 
     expect(context.key.valueOf()).to.eql('lol')
@@ -500,3 +501,19 @@ describe 'G.watch', ->
     expect(context.key.valueOf()).to.eql('lol')
     expect(subject.mutated.valueOf()).to.eql('lol')
     expect(context.asis.valueOf()).to.eql('lol')
+
+    G.unwatch context, 'key', watcher
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated).to.eql(undefined)
+    expect(context.asis).to.eql(undefined)
+
+    G.watch subject, 'mutated', callback, true
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated).to.eql(undefined)
+    expect(context.asis).to.eql(undefined)
+
+    G.watch context, 'key', watcher
+    expect(context.key.valueOf()).to.eql('lol')
+    expect(subject.mutated.valueOf()).to.eql('lol666')
+    expect(context.asis.valueOf()).to.eql('lol')
+    

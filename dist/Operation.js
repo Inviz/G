@@ -33,57 +33,76 @@ Observer = {
     return value;
   },
   format: function(value, old) {
-    var after, formatters, group, i, len, watcher;
+    var after, formatters, given, group, i, len, watcher;
     if (formatters = G.formatters.get(value.$context)) {
       group = formatters[value.$key];
     }
+    given = value;
     while (value.$transform) {
       value = value.$before;
     }
-    if (G.formatters.get(value) === group) {
+    if (G.formatterz.get(value) === group) {
       while (value.$after && value.$after.$transform) {
         value = value.$after;
       }
     } else {
-      G.formatters.set(value, group);
       if (group && group.length) {
+        G.formatterz.set(value, group);
         for (i = 0, len = group.length; i < len; i++) {
           watcher = group[i];
           value = G.callback(value, watcher, old);
         }
-      } else {
+      } else if (value.$after.$transform) {
+        G.formatterz["delete"](value);
         after = value.$after;
         while (after && after.$transform) {
           after = after.$after;
         }
+        value.$after = after;
         if (after) {
-          value.$after = after;
           after.$before = value;
         }
       }
+      G.rebase(given, value);
     }
     return value;
   },
   affect: function(value, old) {
-    var after, called, callee, group, i, len, reapplied, ref, watcher, watchers;
+    var after, called, callee, current, group, i, len, reapplied, watcher, watchers;
+    if (watchers = G.watchers.get(value.$context)) {
+      if (!(group = watchers[value.$key])) {
+        if (G.watcherz.get(value)) {
+          G.watcherz["delete"](value);
+        }
+        if (!G.callee) {
+          G.called = null;
+        }
+        return;
+      }
+    } else {
+      if (!G.callee) {
+        G.called = null;
+      }
+      return;
+    }
     callee = G.callee;
     called = G.called;
     G.called = G.callee = value;
-    if (watchers = G.watchers.get(value.$context)) {
-      group = watchers[value.$key];
-    }
-    if (G.watchers.get(value) === group) {
+    if (current = G.watcherz.get(value)) {
       after = value;
-      reapplied = false;
       while (after = after.$after) {
         if (after.$callee === value) {
-          G.call(after);
-          reapplied = true;
+          if (current === group) {
+            G.call(after);
+            reapplied = true;
+          } else {
+            G.recall(after);
+          }
         }
       }
     }
     if (!reapplied) {
-      G.watchers.set(value, group);
+      G.watcherz.set(value, group);
       while (value.$after && value.$after.$transform) {
         value = value.$after;
       }
@@ -95,10 +114,7 @@ Observer = {
       }
     }
     G.callee = callee;
-    if ((ref = G.called.$after) != null) {
-      ref.$before = G.called;
-    }
-    G.called = G.callee && called;
+    G.called = callee && called;
     return value;
   },
   deaffect: function(value) {
@@ -109,6 +125,18 @@ Observer = {
         G.recall(after);
       }
     }
+  },
+  callback: function(value, watcher, old) {
+    var transform, transformed;
+    transform = typeof watcher === 'function' ? watcher : watcher.$transform;
+    transformed = transform(value, old);
+    if (transformed == null) {
+      return value;
+    }
+    if (!transformed.$context) {
+      transformed = G.fork(transformed, value);
+    }
+    return G.record(transformed, old, null, value, transform);
   }
 };
 
@@ -176,18 +204,6 @@ Object = {
       op = G(context, key, value, meta, scope);
     }
     return op;
-  },
-  callback: function(value, watcher, old) {
-    var transform, transformed;
-    transform = typeof watcher === 'function' ? watcher : watcher.$transform;
-    transformed = transform(value, old);
-    if (transformed == null) {
-      return value;
-    }
-    if (!transformed.$context) {
-      transformed = G.fork(transformed, value);
-    }
-    return G.record(transformed, old, null, value, transform);
   }
 };
 
@@ -244,20 +260,24 @@ G.recall = function(value, hard) {
     if (replacement = value.$preceeding) {
       return G.call(replacement);
     } else {
-      G.deaffect(value);
       delete value.$context[value.$key];
+      G.deaffect(value);
     }
-  } else {
-    if (hard) {
-      G.rebase(value, null);
-    }
+  } else if (hard) {
+    G.rebase(value, null);
   }
 };
 
 G.create = function(context, key, value) {
-  var i, meta, operation, primitive;
-  primitive = (value != null ? value : this).valueOf();
-  operation = Object(primitive);
+  var i, meta, operation;
+  if (this instanceof G) {
+    operation = this;
+    if (value != null) {
+      operation.$value = value;
+    }
+  } else {
+    operation = Object(value.valueOf());
+  }
   if (key != null) {
     operation.$key = key;
   }
@@ -301,6 +321,10 @@ G.fork = G.prototype.fork = function(primitive, value) {
 G.watchers = new WeakMap;
 
 G.formatters = new WeakMap;
+
+G.watcherz = new WeakMap;
+
+G.formatterz = new WeakMap;
 
 G.callee = G.called = null;
 
@@ -401,9 +425,27 @@ Property = {
   'method': function(method) {
     return function(key, value) {
       if (value != null) {
-        return G.call(G.create.apply(this, arguments), method);
+        switch (arguments.length) {
+          case 2:
+            return G.call(G.create(this, key, value), method);
+          case 3:
+            return G.call(G.create(this, key, value, arguments[2]), method);
+          case 4:
+            return G.call(G.create(this, key, value, arguments[2], arguments[3]), method);
+          case 5:
+            return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), method);
+        }
       } else {
-        return G.recall(G.find.apply(this, arguments));
+        switch (arguments.length) {
+          case 2:
+            return G.recall(G.find(this, key, value));
+          case 3:
+            return G.recall(G.find(this, key, value, arguments[2]));
+          case 4:
+            return G.recall(G.find(this, key, value, arguments[2], arguments[3]));
+          case 5:
+            return G.recall(G.find(this, key, value, arguments[2], arguments[3], arguments[4]));
+        }
       }
     };
   },

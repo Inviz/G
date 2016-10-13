@@ -96,16 +96,18 @@ Observer =
     called = G.called
     G.called = G.callee = value
 
-    if G.watcherz.get(value) == group
-      # Re-apply effects without triggering callbacks
+    
+    
+    if current = G.watcherz.get(value)
       after = value
-
-      reapplied = false
       while after = after.$after
         if after.$callee == value
-          G.call(after)
-          reapplied = true
-
+          # Re-apply effects without triggering callbacks
+          if current == group
+            G.call(after)
+            reapplied = true
+          else
+            G.recall(after)
 
     unless reapplied
       # If watcher configuration doesnt match
