@@ -17,9 +17,25 @@ Property =
   'method': (method) ->
     return (key, value) ->
       if value?
-        return G.call(G.create.apply(this, arguments), method)
+        switch arguments.length
+          when 2
+            return G.call(G.create(this, key, value), method)
+          when 3
+            return G.call(G.create(this, key, value, arguments[2]), method)
+          when 4
+            return G.call(G.create(this, key, value, arguments[2], arguments[3]), method)
+          when 5
+            return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), method)
       else   
-        return G.recall(G.find.apply(this, arguments))
+        switch arguments.length
+          when 2
+            return G.recall(G.find(this, key, value))
+          when 3
+            return G.recall(G.find(this, key, value, arguments[2]))
+          when 4
+            return G.recall(G.find(this, key, value, arguments[2], arguments[3]))
+          when 5
+            return G.recall(G.find(this, key, value, arguments[2], arguments[3], arguments[4]))
 
   # Bypass stack of values and write over
   assign: (value, old) ->

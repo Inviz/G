@@ -55,24 +55,4 @@ Object =
       op = G(context, key, value, meta, scope)
 
     return op
-
-
-  callback: (value, watcher, old) ->
-    transform = 
-      if typeof watcher == 'function'
-        watcher
-      else
-        watcher.$transform
-
-    transformed = transform(value, old)
-
-    unless transformed?
-      return value
-
-    unless transformed.$context
-      transformed = G.fork(transformed, value)
-
-    return G.record(transformed, old, null, value, transform)
-
-
 module.exports = Object

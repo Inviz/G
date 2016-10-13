@@ -45,11 +45,12 @@ Observer =
       group = formatters[value.$key]
     
     # Rewind operations caused by transformations
+    given = value
     while value.$transform
       value = value.$before
 
     # If stack of transformations matches
-    if G.formatters.get(value) == group
+    if G.formatterz.get(value) == group
 
       # Rewind to the end
       while value.$after && value.$after.$transform
@@ -57,35 +58,45 @@ Observer =
 
     # If watcher configuration doesnt match
     else
-      G.formatters.set(value, group)
 
       # Apply transformations
       if group && group.length
+        G.formatterz.set(value, group)
         for watcher in group
           value = G.callback(value, watcher, old)
 
-      else
+      else if value.$after.$transform
+        G.formatterz.delete(value)
         # Splice out trasformations
         after = value.$after
         while after && after.$transform
           after = after.$after
+
+        value.$after = after
         if after
-          value.$after = after
           after.$before = value
+      G.rebase(given, value)
 
     return value
 
   # Process side effects
   affect: (value, old) ->    
+    if watchers = G.watchers.get(value.$context)
+      unless group = watchers[value.$key]
+        if G.watcherz.get(value)
+          G.watcherz.delete(value)
+        G.called = null unless G.callee
+        return
+    else
+      G.called = null unless G.callee
+      return
+
     # Set GLOBAL pointers
     callee = G.callee
     called = G.called
     G.called = G.callee = value
 
-    if watchers = G.watchers.get(value.$context)
-      group = watchers[value.$key]
-
-    if G.watchers.get(value) == group
+    if G.watcherz.get(value) == group
       # Re-apply effects without triggering callbacks
       after = value
 
@@ -98,7 +109,7 @@ Observer =
 
     unless reapplied
       # If watcher configuration doesnt match
-      G.watchers.set(value, group)
+      G.watcherz.set(value, group)
 
       # Rewind operations caused by transformations
       while value.$after && value.$after.$transform
@@ -111,8 +122,8 @@ Observer =
 
     # Revert global pointer to previous source
     G.callee = callee
-    G.called.$after?.$before = G.called
-    G.called = G.callee && called
+    #G.called.$after?.$before = G.called
+    G.called = callee && called
 
     return value
 
@@ -124,5 +135,25 @@ Observer =
         G.recall(after) 
 
     return
+
+
+
+  callback: (value, watcher, old) ->
+    transform = 
+      if typeof watcher == 'function'
+        watcher
+      else
+        watcher.$transform
+
+    transformed = transform(value, old)
+
+    unless transformed?
+      return value
+
+    unless transformed.$context
+      transformed = G.fork(transformed, value)
+
+    return G.record(transformed, old, null, value, transform)
+
 
 module.exports = Observer

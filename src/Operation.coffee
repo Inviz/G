@@ -70,32 +70,33 @@ G.recall = (value, hard) ->
     value = value.$after
 
   if old == value
-    # Revert to previous version
     if replacement = value.$preceeding
+      # Revert to previous version
       return G.call(replacement)
-    # Unset value
-    else
-      # Remove side effects
-      G.deaffect(value)
 
+    else
       # Remove value from context
       delete value.$context[value.$key]
+      
+      # Rremove side effects
+      G.deaffect(value)
 
-  else
-    # Remove value from history
-    if hard
-      G.rebase(value, null)
+  # Remove value from history
+  else if hard
+    G.rebase(value, null)
   
   return
 
 # Create enriched operation object (from primitive)
 G.create = (context, key, value) ->
-
-  # Get primitive value, falls back to "this"
-  primitive = (value ? this).valueOf()
-  
-  # Convert it to object
-  operation = Object(primitive)
+  if this instanceof G
+    # Use object constructed via `new G`
+    operation = this
+    if value?
+      operation.$value = value
+  else
+    # Get primitive and convert it to object
+    operation = Object(value.valueOf())
 
   operation.$key     = key     if key?
   operation.$context = context if context?
@@ -130,6 +131,9 @@ G.fork = G::fork = (primitive, value = this) ->
 # For each context, references object with Arrays of observers by key name
 G.watchers = new WeakMap
 G.formatters = new WeakMap
+
+G.watcherz = new WeakMap
+G.formatterz = new WeakMap
 
 # References current operation
 G.callee = G.called = null
