@@ -1,5 +1,3 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
 
 // Cause   - before/after 
 // History - preceeding/succeeding 
@@ -29,7 +27,6 @@ var G = function(context, key, value) {
 // linked list of effects will not be altered 
 G.call = function(value, method) {
   var old = value.$context[value.$key];
-
   value = G.format(value, old);                  // Transform value 
   
   if (method && (old != null)) {                 // If there was another value by that key
@@ -128,58 +125,5 @@ G.formatters = new WeakMap;
 G.watcherz = new WeakMap;
 G.formatterz = new WeakMap;
 
-
 // References current operation 
 G.callee = G.called = null;
-
-G.methods = {};
-G.Methods = {}
-G.Modules = {}
-
-G.Compile = function() {
-  for (var name in G.Methods)
-    G.relate(G.Methods[name])
-
-  for (var name in G.Modules) {
-    var Module = G.Modules[name]
-    for (var property in Module) {
-      G[property] = Module[property];
-    }
-  }
-}
-setTimeout(G.Compile, 10)
-
-// Convert relation definition into set of public methods 
-// Uses special `wrapper`, `call` and `recall` values 
-G.relate = function(relation) {
-  var method, property, value, wrapper;
-  for (property in relation) {
-    value = relation[property];
-    if (property === 'method' || property === 'function') {
-      continue;
-    }
-    if (wrapper = relation["function"]) {
-      this.methods[property] = value;
-      this[property] = wrapper(property);
-      if (method = relation.method) {
-        this.prototype[property] = method(property);
-      }
-    } else {
-      this[property] = value;
-    }
-  }
-  return relation;
-};
-
-
-if (typeof global !== "undefined" && global !== null) {
-  global.G = G;
-}
-
-if (typeof module != "undefined" && module !== null)
-  module.exports = G;
-
-
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[1]);

@@ -9,7 +9,18 @@
         margin-left: -1000px;
       }
     </style>
-    <script src="../dist/Operation.js"></script>
+    <script src="../src/Operation.js"></script>
+    <script src="../src/Compile.js"></script>
+    <script src="../src/Object.js"></script>
+    <script src="../src/Effect.js"></script>
+    <script src="../src/Stack.js"></script>
+    <script src="../src/Array.js"></script>
+    <script src="../src/Relation/List.js"></script>
+    <script src="../src/Relation/Property.js"></script>
+    <script src="../src/Relation/Version.js"></script>
+    <script>
+    G.Compile()
+    </script>
 
     <style>
       #mocha .test {
@@ -35,7 +46,9 @@
           window.scrollTo(0, Infinity)
         }, 100)
     </script>
-    <script src="./js/specs.js"></script>
+    <script src="./Operation.js"></script>
+    <script src="./List.js"></script>
+    <script src="./Version.js"></script>
     <script>
       if (window.mochaPhantomJS) {
         mochaPhantomJS.run();

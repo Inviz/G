@@ -10,9 +10,6 @@
     "changesets": "*",
     "diff_match_patch": "*"
   },
-  "browserify": {
-      "transform": ["coffeeify"]
-  },
   "keywords": [],
   "scripts": {
     "test": "grunt test"
