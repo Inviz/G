@@ -85,17 +85,19 @@ G.Modules.Observer = {
       } 
       if (G.$called) G.$called = value;             // Global: Remember operation as last
     }
-
-    if (value.$after === value ||  (value.$before && value.$before.$after === value.$before))
-      throw 'zomg circular';                        // dev assert
-
     return value;
   },
 
   // Run callback with the given value
   callback: function(value, watcher, old) {
-    if (watcher.$transform)
+    if (watcher.$transform) {
       watcher = watcher.$transform
+    } else if (watcher.push) {
+      var computed = G.compute.apply(this, watcher)
+      if (computed !== undefined || watcher[0][watcher[1]] !== undefined)
+        return G.set(watcher[0], watcher[1], computed)
+      return value
+    }
     var transformed = watcher(value, old);
     if (transformed == null)
       return value;
@@ -121,19 +123,36 @@ G.Modules.Observer = {
       to.$after = undefined                       // clean last op's reference to next operations
   },
 
+  compute: function(context, key, value) {
+    if (!value.$arguments) {
+      var string = String(value)
+      value.$arguments = []
+      for (var match; match = G.$findProperties.exec(string);)
+        if (!match[2])
+          value.$arguments.push(match[1])
+    }
+    for (var i = 0; i < value.$arguments.length; i++)
+      if (context[value.$arguments[i]] === undefined)
+        return
+    return value.call(context)
+  },
+
+  // Helper to create transaction operation
   transact: function(value) {
     return G.$caller = value || new G
   },
 
-  commit: function(value) {
-    return G.Effects(value, G.call, false);
-  },
-
+  // Undo all state changes since transaction has started
   abort: function(value) {
     last = G.Effects(value, G.recall, false)
     if (G.$caller == value)
       G.$caller = undefined
     return last;
+  },
+
+  // Reapply previously aborted transaction
+  commit: function(value) {
+    return G.Effects(value, G.call, false);
   },
 
   // Find last operation in graph
@@ -169,4 +188,6 @@ G.Modules.Observer = {
     return last;
   }
 };
+
+G.$findProperties = /this\s*\.\s*([_a-zA-Z-0-9]+)\s*(\()?/g
 

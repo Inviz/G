@@ -26,7 +26,7 @@ var G = function(context, key, value) {
     return G.recall(G.find.apply(G, arguments), true);
   }
   operation = G.create.apply(this, arguments);
-  if (context) {
+  if (context && operation.valueOf() != null) {
     return G.call(operation, 'set');
   } else {
     return G.record(operation, null, 'set');
@@ -104,7 +104,7 @@ G.recall = function(value, hard) {
       var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
       if (hard !== false && !G.$called)
-        G.unlink(from, to, true)//    Patch graph and detach the tree at top
+        G.unlink(from, to, true)                      //    Patch graph and detach the tree at top
     }    
   }    
   if (hard)                                           // Remove value from history

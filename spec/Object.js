@@ -118,4 +118,27 @@ describe('G.watch', function() {
       key: 'value123'
     }));
   });
+
+  it ('should assign computed properties', function() {
+    var context = new G;
+
+    G.define(context, 'fullName', function() {
+      return this.firstName + ' ' + this.lastName
+    })
+
+    expect(context.fullName).to.eql(undefined)
+
+    context.set('firstName', 'John')
+    expect(context.fullName).to.eql(undefined)
+    
+    var lastName = context.set('lastName', 'Doe')
+    expect(context.fullName.valueOf()).to.eql('John Doe')
+    
+    G.recall(lastName)
+    expect(context.fullName).to.eql(undefined)
+    
+    G.call(lastName)
+    expect(context.fullName.valueOf()).to.eql('John Doe')
+
+  })
 });

@@ -47,6 +47,12 @@ G.Modules.Object = {
     }
   },
 
+  define: function(context, key, watcher) {
+    var value = G.compute(context, key, watcher);
+    for (var i = 0; i < watcher.$arguments.length; i++)
+      G.watch(context, watcher.$arguments[i], [context, key, watcher], false)
+  },
+
   // Merge two objects
   merge: function(context, object, meta, scope) {
     var key, op, value;
