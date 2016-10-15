@@ -63,7 +63,7 @@ G.recall = function(value, hard) {
       return G.call(value.$preceeding);           //   Apply that value
     } else {    
       delete value.$context[value.$key];          // Otherwise remove value from context 
-      return G.effects(value, G.recall) || value; // Remove side effects
+      return G.Effects(value, G.recall) || value; // Remove side effects
     }
   }
 
