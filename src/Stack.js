@@ -19,7 +19,7 @@ G.Modules.Stack = {
 
   // Attempt to perform soft update, one that only changes references 
   update: function(value, old, other) {
-    if (other === value) {                            // 1. Op is already in stack, so it's redo
+    if (other.valueOf() === value.valueOf()) {        // 1. Op is already in stack, so it's redo
       return value;                                   //    Not changing history
     } else if (other === old) {                       // 2. New value matches meta of old value 
       G.rebase(old, value);                           //    Switch in place
@@ -31,9 +31,9 @@ G.Modules.Stack = {
   },
 
   // Find operation in the stack that matches meta of a given operation 
-  match: function(value, old) {
+  match: function(meta, old) {
     for (var other = old; other; other = other.$preceeding)
-      if (other === value || G.compare(other.$meta, value.$meta))
+      if (G.compare(other.$meta, meta))
         return other;
   },
 

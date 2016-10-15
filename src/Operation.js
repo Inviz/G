@@ -82,11 +82,11 @@ G.call = function(value, method) {
     if (!old.$key) {     
       value.$default = old;                           // That value is primitive, store it
     } else {     
-      var other = G.match(value, old)                 // Find value with the same meta 
+      var other = G.match(value.$meta, old)           // Find value with the same meta 
       if (other) {                                 
         value = G.update(value, old, other);          //   then replace it in stack
       } else {     
-        G.methods[method](value, old);                // invoke stack-manipulation method
+        value = G.methods[method](value, old);        // invoke stack-manipulation method
       }     
     }     
   }     
