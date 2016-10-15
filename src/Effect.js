@@ -15,7 +15,7 @@ G.Modules.Observer = {
     if (current === group) {                          // 1. Value is already properly formatted 
       return formatted                                //    return it
     } else {
-    var after = formatted.$after                                          // 2. Value not (yet) properly formatted
+      var after = formatted.$after                    // 2. Value not (yet) properly formatted
       var result = G.Unformatted(value)               //    get original value
       if (group) {                            
         for (var i = 0, j = group.length; i < j; i++) // Context has formatters for key
