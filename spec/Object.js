@@ -122,9 +122,11 @@ describe('G.watch', function() {
   it ('should assign computed properties', function() {
     var context = new G;
 
-    G.define(context, 'fullName', function() {
+    var Property = function() {
       return this.firstName + ' ' + this.lastName
-    })
+    }
+
+    G.define(context, 'fullName', Property, 'ololo')
 
     expect(context.fullName).to.eql(undefined)
 
@@ -133,6 +135,7 @@ describe('G.watch', function() {
     
     var lastName = context.set('lastName', 'Doe')
     expect(context.fullName.valueOf()).to.eql('John Doe')
+    expect(context.fullName.$meta).to.eql(['ololo'])
     
     G.recall(lastName)
     expect(context.fullName).to.eql(undefined)
@@ -140,5 +143,17 @@ describe('G.watch', function() {
     G.call(lastName)
     expect(context.fullName.valueOf()).to.eql('John Doe')
 
+    G.preset(context, 'fullName', 'Unknown')
+    expect(context.fullName.valueOf()).to.eql('John Doe')
+    G.recall(lastName)
+    expect(context.fullName.valueOf()).to.eql('Unknown')
+    
+    G.call(lastName)
+    expect(context.fullName.valueOf()).to.eql('John Doe')
+
+    G.undefine(context, 'fullName', Property, 'ololo')
+    expect(context.fullName.valueOf()).to.eql('Unknown')
+
+    //G.define.preset(context, 'fullName', Property)
   })
 });

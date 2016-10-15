@@ -92,11 +92,8 @@ G.Modules.Observer = {
   callback: function(value, watcher, old) {
     if (watcher.$transform) {
       watcher = watcher.$transform
-    } else if (watcher.push) {
-      var computed = G.compute.apply(this, watcher)
-      if (computed !== undefined || watcher[0][watcher[1]] !== undefined)
-        return G.set(watcher[0], watcher[1], computed)
-      return value
+    } else if (watcher.$getter) {
+      return G(watcher.$context, watcher.$key, watcher)
     }
     var transformed = watcher(value, old);
     if (transformed == null)
@@ -123,18 +120,27 @@ G.Modules.Observer = {
       to.$after = undefined                       // clean last op's reference to next operations
   },
 
-  compute: function(context, key, value) {
-    if (!value.$arguments) {
-      var string = String(value)
-      value.$arguments = []
+  // Run computed property callback if all properties it uses are set
+  compute: function(value) {
+    var getter = value.$getter;
+    var args = getter.$arguments;
+    if (!args)
+      args = G.analyze(getter).$arguments;
+    for (var i = 0; i < args.length; i++)
+      if (value.$context[args[i]] === undefined)
+        return;
+    return getter.call(value.$context);
+  },
+
+  analyze: function(fn) {
+    if (!fn.$arguments) {
+      var string = String(fn)
+      fn.$arguments = []
       for (var match; match = G.$findProperties.exec(string);)
         if (!match[2])
-          value.$arguments.push(match[1])
+          fn.$arguments.push(match[1])
     }
-    for (var i = 0; i < value.$arguments.length; i++)
-      if (context[value.$arguments[i]] === undefined)
-        return
-    return value.call(context)
+    return fn;
   },
 
   // Helper to create transaction operation

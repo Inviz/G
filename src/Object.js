@@ -16,7 +16,7 @@ G.Modules.Object = {
       while (value.$transform)        
         value = value.$before;
       if (!value.$context) {                          // 1. Value was not unboxed yet
-        return G.set(context, key, value);            //    Apply primitive value 
+        return G(context, key, value);                //    Apply primitive value 
       } else if (pure) {                              // 2. New formatter is added 
         return G.call(value, 'set');                  //    Re-apply value 
       } else {                                        // 3. New value observer       
@@ -48,9 +48,29 @@ G.Modules.Object = {
   },
 
   define: function(context, key, watcher) {
-    var value = G.compute(context, key, watcher);
+    G.analyze(watcher);
+    var observer = new G(context)
+    observer.$key = key
+    observer.$getter = watcher
+    observer.$meta = new Array(arguments.length - 3);
+    for (var i = 0; i < arguments.length - 3; i++)
+      observer.$meta[i] = arguments[i + 3]
     for (var i = 0; i < watcher.$arguments.length; i++)
-      G.watch(context, watcher.$arguments[i], [context, key, watcher], false)
+      G.watch(context, watcher.$arguments[i], observer, false)
+  },
+
+  undefine: function(context, key, watcher) {
+    var value = context[key];
+    if (value) {
+      if (arguments.length > 3) {
+        var args = new Array(arguments.length - 3);
+        for (var i = 0; i < arguments.length - 3; i++)
+          args[i] = arguments[i + 3]
+      }
+      value = G.match(args, value);
+      if (value)
+        G.recall(value)
+    }
   },
 
   // Merge two objects
