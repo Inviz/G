@@ -103,7 +103,8 @@ G.recall = function(value, hard) {
       var from = G.Unformatted(value)                 //    Get initial value before formatting
       var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
-      G.unlink(from, to, hard !== false && !G.$called)//    Patch graph and detach the tree at top
+      if (hard !== false && !G.$called)
+        G.unlink(from, to, true)//    Patch graph and detach the tree at top
     }    
   }    
   if (hard)                                           // Remove value from history

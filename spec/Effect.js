@@ -328,7 +328,9 @@ describe ('G.set', function() {
 
       G.watch(context, 'key', watcher);
       G.watch(context, 'title', watcher);
-      var transaction = G.$caller = new G
+
+      
+      var transaction = G.transact() // same as `G.$caller = new G`
 
 
       G.set(context, 'key', 'test')
@@ -368,10 +370,15 @@ describe ('G.set', function() {
       expect(context.xaxa).to.eql(undefined)
       expect(context.zozo).to.eql(undefined)
       expect(context.key).to.eql(undefined)
-      //G.commit(transaction)
-      //throw 1
-      //expect(context.xaxa).to.eql(undefined)
-      //expect(context.zozo).to.eql(undefined)
-      //expect(context.key).to.eql(undefined)
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      
+
+      G.commit(transaction)
+      expect(context.xaxa).to.eql(transaction.$after)
+      expect(context.zozo).to.eql(transaction.$after.$after)
+      expect(context.key).to.eql(G.Formatted(transaction.$after.$after.$after))
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      
+
     })
 })
