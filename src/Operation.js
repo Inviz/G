@@ -23,7 +23,7 @@ A groupping of values, similar to array.
 var G = function(context, key, value) {
   var operation;
   if ((value == null) && (key != null)) {
-    return G.recall(G.find.apply(G, arguments), true);
+    return G.recall(G.$get.apply(G, arguments), true);
   }
   operation = G.create.apply(this, arguments);
   if (!operation)

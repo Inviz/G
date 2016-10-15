@@ -39,7 +39,7 @@ G.Modules.Stack = {
 
   // Compare two arrays of arguments 
   compare: function(meta1, meta2) {
-    if (meta1 === meta2)
+    if (meta1 == meta2)
       return true;
     if ((!meta1 && meta2) || (meta1 && !meta2) || meta1.length !== meta2.length)
       return false;
@@ -47,9 +47,6 @@ G.Modules.Stack = {
       if (meta1[i] !== meta2[i])
         return false;
     return true;
-  },
-  find: function(context, key) {
-    return context[key];
   }
 };
 

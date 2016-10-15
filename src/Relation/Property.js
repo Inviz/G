@@ -23,25 +23,17 @@ G.Methods.Property = {
     return function(key, value) {
       if (value != null) {
         switch (arguments.length) {
-          case 2:
-            return G.call(G.create(this, key, value), method);
-          case 3:
-            return G.call(G.create(this, key, value, arguments[2]), method);
-          case 4:
-            return G.call(G.create(this, key, value, arguments[2], arguments[3]), method);
-          case 5:
-            return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), method);
+          case 2: return G.call(G.create(this, key, value), method);
+          case 3: return G.call(G.create(this, key, value, arguments[2]), method);
+          case 4: return G.call(G.create(this, key, value, arguments[2], arguments[3]), method);
+          case 5: return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), method);
         }
       } else {
         switch (arguments.length) {
-          case 2:
-            return G.recall(G.find(this, key, value));
-          case 3:
-            return G.recall(G.find(this, key, value, arguments[2]));
-          case 4:
-            return G.recall(G.find(this, key, value, arguments[2], arguments[3]));
-          case 5:
-            return G.recall(G.find(this, key, value, arguments[2], arguments[3], arguments[4]));
+          case 2: return G.recall(G.get(this, key, value));
+          case 3: return G.recall(G.get(this, key, value, arguments[2]));
+          case 4: return G.recall(G.get(this, key, value, arguments[2], arguments[3]));
+          case 5: return G.recall(G.get(this, key, value, arguments[2], arguments[3], arguments[4]));
         }
       }
     };

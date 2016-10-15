@@ -97,6 +97,10 @@ describe('G', function() {
     context.set('a', 'Test3', 'b');
     expect(context.a.valueOf()).to.eql('Test3');
     context.set('a', null);
-    return expect(context.a.valueOf()).to.eql('Test2');
+    expect(context.a.valueOf()).to.eql('Test3');
+    context.set('a', null, 'b');
+    expect(context.a.valueOf()).to.eql('Test2');
+    context.set('a', null);
+    expect(context.a).to.eql(undefined);
   });
 });

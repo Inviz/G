@@ -81,5 +81,20 @@ G.Modules.Object = {
       op = G(context, key, value, meta, scope);
     }
     return op;
+  },
+  
+  get: function(context, key, value) {
+    if (context[key] == null || !context[key].$context)
+      return context[key];
+
+    var offset = 2;
+    if (value == null)
+      offset++
+    if (arguments.length > offset) {
+      var meta = new Array(arguments.length - offset); 
+      for (var i = 0; i < arguments.length - offset; i++)
+        meta[i] = arguments[i + offset]
+    }
+    return G.match(meta, context[key]);
   }
 };
