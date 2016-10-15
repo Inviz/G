@@ -14,20 +14,17 @@ G.Modules.Observer = {
     var current = G.formatters.get(formatted)         // Get formatter configuration for the value
     if (current === group) {                          // 1. Value is already properly formatted 
       return formatted                                //    return it
-    } else {
-      var after = formatted.$after                    // 2. Value not (yet) properly formatted
+    } else {                                          // 2. Value not (yet) properly formatted
       var result = G.Unformatted(value)               //    get original value
+      var after = formatted.$after                    //    remember next operation
       if (group) {                            
         for (var i = 0, j = group.length; i < j; i++) // Context has formatters for key
           result = G.callback(result, group[i], old); //   apply formatters in order
-        G.formatters.set(result, group);              //   remember formatting configuration
+        G.formatters.set(result, group);              //   store formatting configuration
       }
-      if (value != result) {
+      if (value != result)
         G.rebase(value, result);                      // Replace value in the stack of values for key
-      }
-      if (result.$after = after)
-        result.$after.$before = result;               // Connect formatted value to next operation 
-      
+      G.link(result, after)
       return result;                                   
     }
   },
@@ -39,8 +36,9 @@ G.Modules.Observer = {
     if (watchers)                                     // is stored in weak map      
       var group = watchers[value.$key]
 
-    var caller = G.$caller, called = G.$called;       // For duration of function call
-    G.$caller = G.$called = value                     // Reassign call stack pointers 
+    var caller = G.$caller; 
+    var called = G.$called;                            // For duration of function call
+    G.$caller  = G.$called = value                     // Reassign call stack pointers 
     
     var current = G.watchers.get(value)               
     if (current) {    
@@ -61,7 +59,7 @@ G.Modules.Observer = {
     }
      
     if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
-      G.link(G.$called, G.$called.$after)             // So foreign pointer needs to be set after
+      G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
     G.$caller = caller;                               // Revert global pointer to previous values 
     G.$called = called;
     return value;
@@ -72,28 +70,24 @@ G.Modules.Observer = {
     if (transform) {                                  // 1. Formatting values        
       value.$transform = transform;                   //    Store transformation function
       G.link(last, value)                             //    Keep reference to input value 
-      if (last.$after && !last.$after.$transform)     //    Connect to operations coming next
-        value.$after = last.$after;
     } else {
       var caller = G.$caller;                         // Store pointer to caller operation
       if (caller) {
-        value.$caller = caller   
+        value.$caller = caller; 
         var called = G.$called || G.Head(caller)      // Rewind transaction to last operation
-      }                                               
-      if (method) {                                   
-        if (old && old.$after !== value)              // 2. Updating effect graph:
-          value.$after = old.$after;                  //    Remember old value's next op (1-way)
-        if (old && caller && old.$caller == caller) { //    If new value has the same caller as old
-          G.link(G.Unformatted(old).$before, value);  //    Connect new value to old's previous ops
-        } else if (called) {                          // 3. Tracking side effects:  
-          G.link(called, G.Unformatted(value))        //    Continue writing at parent's point
-        } 
-        if (G.$called) G.$called = value;             // Global: Remember operation as last
-      }                                               // until the end of affect() call
+      } 
+      if (old && old.$after !== value)              // 2. Updating effect graph:
+        value.$after = old.$after;                  //    Remember old value's next op (1-way)
+      if (old && caller && old.$caller == caller) { //    If new value has the same caller as old
+        G.link(G.Unformatted(old).$before, value);  //    Connect new value to old's previous ops
+      } else if (called) {                          // 3. Tracking side effects:  
+        G.link(called, G.Unformatted(value))        //    Continue writing at parent's point
+      } 
+      if (G.$called) G.$called = value;             // Global: Remember operation as last
     }
 
     if (value.$after === value ||  (value.$before && value.$before.$after === value.$before))
-      throw 'zomg circular';                          // dev assert
+      throw 'zomg circular';                        // dev assert
 
     return value;
   },
@@ -112,8 +106,19 @@ G.Modules.Observer = {
 
   // Make a two-way connection between two operations in graph
   link: function(old, value) {
-    old.$after = value;
-    old.$after.$before = old;
+    if ((old.$after = value))
+      old.$after.$before = old;
+  },
+
+  // Remove all operations from the graph in span between `from` and `to`
+  unlink: function(from, to, hard) {
+    if (from.$before) {                           // If there're operation before
+      G.link(from.$before, to.$after);            //   Connect previous & next operations
+    } else if (to.$after) {                       // Or if it was first,
+      to.$after.$before = undefined               //   Shift history 
+    }    
+    if (hard)                                     // A top-level recall() needs to
+      to.$after = undefined                       // clean last op's reference to next operations
   },
 
   // Find last operation in graph
@@ -138,12 +143,12 @@ G.Modules.Observer = {
   },
 
   // Iterate side effects caused by value 
-  Effects: function(value, callback) {
+  Effects: function(value, callback, argument) {
     var after, last;
     after = value;
     while (after = after.$after) {
       if (after.$caller === value) {
-        last = callback(after) || true;
+        last = callback(after, argument) || last;
       }
     }
     return last;

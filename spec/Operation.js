@@ -671,24 +671,37 @@
 
 
       G.set(context, 'key', 'test')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'test', 'test123', 'test']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'test', 'test123', 'test']));
 
       G.set(context, 'key', 'protest')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest']));
 
       G.set(context, 'zozo', 'kiki')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
 
       G.set(context, 'key', 'grotesque')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
 
       G.set(context, 'xaxa', 'kek')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
 
       G.set(context, 'zozo', 'buba')
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
 
+      var zozo = context.zozo
+      G.recall(context.zozo)
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek']));
 
+      G.call(zozo)
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek', 'buba']));
+      
+      var key = context.key
+      G.recall(context.key)
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba']));
+      
+      G.call(key)
+      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      
 
     })
   });
