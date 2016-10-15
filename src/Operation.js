@@ -26,6 +26,8 @@ var G = function(context, key, value) {
     return G.recall(G.find.apply(G, arguments), true);
   }
   operation = G.create.apply(this, arguments);
+  if (!operation)
+    return
   if (context && operation.valueOf() != null) {
     return G.call(operation, 'set');
   } else {
@@ -39,6 +41,12 @@ G.create = function(context, key, value) {
     var operation = this;                              // Use that object as operation
     if (value != null)                                 // Store value (usually value itself is operation)
       operation.$value = value;     
+  } else if (value && value.$getter) {
+    var computed = G.compute(value);
+    if (computed == null)
+      return
+    var operation = Object(computed);
+    operation.$meta = value.$meta
   } else {     
     var operation = Object(value.valueOf());           // Get primitive and convert it to object 
   }     
@@ -47,13 +55,13 @@ G.create = function(context, key, value) {
     operation.$key = key;                              // Store key
   if (context != null)     
     operation.$context = context;                      // Store context, object that holds operations
-  
-  if (G.$caller)      
-    var meta = G.$caller.$meta;                        // Pick up meta from caller operation
+   
+  if (!operation.$meta && G.$caller)
+    operation.$meta = G.$caller.$meta;                 // Pick up meta from caller operation
   var args = arguments.length;     
   if (args > 3) {                                      // Use/merge extra arguments as meta
-    if (meta)
-      operation.$meta = meta.slice();
+    if (operation.$meta)
+      operation.$meta = operation.$meta.slice();
     else
       operation.$meta = new Array(args - 3);
     for (var i = 2; ++i < args;)
