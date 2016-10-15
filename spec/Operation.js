@@ -591,12 +591,14 @@
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol']));
       G.watch(context, 'key', watcher);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol666');
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol666', 'lol']));
       return expect(context.asis.valueOf()).to.eql('lol');
     });
-    return it('should be able to revoke operation mid transaction', function() {
+    it('should be able to revoke operation mid transaction', function() {
       var before, callback, context, subject, watcher;
       context = {
         'context': 'context',
@@ -648,6 +650,47 @@
       expect(subject.mutated.valueOf()).to.eql('lol666');
       return expect(context.asis.valueOf()).to.eql('lol');
     });
+    it('should write to transaction', function() {
+      var context = {
+        'context': 'context',
+        key: 'lol'
+      };
+      var subject = {
+        'subject': 'subject'
+      };
+
+      // Watcher causes two side effects 
+      watcher = function(value) {
+        G(subject, 'mutated', value + 123);
+        G(context, 'asis', value);
+      };
+
+      G.watch(context, 'key', watcher);
+      G.watch(context, 'title', watcher);
+      var transaction = G.$caller = new G
+
+
+      G.set(context, 'key', 'test')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'test', 'test123', 'test']));
+
+      G.set(context, 'key', 'protest')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest']));
+
+      G.set(context, 'zozo', 'kiki')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
+
+      G.set(context, 'key', 'grotesque')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
+
+      G.set(context, 'xaxa', 'kek')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
+
+      G.set(context, 'zozo', 'buba')
+      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
+
+
+
+    })
   });
 
 }).call(this);

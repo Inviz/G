@@ -12,19 +12,9 @@ G.Compile = function() {
 
   for (var name in G.Modules) {
     var Module = G.Modules[name]
-    for (var property in Module) {
+    for (var property in Module)
       G[property] = Module[property];
-    }
   }
-
-  if (arguments.length)
-    if (this.toLowerCase)
-      return G[this].apply(G, arguments)
-    else if (this instanceof G.Compile)
-      return new G(context, key, value)
-    else
-      return G.apply(G, arguments)
-
 }
 
 // Convert relation definition into set of public methods 
@@ -32,6 +22,8 @@ G.Compile = function() {
 G.Compile.Relation = function(relation) {
   var method, property, value, wrapper;
   for (property in relation) {
+    if (!relation.hasOwnProperty(property))
+      continue;
     value = relation[property];
     if (property === 'method' || property === 'function') {
       continue;

@@ -73,25 +73,22 @@ G.recall = function(value, hard) {
 };
 
 
-// Enrich operation object (that may be created from primitive) 
+// Enrich operation object (optionally, create it from primitive) 
 G.create = function(context, key, value) {
   if (this instanceof G) {                        // If context is instance of G (created via `new G`) 
     var operation = this;                         // Use that object as operation
-    if (value != null)
+    if (value != null)                            // Store value (usually value itself is operation)
       operation.$value = value;
   } else {
     var operation = Object(value.valueOf());      // Get primitive and convert it to object 
   }
 
-
-  
   if (key != null)
     operation.$key = key;                         // Store key
   if (context != null)
     operation.$context = context;                 // Store context, object that holds operations
-  if (G.callee) 
-    var meta = G.callee.$meta;                    // Pick up meta from calling operation
-
+  if (G.$caller) 
+    var meta = G.$caller.$meta;                   // Pick up meta from caller operation
 
   var args = arguments.length;
   if (args > 3) {                                 // Use/merge extra arguments as meta
@@ -119,11 +116,8 @@ G.fork = G.prototype.fork = function(primitive, value) {
 
 
 // For each context, references object with Arrays of observers by key name 
-G.watchers = new WeakMap;
+G.watchers   = new WeakMap;
 G.formatters = new WeakMap;
 
-G.watcherz = new WeakMap;
-G.formatterz = new WeakMap;
-
 // References current operation 
-G.callee = G.called = null;
+G.$caller = G.$called = null;
