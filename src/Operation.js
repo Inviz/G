@@ -33,6 +33,35 @@ var G = function(context, key, value) {
   }
 };
 
+// Enrich operation object (optionally, create it from primitive) 
+G.create = function(context, key, value) {
+  if (this instanceof G) {                             // If context is instance of G (created via `new G`) 
+    var operation = this;                              // Use that object as operation
+    if (value != null)                                 // Store value (usually value itself is operation)
+      operation.$value = value;     
+  } else {     
+    var operation = Object(value.valueOf());           // Get primitive and convert it to object 
+  }     
+     
+  if (key != null)     
+    operation.$key = key;                              // Store key
+  if (context != null)     
+    operation.$context = context;                      // Store context, object that holds operations
+  
+  if (G.$caller)      
+    var meta = G.$caller.$meta;                        // Pick up meta from caller operation
+  var args = arguments.length;     
+  if (args > 3) {                                      // Use/merge extra arguments as meta
+    if (meta)
+      operation.$meta = meta.slice();
+    else
+      operation.$meta = new Array(args - 3);
+    for (var i = 2; ++i < args;)
+      if (arguments[i] != null)
+        operation.$meta[i - 3] = arguments[i];
+  }
+  return operation;
+};
 
 // Apply operation to its context 
 // If method name is not provided, 
@@ -61,12 +90,10 @@ G.call = function(value, method) {
   return value;
 };
 
-
 // Undo operation. Reverts value and its effects to previous versions. 
 // If hard argument is set, removes operation from history 
 G.recall = function(value, hard) {
   value = G.Formatted(value)
-
   var old = value.$context[value.$key];
   if (old === value) {                                // 1. Return to previous version
     if (value.$preceeding) {                          //    If stack holds values before given
@@ -74,46 +101,14 @@ G.recall = function(value, hard) {
     } else {    
       delete value.$context[value.$key];              // 2. Removing key from context 
       var from = G.Unformatted(value)                 //    Get initial value before formatting
-      var to = G.Effects(value, G.recall, false)      //    Recurse to side effects, returns last one
-      if (!to) to = value                             //      If there aren't any, use value as boundary
+      var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
+      if (!to) to = value                             //      If there aren't any, use op itself as boundary
       G.unlink(from, to, hard !== false && !G.$called)//    Patch graph and detach the tree at top
     }    
   }    
   if (hard)                                           // Remove value from history
     G.rebase(value, null);
 };
-
-
-// Enrich operation object (optionally, create it from primitive) 
-G.create = function(context, key, value) {
-  if (this instanceof G) {                             // If context is instance of G (created via `new G`) 
-    var operation = this;                              // Use that object as operation
-    if (value != null)                                 // Store value (usually value itself is operation)
-      operation.$value = value;     
-  } else {     
-    var operation = Object(value.valueOf());           // Get primitive and convert it to object 
-  }     
-     
-  if (key != null)     
-    operation.$key = key;                              // Store key
-  if (context != null)     
-    operation.$context = context;                      // Store context, object that holds operations
-  if (G.$caller)      
-    var meta = G.$caller.$meta;                        // Pick up meta from caller operation
-     
-  var args = arguments.length;     
-  if (args > 3) {                                      // Use/merge extra arguments as meta
-    if (meta)
-      operation.$meta = meta.slice();
-    else
-      operation.$meta = new Array(args - 3);
-    for (var i = 2; ++i < args;)
-      if (arguments[i] != null)
-        operation.$meta[i - 3] = arguments[i];
-  }
-  return operation;
-};
-
 
 // Clone operation from primitive and another operation 
 G.fork = G.prototype.fork = function(primitive, value) {
@@ -126,7 +121,8 @@ G.fork = G.prototype.fork = function(primitive, value) {
 };
 
 
-// For each context, references object with Arrays of observers by key name 
+// For each context, references object with Arrays of observers by key name
+// For each operation, references array of observers that operation triggered 
 G.watchers   = new WeakMap;
 G.formatters = new WeakMap;
 

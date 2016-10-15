@@ -121,6 +121,14 @@ G.Modules.Observer = {
       to.$after = undefined                       // clean last op's reference to next operations
   },
 
+  commit: function(value) {
+    return G.Effects(value, G.call, false);
+  },
+
+  abort: function(value) {
+    return G.Effects(value, G.recall, false);
+  },
+
   // Find last operation in graph
   Head: function(value) {
     while (value.$after)
