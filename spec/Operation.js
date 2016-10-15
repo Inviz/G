@@ -540,64 +540,6 @@
       expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([123456, 55555, 5555]));
       return expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([5555]));
     });
-    it('should handle revoke effect from context with transform', function() {
-      var before, callback, context, subject, watcher;
-      context = {
-        'context': 'context',
-        key: 'lol'
-      };
-      subject = {
-        'subject': 'subject'
-      };
-
-      // Watcher causes two side effects 
-      watcher = function(value) {
-        G(subject, 'mutated', value);
-        G(context, 'asis', value);
-      };
-      G.watch(context, 'key', watcher);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated.valueOf()).to.eql('lol');
-      expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol']));
-      callback = function(value) {
-        return value + 666;
-      };
-      G.watch(subject, 'mutated', callback, true);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated.valueOf()).to.eql('lol666');
-      expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol666', 'lol']));
-      before = context.key;
-      G.recall(context.key);
-      expect(context.key).to.eql(void 0);
-      expect(subject.mutated).to.eql(void 0);
-      expect(context.asis).to.eql(void 0);
-      G.unwatch(subject, 'mutated', callback, true);
-      expect(context.key).to.eql(void 0);
-      expect(subject.mutated).to.eql(void 0);
-      expect(context.asis).to.eql(void 0);
-      G.call(before);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated.valueOf()).to.eql('lol');
-      expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol']));
-      G.unwatch(context, 'key', watcher);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated).to.eql(void 0);
-      expect(context.asis).to.eql(void 0);
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol']));
-      G.watch(subject, 'mutated', callback, true);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated).to.eql(void 0);
-      expect(context.asis).to.eql(void 0);
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol']));
-      G.watch(context, 'key', watcher);
-      expect(context.key.valueOf()).to.eql('lol');
-      expect(subject.mutated.valueOf()).to.eql('lol666');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol666', 'lol']));
-      return expect(context.asis.valueOf()).to.eql('lol');
-    });
     it('should be able to revoke operation mid transaction', function() {
       var before, callback, context, subject, watcher;
       context = {
