@@ -20,9 +20,9 @@ describe('G.watch', function() {
   it('should retransform value on redo', function() {
     var before, callback, context;
     context = {};
-    G(context, 'key', 'test');
+    G.set(context, 'key', 'test');
     expect(context.key.valueOf()).to.eql('test');
-    G(context, 'key', 'pest', 2);
+    var before = G.set(context, 'key', 'pest', 2);
     expect(context.key.valueOf()).to.eql('pest');
     callback = function(value) {
       return value + 123;
@@ -31,21 +31,21 @@ describe('G.watch', function() {
     expect(context.key.valueOf()).to.eql('pest123');
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['test', 'pest123']));
     expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['pest', 'pest123']));
-    G.recall(before = context.key);
+    before.recall();
     expect(context.key.valueOf()).to.eql('test123');
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['test123', 'pest123']));
     expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['test', 'test123']));
     G.unwatch(context, 'key', callback, true);
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['test', 'pest123']));
     expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['test']));
-    G.call(before);
+    before.call()
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['test', 'pest']));
     return expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['pest']));
   });
   it('should transform preassigned values', function() {
     var callback, context;
     context = {};
-    G(context, 'key', 'test');
+    G.set(context, 'key', 'test');
     expect(context.key.valueOf()).to.eql('test');
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['test']));
     expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['test']));
@@ -69,7 +69,7 @@ describe('G.watch', function() {
     G.watch(context, 'key', function(value) {
       return value + 123;
     }, true);
-    op = G(context, 'key', 'value', 'meta1', 'scope');
+    op = G.set(context, 'key', 'value', 'meta1', 'scope');
     expect(context.key).to.eql(op);
     expect(context.key.valueOf()).to.eql('value123');
     expect(JSON.stringify(context)).to.eql(JSON.stringify({
@@ -78,7 +78,7 @@ describe('G.watch', function() {
     }));
     expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value123']));
     expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value123']));
-    op2 = G(context, 'key', 'zalue', 'meta2', 'scope');
+    op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
     expect(context.key).to.eql(op2);
     expect(context.key.valueOf()).to.eql('zalue123');
     expect(JSON.stringify(context)).to.eql(JSON.stringify({
@@ -155,5 +155,24 @@ describe('G.watch', function() {
     expect(context.fullName.valueOf()).to.eql('Unknown')
 
     //G.define.preset(context, 'fullName', Property)
+  })
+  
+  it ('should assign objects', function() {
+    var post = new G();
+    post.set('title', 'Hello world')
+    var author = new G()
+    author.set('name', 'George')
+    post.set('author', author)
+
+    expect(post.author).to.eql(author)
+    expect(post.author.name.valueOf()).to.eql('George')
+
+    //post.author.set('author.name', 'Anonymous')
+
+
+    //post['author.name'] = 'abc'
+
+
+
   })
 });

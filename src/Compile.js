@@ -15,6 +15,18 @@ G.Compile = function() {
     for (var property in Module)
       G[property] = Module[property];
   }
+
+  // All methods that accept context as first argument, 
+  // are added to G prototype modified to use this
+  for (var property in G) {
+    if (typeof G[property] != 'function' || G.prototype[property])
+      continue
+
+    var method = G.Compile.InstanceMethod(G[property], 'context')
+              || G.Compile.InstanceMethod(G[property], 'operation');
+    if (method)
+      G.prototype[property] = method
+  }
 }
 
 // Convert relation definition into set of public methods 
@@ -28,18 +40,67 @@ G.Compile.Relation = function(relation) {
     if (property === 'method' || property === 'function') {
       continue;
     }
-    if (wrapper = relation["function"]) {
-      G.methods[property] = value;
-      G[property] = wrapper(property);
-      if (method = relation.method) {
-        G.prototype[property] = method(property);
-      }
-    } else {
-      G[property] = value;
-    }
+    G.methods[property] = value;
+    G.prototype[property] = G.Compile.Method(property)
+    G[property]           = G.Compile.Function(property);
   }
   return relation;
 };
+
+G.Compile.Method = function(method) {
+  return function(key, value) {
+    if (value == null) {
+      var target = G.recall
+      var getter = G.get
+    } else {
+      var target = G.call
+      var getter = G.create
+      var arg = method
+    }
+
+    switch (arguments.length) {
+      case 1:
+      case 2: var operation = getter(this, key, value); break;
+      case 3: var operation = getter(this, key, value, arguments[2]); break;
+      case 4: var operation = getter(this, key, value, arguments[2], arguments[3]); break;
+      case 5: var operation = getter(this, key, value, arguments[2], arguments[3], arguments[4]);
+    }
+
+    return target(operation, arg);
+  };
+}
+
+G.Compile.InstanceMethod = function(fn, scope) {
+  var string = fn.toString();
+  if (string.indexOf('[native') > -1)
+    return
+  var arguments = string.slice(string.indexOf('(') + 1, string.indexOf(')'))
+  var body = string.slice(string.indexOf('{') + 1, string.lastIndexOf('}'))
+
+  if (arguments.indexOf(scope) == 0) {
+    return new Function(
+      arguments.replace(scope + ',', ''), 
+      body.replace(new RegExp(scope, 'g'), 'this')
+    )
+  }
+}
+
+G.Compile.Function = function(method) {
+  return function(context, key, value) {
+    if (value != null) {
+      if (context) {
+        var operation = G.create.apply(G, arguments)
+        if (operation != undefined)
+          return G.call(operation, method);
+      } else {
+        return operation;
+      }
+    } else {
+      return G.recall(G.get.apply(G, arguments));
+    }
+  };
+};
+
 
 if (typeof global !== "undefined")
   global.G = G;

@@ -5,11 +5,13 @@ describe('G', function() {
     context = {
       context: true
     };
-    op = G(context, 'key', 'value', 'meta', 'scope');
+    op = G.set(context, 'key', 'value', 'meta', 'scope');
     string = Object('value');
     string.$context = context;
     string.$key = 'key';
     string.$meta = ['meta', 'scope'];
+    string.call = G.prototype.call
+    string.recall = G.prototype.recall
     expect(op).to.eql(string);
     expect(context.key).to.eql(string);
     expect(context.key == 'value').to.eql(true);
@@ -23,8 +25,8 @@ describe('G', function() {
     context = {
       context: true
     };
-    op = G(context, 'key', 'value', 'meta', 'scope');
-    op2 = G(context, 'key', 'value2', 'meta2', 'scope2');
+    op = G.set(context, 'key', 'value', 'meta', 'scope');
+    op2 = G.set(context, 'key', 'value2', 'meta2', 'scope2');
     expect(context.key).to.eql(op2);
     expect(ValueStack(op2)).to.eql([op, op2]);
     expect(context.key.valueOf()).to.eql('value2');

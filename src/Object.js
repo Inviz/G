@@ -16,7 +16,7 @@ G.Modules.Object = {
       while (value.$transform)        
         value = value.$before;
       if (!value.$context) {                          // 1. Value was not unboxed yet
-        return G(context, key, value);                //    Apply primitive value 
+        return G.set(context, key, value);            //    Apply primitive value 
       } else if (pure) {                              // 2. New formatter is added 
         return G.call(value, 'set');                  //    Re-apply value 
       } else {                                        // 3. New value observer       
@@ -49,8 +49,7 @@ G.Modules.Object = {
 
   define: function(context, key, watcher) {
     G.analyze(watcher);
-    var observer = new G(context)
-    observer.$key = key
+    var observer = new G(context, key)
     observer.$getter = watcher
     observer.$meta = new Array(arguments.length - 3);
     for (var i = 0; i < arguments.length - 3; i++)
@@ -78,7 +77,7 @@ G.Modules.Object = {
     var key, op, value;
     for (key in object) {
       value = object[key];
-      op = G(context, key, value, meta, scope);
+      op = G.set(context, key, value, meta, scope);
     }
     return op;
   },

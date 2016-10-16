@@ -6,7 +6,7 @@ describe('Proxy setting', function() {
       context: true
     };
     proxy = new Proxy(context, {
-      set: G
+      set: G.set
     });
     proxy.a = 'Test';
     expect(proxy.a.valueOf()).to.eql('Test');

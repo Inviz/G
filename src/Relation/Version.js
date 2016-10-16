@@ -5,14 +5,14 @@ G.Methods.Version = {
     if (lazy) {
       operation = G.create(context, key, string, meta, scope);
     } else {
-      operation = G(context, key, string, meta, scope);
+      operation = G.set(context, key, string, meta, scope);
     }
     operation.$type = type;
     operation.$index = index;
     operation.$payload = payload;
     return operation;
   },
-  apply: function() {
+  patch: function() {
     var i, len, operation, results;
     results = [];
     for (i = 0, len = arguments.length; i < len; i++) {

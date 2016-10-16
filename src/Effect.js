@@ -1,3 +1,19 @@
+/*
+
+Operations also have three pairs of pointers that 
+make up linked lists:
+
+Effect  - $before/$after + $caller
+A graph of causation, doubles up as transaction. 
+
+History - $preceeding/$succeeding 
+A stack of concurrent values for the key of specific context
+
+Group   - $previous/$next 
+A groupping of values, similar to array.
+
+*/
+
 // Maintain depth-first double linked list of current operations 
 // It is used to compute difference in state and quickly 
 // switch branches of state without recomputation 
@@ -22,8 +38,7 @@ G.Modules.Observer = {
           result = G.callback(result, group[i], old); //   apply formatters in order
         G.formatters.set(result, group);              //   store formatting configuration
       }
-      if (value != result)
-        G.rebase(value, result);                      // Replace value in the stack of values for key
+      G.rebase(value, result);                        // Replace value in the stack of values for key
       G.link(result, after)
       return result;                                   
     }
@@ -58,7 +73,7 @@ G.Modules.Observer = {
                      G.Formatted(recalled.$after)     //    last recalled effect
     }
      
-    if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
+    if (G.$called.$after)                             // When updating side effects, link to next ops is 1-way 
       G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
     G.$caller = caller;                               // Revert global pointer to previous values 
     G.$called = called;
@@ -93,7 +108,7 @@ G.Modules.Observer = {
     if (watcher.$transform) {
       watcher = watcher.$transform
     } else if (watcher.$getter) {
-      return G(watcher.$context, watcher.$key, watcher)
+      return G.set(watcher.$context, watcher.$key, watcher)
     }
     var transformed = watcher(value, old);
     if (transformed == null)
