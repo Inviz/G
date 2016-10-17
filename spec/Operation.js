@@ -15,7 +15,7 @@ describe('G', function() {
     expect(op).to.eql(string);
     expect(context.key).to.eql(string);
     expect(context.key == 'value').to.eql(true);
-    return expect(JSON.stringify(context)).to.eql(JSON.stringify({
+    return expect(G.stringify(context)).to.eql(G.stringify({
       context: true,
       key: 'value'
     }));
@@ -30,7 +30,7 @@ describe('G', function() {
     expect(context.key).to.eql(op2);
     expect(ValueStack(op2)).to.eql([op, op2]);
     expect(context.key.valueOf()).to.eql('value2');
-    return expect(JSON.stringify(context)).to.eql(JSON.stringify({
+    return expect(G.stringify(context)).to.eql(G.stringify({
       context: true,
       key: 'value2'
     }));
@@ -45,41 +45,41 @@ describe('G', function() {
     G.set(context, 'key', 1234);
     key1234 = context.key;
     expect(context.key.valueOf()).to.eql(1234);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([1234]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([1234]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([1234]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([1234]));
     G.set(context, 'key', 555, 'lol omg this is weird', 'you say!');
     expect(context.key.valueOf()).to.eql(555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([1234, 555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([1234, 555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([555]));
     G.set(context, 'key', 12345);
     expect(context.key.valueOf()).to.eql(555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([12345, 555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([12345, 555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([555]));
     G.set(context, 'key', 5555, 'lol omg this is weird', 'you say!');
     expect(context.key.valueOf()).to.eql(5555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([12345, 5555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([5555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([12345, 5555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([5555]));
     G.set(context, 'key', 55555, 'lol omg this is weird');
     expect(context.key.valueOf()).to.eql(55555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([12345, 5555, 55555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([55555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([12345, 5555, 55555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));
     G.set(context, 'key', 123456);
     expect(context.key.valueOf()).to.eql(55555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([123456, 5555, 55555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([55555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([123456, 5555, 55555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));
 
     // Remove operation from history 
     before = context.key.$preceeding;
     G.recall(before, true);
     expect(context.key.valueOf()).to.eql(55555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([123456, 55555]));
-    expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([55555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([123456, 55555]));
+    expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));
 
     // Re-apply operation on top of the stack 
     G.call(before, 'set');
     expect(context.key.valueOf()).to.eql(5555);
-    expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify([123456, 55555, 5555]));
-    return expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify([5555]));
+    expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([123456, 55555, 5555]));
+    return expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([5555]));
   });
 
 

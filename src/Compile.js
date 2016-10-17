@@ -24,8 +24,11 @@ G.Compile = function() {
 
     var method = G.Compile.InstanceMethod(G[property], 'context')
               || G.Compile.InstanceMethod(G[property], 'operation');
-    if (method)
-      G.prototype[property] = method
+    if (method) {
+      method.displayName = property
+      G.prototype[property]         = 
+      G.Element.prototype[property] = method
+    }
   }
 }
 
@@ -41,8 +44,9 @@ G.Compile.Relation = function(relation) {
       continue;
     }
     G.methods[property] = value;
-    G.prototype[property] = G.Compile.Method(property)
-    G[property]           = G.Compile.Function(property);
+    G.prototype[property]         =
+    G.Element.prototype[property] = G.Compile.Method(property)
+    G[property]                   = G.Compile.Function(property);
   }
   return relation;
 };
@@ -81,6 +85,10 @@ G.Compile.InstanceMethod = function(fn, scope) {
     return new Function(
       arguments.replace(scope + ',', ''), 
       body.replace(new RegExp(scope, 'g'), 'this')
+          // decrement argument counter if any
+          .replace(/(var\s*offset\s*=\s*)(\d+)/, function(match, prefix, digit) {
+            return prefix + (parseInt(digit) - 1);
+          })
     )
   }
 }

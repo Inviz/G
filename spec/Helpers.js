@@ -22,6 +22,27 @@
     return list;
   };
 
+  ValueGroup = function(operation, before, after) {
+    var lastAfter, lastBefore, list;
+    list = [];
+    before = after = operation;
+    lastBefore = lastAfter = operation;
+    while (before = before.$before) {
+      if (before.$after !== lastBefore)
+        break;
+      list.unshift(before);
+      lastBefore = before;
+    }
+    list.push(operation);
+    while (after = after.$after) {
+      if (after.$before !== lastAfter)
+        break;
+      list.push(after);
+      lastAfter = after;
+    }
+    return list;
+  };
+
   ValueStack = function(operation, before, after) {
     var lastAfter, lastBefore, list;
     list = [];

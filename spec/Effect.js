@@ -23,11 +23,11 @@ describe ('G.set', function() {
       expect(subject.mutated.$after).to.eql(context.asis);
       expect(context.asis.$before).to.eql(subject.mutated);
       expect(context.asis.$after).to.eql(void 0);
-      expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      expect(G.stringify(subject)).to.eql(G.stringify({
         'subject': 'subject',
         mutated: 'value123'
       }));
-      expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      expect(G.stringify(context)).to.eql(G.stringify({
         'context': 'context',
         key: 'value',
         asis: 'value'
@@ -35,9 +35,9 @@ describe ('G.set', function() {
       op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
       expect(context.key).to.eql(op2);
       expect(subject.mutated.valueOf()).to.eql('zalue123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value', 'zalue']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['zalue', 'zalue123', 'zalue']));
-      expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue123', 'zalue']));
+      expect(G.stringify(context)).to.eql(G.stringify({
         'context': 'context',
         key: 'zalue',
         asis: 'zalue'
@@ -47,9 +47,9 @@ describe ('G.set', function() {
       expect(subject.mutated.valueOf()).to.eql('value123');
       expect(subject.mutated.$before).to.eql(context.key);
       expect(subject.mutated.$after).to.eql(context.asis);
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value', 'zalue']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value123', 'value']));
-      expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value123', 'value']));
+      expect(G.stringify(context)).to.eql(G.stringify({
         'context': 'context',
         key: 'value',
         asis: 'value'
@@ -63,28 +63,28 @@ describe ('G.set', function() {
       G.call(op2);
       expect(context.key).to.eql(op2);
       expect(subject.mutated.valueOf()).to.eql('zalue123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value', 'zalue']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['zalue', 'zalue123', 'zalue']));
-      expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue123', 'zalue']));
+      expect(G.stringify(context)).to.eql(G.stringify({
         context: 'context',
         key: 'zalue',
         asis: 'zalue'
       }));
-      expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      expect(G.stringify(subject)).to.eql(G.stringify({
         subject: 'subject',
         mutated: 'zalue123'
       }));
       G.call(op);
       expect(context.key).to.eql(op);
       expect(subject.mutated.valueOf()).to.eql('value123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value', 'zalue']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value123', 'value']));
-      expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value123', 'value']));
+      expect(G.stringify(context)).to.eql(G.stringify({
         context: 'context',
         key: 'value',
         asis: 'value'
       }));
-      return expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      return expect(G.stringify(subject)).to.eql(G.stringify({
         subject: 'subject',
         mutated: 'value123'
       }));
@@ -119,26 +119,26 @@ describe ('G.set', function() {
       // First operation tagged with ['meta1', 'scope'] 
       op = G.set(context, 'key', 'value', 'meta1', 'scope');
       //expect(context.key).to.eql(op);
-      //expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      //expect(G.stringify(subject)).to.eql(G.stringify({
       //  'subject': 'subject',
       //  mutated: 'value666123'
       //}));
-      //expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      //expect(G.stringify(context)).to.eql(G.stringify({
       //  'context': 'context',
       //  key: 'value666',
       //  asis: 'value666'
       //}));
-      //expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value666']));
-      //expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value666', 'value666123', 'value666']));
+      //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666']));
+      //expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
 
       // Second operation over same key with different meta values 
       // (puts this value on top of the stack, references old value) 
       op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
       //expect(context.key).to.eql(op2);
       //expect(subject.mutated.valueOf()).to.eql('zalue666123');
-      //expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value666', 'zalue666']));
-      //expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
-      //expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      //expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      //expect(G.stringify(context)).to.eql(G.stringify({
       //  'context': 'context',
       //  key: 'zalue666',
       //  asis: 'zalue666'
@@ -148,9 +148,9 @@ describe ('G.set', function() {
       G.recall(context.key);
       //expect(context.key).to.eql(op);
       //expect(subject.mutated.valueOf()).to.eql('value666123');
-      //expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value666', 'zalue666']));
-      //expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value666', 'value666123', 'value666']));
-      //expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      //expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      //expect(G.stringify(context)).to.eql(G.stringify({
       //  'context': 'context',
       //  key: 'value666',
       //  asis: 'value666'
@@ -169,14 +169,14 @@ describe ('G.set', function() {
       //expect(context.key).to.eql(op2);
       //expect(subject.mutated.valueOf()).to.eql('zalue666123');
       //expect(subject.mutated.$before.valueOf()).to.eql('zalue666');
-      //expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value666', 'zalue666']));
-      //expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
-      //expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      //expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      //expect(G.stringify(context)).to.eql(G.stringify({
       //  context: 'context',
       //  key: 'zalue666',
       //  asis: 'zalue666'
       //}));
-      //expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      //expect(G.stringify(subject)).to.eql(G.stringify({
       //  subject: 'subject',
       //  mutated: 'zalue666123'
       //}));
@@ -185,14 +185,14 @@ describe ('G.set', function() {
       G.call(op);
       //expect(context.key).to.eql(op);
       //expect(subject.mutated.valueOf()).to.eql('value666123');
-      //expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['value666', 'zalue666']));
-      //expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['value', 'value666', 'value666123', 'value666']));
-      //expect(JSON.stringify(context)).to.eql(JSON.stringify({
+      //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      //expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      //expect(G.stringify(context)).to.eql(G.stringify({
       //  context: 'context',
       //  key: 'value666',
       //  asis: 'value666'
       //}));
-      //expect(JSON.stringify(subject)).to.eql(JSON.stringify({
+      //expect(G.stringify(subject)).to.eql(G.stringify({
       //  subject: 'subject',
       //  mutated: 'value666123'
       //}));
@@ -216,8 +216,8 @@ describe ('G.set', function() {
       });
       expect(context.asis.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['lol']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol123', 'lol']));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol123', 'lol']));
 
       // Apply transformation for the value that caused side effects 
       // It'll add transform op into state graph and recompute effects 
@@ -227,15 +227,15 @@ describe ('G.set', function() {
       G.watch(context, 'key', callback, true);
       expect(context.asis.valueOf()).to.eql('lol666');
       expect(subject.mutated.valueOf()).to.eql('lol666123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['lol666']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
 
       // Remove that transformation, recompute effects again 
       G.unwatch(context, 'key', callback, true);
       expect(context.asis.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['lol']));
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol123', 'lol']));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol123', 'lol']));
 
       // Recall operation, store it in local variable 
       before = context.key;
@@ -252,8 +252,8 @@ describe ('G.set', function() {
       G.call(before);
       expect(context.asis.valueOf()).to.eql('lol666');
       expect(subject.mutated.valueOf()).to.eql('lol666123');
-      expect(JSON.stringify(ValueStack(context.key))).to.eql(JSON.stringify(['lol666']));
-      return expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol666']));
+      return expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
     });
     it('should handle revoke effect from context with transform', function() {
       var before, callback, context, subject, watcher;
@@ -274,7 +274,7 @@ describe ('G.set', function() {
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol');
       expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol']));
       callback = function(value) {
         return value + 666;
       };
@@ -282,7 +282,7 @@ describe ('G.set', function() {
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol666');
       expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol666', 'lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol666', 'lol']));
       before = context.key;
       G.recall(context.key);
       expect(context.key).to.eql(void 0);
@@ -296,21 +296,21 @@ describe ('G.set', function() {
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol');
       expect(context.asis.valueOf()).to.eql('lol');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol']));
       G.unwatch(context, 'key', watcher);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol']));
       G.watch(subject, 'mutated', callback, true);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol']));
       G.watch(context, 'key', watcher);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol666');
-      expect(JSON.stringify(StateGraph(context.key))).to.eql(JSON.stringify(['lol', 'lol', 'lol666', 'lol']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol666', 'lol']));
       return expect(context.asis.valueOf()).to.eql('lol');
     });
     it('should write to transaction', function() {
@@ -336,50 +336,50 @@ describe ('G.set', function() {
 
 
       G.set(context, 'key', 'test')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'test', 'test123', 'test']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test123', 'test']));
 
       G.set(context, 'key', 'protest')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest']));
 
       G.set(context, 'zozo', 'kiki')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
 
       G.set(context, 'key', 'grotesque')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
 
       G.set(context, 'xaxa', 'kek')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
 
       G.set(context, 'zozo', 'buba')
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
 
       var zozo = context.zozo
       G.recall(context.zozo)
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek']));
 
       G.call(zozo)
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek', 'buba']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek', 'buba']));
       
       var key = context.key
       G.recall(context.key)
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba']));
       
       G.call(key)
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
 
       G.abort(transaction)
       expect(context.xaxa).to.eql(undefined)
       expect(context.zozo).to.eql(undefined)
       expect(context.key).to.eql(undefined)
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
 
       G.commit(transaction)
       expect(context.xaxa).to.eql(transaction.$after)
       expect(context.zozo).to.eql(transaction.$after.$after)
       expect(context.key).to.eql(G.Formatted(transaction.$after.$after.$after))
-      expect(JSON.stringify(StateGraph(transaction))).to.eql(JSON.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
 
     })

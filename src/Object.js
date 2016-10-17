@@ -1,16 +1,18 @@
 G.Modules.Object = {
   // Add observer for key, call it if there's a value with that key
   watch: function(context, key, watcher, pure) {
-    var source = pure ? G.formatters : G.watchers
-    var watchers = source.get(context)
-    if (!watchers)
-      source.set(context, watchers = {});
+    if (pure) {
+      var watchers = context.$formatters
+      if (!watchers) watchers = context.$formatters = {}
+    } else {
+      var watchers = context.$watchers
+      if (!watchers) watchers = context.$watchers = {}
+    }
     if (watchers[key]) {                              // Adding watcher creates new array
       watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
     } else {                                          // recompute stale values
       watchers[key] = [watcher];
     }
-
     var value = context[key]
     if (value) {
       while (value.$transform)        
@@ -27,8 +29,7 @@ G.Modules.Object = {
 
   // Remove key observer and undo its effects
   unwatch: function(context, key, watcher, pure) {
-    var source = pure ? G.formatters : G.watchers
-    var watchers = watchers = source.get(context);
+    var watchers = pure ? context.$formatters : context.$watchers
     if (watchers && watchers[key]) {                  
       watchers[key] =                                 // Removing a watcher creates new array 
         watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
@@ -38,7 +39,8 @@ G.Modules.Object = {
         watchers[key] = undefined
     }
 
-    if (value = context[key]) {      
+    var value = context[key];
+    if (value) {      
       if (pure) {                                     // 1. Removing a value formatter
         return G.call(value, 'set');                  //    Reapply value
       } else {                                        // 2. Removing an observer
@@ -51,9 +53,10 @@ G.Modules.Object = {
     G.analyze(watcher);
     var observer = new G(context, key)
     observer.$getter = watcher
-    observer.$meta = new Array(arguments.length - 3);
-    for (var i = 0; i < arguments.length - 3; i++)
-      observer.$meta[i] = arguments[i + 3]
+    var offset = 3;
+    observer.$meta = new Array(arguments.length - offset);
+    for (var i = 0; i < arguments.length - offset; i++)
+      observer.$meta[i] = arguments[i + offset]
     for (var i = 0; i < watcher.$arguments.length; i++)
       G.watch(context, watcher.$arguments[i], observer, false)
   },
@@ -61,25 +64,16 @@ G.Modules.Object = {
   undefine: function(context, key, watcher) {
     var value = context[key];
     if (value) {
-      if (arguments.length > 3) {
-        var args = new Array(arguments.length - 3);
-        for (var i = 0; i < arguments.length - 3; i++)
-          args[i] = arguments[i + 3]
+      var offset = 3;
+      if (arguments.length > offset) {
+        var args = new Array(arguments.length - offset);
+        for (var i = 0; i < arguments.length - offset; i++)
+          args[i] = arguments[i + offset]
       }
       value = G.match(args, value);
       if (value)
         G.recall(value)
     }
-  },
-
-  // Merge two objects
-  merge: function(context, object, meta, scope) {
-    var key, op, value;
-    for (key in object) {
-      value = object[key];
-      op = G.set(context, key, value, meta, scope);
-    }
-    return op;
   },
   
   get: function(context, key, value) {
@@ -95,5 +89,50 @@ G.Modules.Object = {
         meta[i] = arguments[i + offset]
     }
     return G.match(meta, context[key]);
+  },
+
+  // Check if key is enumerable
+  has: function(context, key) {
+    return (context.hasOwnProperty(key)
+     && typeof context[key] != 'function' 
+     && key.charAt(0) != '$')
+  },
+
+  // Merge two objects
+  merge: function(context, object) {
+    for (var key in object) {
+      if (object.hasOwnProperty(key)
+      &&  G.has(object, key)) { 
+        var value = object[key];
+        var op = G.set(context, key, value);
+      }
+    }
+    return op;
+  },
+
+  // Merge two objects
+  each: function(context, callback) {
+    for (var key in context) {
+      if (context.hasOwnProperty(key)
+      &&  G.has(context, key)) {
+        callback.call(context, key, context[key]);
+      }
+    }
+    return context;
+  },
+
+  // Export to clean javascript object
+  clean: function(context) {
+    var result = {}
+    for (var key in context) {
+      if (!G.has(context, key)) continue;
+      result[key] = context[key];
+    }
+    return result
+  },
+
+  // Serialize to json
+  stringify: function(context) {
+    return JSON.stringify(G.clean(context))
   }
 };

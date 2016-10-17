@@ -10,7 +10,7 @@ a stack of values, allowing switching between them easily.
 work as observable context with proper prototype chain.
 
   It can be used to enrich primitive value too, when called
-as `G.wrap('Hello world', context, key, value)`
+as `G.extend('Hello world', context, key)`
 
 */
 
@@ -50,17 +50,17 @@ G.create = function(context, key, value) {
       var computed = G.compute(value);                //    Invoke computation callback
       if (computed == null)                           //    Proceed if value was computed
         return 
-      var result = G.wrap(computed, context, key);   //    Enrich primitive value
+      var result = G.extend(computed, context, key);  //    Enrich primitive value
       result.$meta = value.$meta                      //    Pick up watcher meta
     } else if (!value.$key) {                         // 2. Wrapping plain object
       var result = new G(context, key, value)         //    Create new G wrapper
     } else {                                          // 3. Applying operation as value
       var primitive = value.valueOf()                 //    Get its primitive value
-      var result = G.wrap(primitive, context, key)   //    Construct new operation
+      var result = G.extend(primitive, context, key)  //    Construct new operation
       result.$meta = value.$meta                      //    Pass meta
     }
   } else {
-    var result = G.wrap(value, context, key)         // 4. Operation from primitive
+    var result = G.extend(value, context, key)        // 4. Operation from primitive
   }
   if (arguments.length > 3) {                         // Use/merge extra arguments as meta
     if (result.$meta)
@@ -78,7 +78,7 @@ G.create = function(context, key, value) {
 // Apply operation to its context 
 // If method name is not provided, 
 // linked list of effects will not be altered 
-G.wrap = G.call
+G.extend = G.call
 G.call = function(operation, method) {
   var old = operation.$context[operation.$key];
   var value = G.format(operation, old);               // Transform value 
@@ -98,6 +98,8 @@ G.call = function(operation, method) {
   if (value !== old && !value.failed) {     
     G.record(value, old, method);                     // Place operation into dependency graph 
     value.$context[value.$key] = value;               // Actually change value 
+    if (value.$context.onChange)
+      value.$context.onChange(value.$key, value, old)
     G.affect(value, old);                             // Apply side effects and invoke observers 
   }
   return value;
@@ -106,13 +108,15 @@ G.call = function(operation, method) {
 // Undo operation. Reverts value and its effects to previous versions. 
 // If hard argument is set, removes operation from history 
 G.recall = function(operation, hard) {
-  value = G.Formatted(operation)
+  var value = G.Formatted(operation)
   var old = value.$context[value.$key];
   if (old === value) {                                // 1. Return to previous version
     if (value.$preceeding) {                          //    If stack holds values before given
       return G.call(value.$preceeding);               //      Apply that value
     } else {    
       delete value.$context[value.$key];              // 2. Removing key from context 
+      if (value.$context.onChange)
+        value.$context.onChange(value.$key, undefined, value);
       var from = G.Unformatted(value)                 //    Get initial value before formatting
       var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
@@ -128,17 +132,11 @@ G.recall = function(operation, hard) {
 G.fork = G.prototype.fork = function(primitive, value) {
   if (value == null)
     value = this;
-  var op = G.wrap(primitive, value.$context, value.$key);
+  var op = G.extend(primitive, value.$context, value.$key);
   if (value.$meta)
     op.$meta = value.$meta;
   return op;
 };
-
-
-// For each context, references object with Arrays of observers by key name
-// For each operation, references array of observers that operation triggered 
-G.watchers   = new WeakMap;
-G.formatters = new WeakMap;
 
 // References current operation 
 G.$caller = G.$called = null;
