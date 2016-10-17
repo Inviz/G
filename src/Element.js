@@ -1,23 +1,25 @@
 G.Element = function(tag, attributes) {
   if (!(this instanceof G.Element)) {
-    if (G.Element[tag])
+    if (typeof tag == 'function')
+      var self = new tag(attributes)
+    else if (G.Element[tag])
       var self = new G.Element[tag](attributes)
     else
-      var self = new G.Element(attributes)
+      var self = new G.Element(tag, attributes)
   } else {
     var self = this;
+    if (tag)
+      self.tag = tag;
+    if (attributes)
+      self.merge(attributes);
   }
-  if (tag)
-    self.tagName = tag;
-  if (attributes)
-    self.merge(attributes);
 
   var last = self;
   for (var i = 2; i < arguments.length; i++) {
     var child = arguments[i]
     if (typeof child == 'string') {
       child = new G.Element
-      child.textContent = arguments[i]
+      child.text = arguments[i]
     }
     last.$after = child;
     child.$before = last;
@@ -29,6 +31,8 @@ G.Element = function(tag, attributes) {
   return self
 }
 
+G.Element.prototype = new G;
+
 // Apply attribute changes to element
 G.Element.prototype.onChange = function(key, value, old) {
   if (!this.$node)
@@ -38,7 +42,7 @@ G.Element.prototype.onChange = function(key, value, old) {
     if (descriptor.call(this, value, old) === false)
       return;
   
-  if (this.tagName) {
+  if (this.tag) {
     var formatted = this.decorate(value);
     if (value) {
       this.$node.setAttribute(value.$key, formatted);
@@ -49,11 +53,11 @@ G.Element.prototype.onChange = function(key, value, old) {
 }
 
 G.Element.attributes = {
-  textContent: function() {
+  text: function() {
 
   },
 
-  tagName: function() {
+  tag: function() {
     return false;
   }
 }
@@ -64,13 +68,14 @@ G.Element.prototype.decorate = function(value) {
 
 G.Element.prototype.render = function(deep) {
   if (!this.$node) {
-    if (this.tagName) {
-      this.$node = document.createElement(this.tagName)
-      this.each(this.onChange)
-    } else {
-      this.$node = document.createTextNode(this.textContent)
+    if (this.tag) {
+      this.$node = document.createElement(this.tag);
+      this.$node.$operation = this;
+      this.each(this.onChange);
+    } else if (this.text) {
+      this.$node = document.createTextNode(this.text);
+      this.$node.$operation = this;
     }
-    this.$node.$operation = this
   }
   if (deep !== false)
     this.descend();
@@ -80,24 +85,27 @@ G.Element.prototype.render = function(deep) {
 G.Element.prototype.descend = function() {
   for (var after = this; after = after.$after;) {              // for each effect
     var child = after.render(false)
-    after.inject(this)
+    if (child) after.inject(this)
   }
 }
 
 G.Element.prototype.inject = function(limit) {
   for (var parent = this; parent = parent.$parent;) {      // and each of their parents
-    if (!parent.$node) continue;
+    if (parent.$node)
+      var last = parent;
+    if (!last) continue;
+
     for (var prev = this; prev = prev.$before;) {     // see previous effects
-      if (prev == parent) {
+      if (prev == last) {
         var anchor = parent.$node.firstChild;
         parent.$node.insertBefore(this.$node, anchor)
         return
       } else if (prev == this 
-             ||  prev.$node && prev.$parent == parent) {
+             ||  prev.$node && prev.$parent == last || prev.$parent == parent) {
         if (this.$node.previousSibling != prev.$node 
         ||  this.$node.parentNode != parent.$node) {
           var anchor = prev.$node && prev.$node.nextSibling;
-          parent.$node.insertBefore(this.$node, anchor);
+          last.$node.insertBefore(this.$node, anchor);
         }
         return
       }
@@ -127,11 +135,17 @@ G.Element.recall = function(operation, hard) {
       operation.$before.$after = to && to.$after
 
     if (operation.$node)
-      operation.$node.parentNode.removeChild(operation.$node)
+      G.Element.detach(operation)
+    else
+      G.Element.Children(operation, G.Element.detach)
 
   }
   return to || operation
 };
+G.Element.detach = function(operation) {
+  if (operation.$node)
+    operation.$node.parentNode.removeChild(operation.$node)
+}
 
 G.Element.extend = G.Element.call
 G.Element.call = function(operation, hard) {
@@ -145,3 +159,21 @@ G.Element.call = function(operation, hard) {
   }
   return to
 };
+
+
+G.Directive = function(attributes) {
+  G.Element.apply(this, null, attributes);
+}
+G.Directive.prototype = new G.Element;
+
+G.If = function() {
+  this.rule = 'if'
+  G.Element.apply(this, null, arguments);
+}
+G.If.prototype = new G.Directive 
+
+G.Else = function() {
+  this.rule = 'else'
+  G.Element.apply(this, null, arguments);
+}
+G.Else.prototype = new G.Directive 
