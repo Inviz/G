@@ -98,6 +98,16 @@ G.Modules.Object = {
      && key.charAt(0) != '$')
   },
 
+  observe: function(context, watcher) {
+    if (context.watch)
+      if (context.$observers)
+        context.$observers.push(watcher)
+      else 
+        context.$observers = [watcher]
+      
+    return G.merge(context, watcher);
+  },
+
   // Merge two objects
   merge: function(context, object) {
     for (var key in object) {

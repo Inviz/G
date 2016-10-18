@@ -35,6 +35,20 @@ G.Methods.List = {
     return value;
   },
 
+  // Nest value into another
+  inject: function(value, old) {
+    if (!old.$first)
+      old.$first = value;
+    for (var last = old; last.$last;)
+      last = last.$last;
+    last.$following = value;
+    value.$leading = last;
+    value.$parent = old
+    old.$last = value;
+
+    return old
+  },
+
   // Remove element from its list 
   remove: function(value) {
     var ref, ref1;

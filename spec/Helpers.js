@@ -25,21 +25,35 @@
   ValueGroup = function(operation, before, after) {
     var lastAfter, lastBefore, list;
     list = [];
-    before = after = operation;
+    previous = next = operation;
     lastBefore = lastAfter = operation;
-    while (before = before.$before) {
-      if (before.$after !== lastBefore)
+    while (previous = previous.$leading) {
+      if (previous.$following !== lastBefore)
         break;
-      list.unshift(before);
-      lastBefore = before;
+      list.unshift(previous);
+      lastBefore = previous;
     }
     list.push(operation);
-    while (after = after.$after) {
-      if (after.$before !== lastAfter)
+    while (next = next.$following) {
+      if (next.$leading !== lastAfter)
         break;
-      list.push(after);
-      lastAfter = after;
+      list.push(next);
+      lastAfter = next;
     }
+    list.forEach(function(node) {
+      if (node.$parent) {
+        if (node.$parent.$following && node.$parent.$following.$parent == node.$parent) {
+          if (node.$parent.$first != node.$parent.$following)
+            throw '$first doesnt point properly'
+          for (var next = node.$parent; next = next.$following;) {
+            if (next.$parent == node.$parent)
+              var last = next;
+          }
+          if (last && node.$parent.$last != last)
+            throw '$last doesnt point properly'
+        }
+      }
+    })
     return list;
   };
 

@@ -93,7 +93,116 @@ describe ('G.set', function() {
 
       // Two different objects 
       var context, op, op2, subject;
-      for (var i = 0; i < 100000; i++) {
+      context = {
+        'context': 'context'
+      };
+      subject = {
+        'subject': 'subject'
+      };
+
+      // Callback causes two side effects 
+      G.watch(context, 'key', function(value) {
+
+        // One over different object 
+        G.set(subject, 'mutated', value + 123);
+
+        // And another changes key in the same object 
+        G.set(context, 'asis', value);
+      });
+
+      // The object also has a formatting accessor 
+      G.watch(context, 'key', function(value) {
+        return value + 666;
+      }, true);
+
+      // First operation tagged with ['meta1', 'scope'] 
+      op = G.set(context, 'key', 'value', 'meta1', 'scope');
+      expect(context.key).to.eql(op);
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        'subject': 'subject',
+        mutated: 'value666123'
+      }));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+
+      // Second operation over same key with different meta values 
+      // (puts this value on top of the stack, references old value) 
+      op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
+      expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'zalue666',
+        asis: 'zalue666'
+      }));
+
+      // We recall that second operation to fall back to first 
+      G.recall(context.key);
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+
+      // The first operation is also recalled, objects are cleaned up 
+      // (only local variable in this spec holds reference to operations now) 
+      G.recall(context.key);
+      expect(context.mutated).to.eql(void 0);
+      expect(context.asis).to.eql(void 0);
+      expect(context.key).to.eql(void 0);
+
+      // Reapply operation stored here in the local variable 
+      // It brings up whole graph of state with it 
+      G.call(op2);
+      //expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(subject.mutated.$before.valueOf()).to.eql('zalue666');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'zalue666',
+        asis: 'zalue666'
+      }));
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'zalue666123'
+      }));
+
+      // Reapply first operation 
+      G.call(op);
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'value666123'
+      }));
+      return 1;
+    });
+
+    it('should handle transformations and side effects together x 10000', function() {
+
+      // Two different objects 
+      var context, op, op2, subject;
+      for (var i = 0; i < 10000; i++) {
       context = {
         'context': 'context'
       };

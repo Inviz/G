@@ -20,9 +20,9 @@ var G = function(context, key, value) {
     if (context != null)         
       this.$context = context;                       // Store context, object that holds operations
     if (value)
-      G.merge(this, value);
+      G.observe(this, value);
   } else if (context) {
-    G.merge(this, context);
+    G.observe(this, context);
   }
 
   if (G.$caller)    
@@ -52,7 +52,7 @@ G.create = function(context, key, value) {
         return 
       var result = G.extend(computed, context, key);  //    Enrich primitive value
       result.$meta = value.$meta                      //    Pick up watcher meta
-    } else if (!value.$key) {                         // 2. Wrapping plain object
+    } else if (!value.$key || value instanceof G) {   // 2. Wrapping plain object
       var result = new G(context, key, value)         //    Create new G wrapper
     } else {                                          // 3. Applying operation as value
       var primitive = value.valueOf()                 //    Get its primitive value

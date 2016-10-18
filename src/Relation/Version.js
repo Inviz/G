@@ -1,5 +1,5 @@
 // Placeholder for actual op transform 
-G.Methods.Version = {
+/*G.Methods.Version = {
   version: function(type, index, payload, string, context, key, meta, scope, lazy) {
     var operation;
     if (lazy) {
@@ -52,4 +52,4 @@ dispatch = function(operation) {
     return 'insert';
   }
 };
-
+*/

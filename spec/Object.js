@@ -162,10 +162,24 @@ describe('G.watch', function() {
     post.set('title', 'Hello world')
     var author = new G()
     author.set('name', 'George')
-    post.set('author', author)
+    author.set('pet', 'dog')
+    var authorship = post.set('author', author)
 
-    expect(post.author).to.eql(author)
+
+    expect(post.author.stringify()).to.eql(author.stringify())
     expect(post.author.name.valueOf()).to.eql('George')
+
+
+    post.author.set('name', 'Vasya', 666)
+    expect(post.author.name.valueOf()).to.eql('Vasya')
+
+    expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['George', 'Vasya']));
+    expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['George']));
+
+    debugger
+    authorship.recall()
+    expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
+    expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['George']));
 
     //post.author.set('author.name', 'Anonymous')
 

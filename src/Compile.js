@@ -27,7 +27,7 @@ G.Compile = function() {
     if (method) {
       method.displayName = property
       G.prototype[property]         = 
-      G.Element.prototype[property] = method
+      G.Node.prototype[property] = method
     }
   }
 }
@@ -45,7 +45,7 @@ G.Compile.Relation = function(relation) {
     }
     G.methods[property] = value;
     G.prototype[property]         =
-    G.Element.prototype[property] = G.Compile.Method(property)
+    G.Node.prototype[property] = G.Compile.Method(property)
     G[property]                   = G.Compile.Function(property);
   }
   return relation;
