@@ -42,7 +42,7 @@ describe ('G.set', function() {
         key: 'zalue',
         asis: 'zalue'
       }));
-      G.recall(context.key);
+      G.recall(context.key, 'meta2', 'scope');
       expect(context.key).to.eql(op);
       expect(subject.mutated.valueOf()).to.eql('value123');
       expect(subject.mutated.$before).to.eql(context.key);
@@ -54,7 +54,7 @@ describe ('G.set', function() {
         key: 'value',
         asis: 'value'
       }));
-      G.recall(context.key);
+      G.recall(context.key, 'meta1', 'scope');
       expect(context.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
       expect(context.key).to.eql(void 0);
@@ -144,7 +144,7 @@ describe ('G.set', function() {
       }));
 
       // We recall that second operation to fall back to first 
-      G.recall(context.key);
+      G.recall(context.key, 'meta2', 'scope');
       expect(context.key).to.eql(op);
       expect(subject.mutated.valueOf()).to.eql('value666123');
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
@@ -157,7 +157,7 @@ describe ('G.set', function() {
 
       // The first operation is also recalled, objects are cleaned up 
       // (only local variable in this spec holds reference to operations now) 
-      G.recall(context.key);
+      G.recall(context.key, 'meta1', 'scope');
       expect(context.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
       expect(context.key).to.eql(void 0);
@@ -254,7 +254,7 @@ describe ('G.set', function() {
       //}));
 
       // We recall that second operation to fall back to first 
-      G.recall(context.key);
+      G.recall(context.key, 'meta2', 'scope');
       //expect(context.key).to.eql(op);
       //expect(subject.mutated.valueOf()).to.eql('value666123');
       //expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
@@ -267,7 +267,7 @@ describe ('G.set', function() {
 
       // The first operation is also recalled, objects are cleaned up 
       // (only local variable in this spec holds reference to operations now) 
-      G.recall(context.key);
+      G.recall(context.key, 'meta1', 'scope');
       //expect(context.mutated).to.eql(void 0);
       //expect(context.asis).to.eql(void 0);
       //expect(context.key).to.eql(void 0);

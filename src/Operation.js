@@ -80,18 +80,21 @@ G.create = function(context, key, value) {
 // linked list of effects will not be altered 
 G.extend = G.call
 G.call = function(self, verb) {
+  if (!self) return;
   var old = self.$context[self.$key];
   var value = G.format(self, old);                    // Transform value 
        
   if (verb && (old != null)) {                        // If there was another value by that key
     if (!old.$key) {     
       value.$default = old;                           // That value is primitive, store it
-    } else {     
-      var other = G.match(value.$meta, old)           // Find value with the same meta 
+    } else {
+      if (typeof verb == 'string')
+        verb = G.verbs[verb];     
+      var other = G.match(value.$meta, old, verb)     // Find value with the same meta 
       if (other) {                                 
         value = G.update(value, old, other);          //   then replace it in stack
       } else {     
-        value = G.verbs[verb](value, old);            // invoke stack-manipulation method
+        value = verb(value, old);                     // invoke stack-manipulation method
       }     
     }     
   }     
@@ -108,25 +111,54 @@ G.call = function(self, verb) {
 // Undo operation. Reverts value and its effects to previous versions. 
 // If hard argument is set, removes operation from history 
 G.recall = function(self, hard) {
-  var value = G.formatted(self)
-  var old = value.$context[value.$key];
-  if (old === value) {                                // 1. Return to previous version
+  if (!self) return;
+  var key = self.$key;
+  var recalling = G.$recaller;
+  var offset = 1;
+  if (arguments.length > offset) {
+    var meta = new Array(arguments.length - offset)
+    for (var i = 0; i < arguments.length - offset; i++)
+      meta[i] = arguments[i + offset];
+  }
+  var current = self.$context[key]
+  var old = G.match(meta, current)
+  if (old === current) {      
+    var value = G.formatted(current);                          // 1. Return to previous version
     if (value.$preceeding) {                          //    If stack holds values before given
       return G.call(value.$preceeding);               //      Apply that value
-    } else {    
-      delete value.$context[value.$key];              // 2. Removing key from context 
+    } else {
+      if (!recalling) G.$recaller = self
+
+      
+      delete value.$context[key];              // 2. Removing key from context 
       if (value.$context.onChange)
-        value.$context.onChange(value.$key, undefined, value);
+        value.$context.onChange(key, null, value);
       var from = G.unformatted(value)                 //    Get initial value before formatting
-      var to = G.effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
+
+      var to = G.effects(value, G.uncall)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
-      if (hard !== false && !G.$called)
-        G.unlink(from, to, true)                      //    Patch graph and detach the tree at top
+      if (!recalling) {
+        if (!G.$called) 
+          G.unlink(from, to, true)
+        G.$recaller = null;
+      }                                               //    Patch graph and detach the tree at top
     }    
-  }    
-  if (hard)                                           // Remove value from history
-    G.rebase(value, null);
+  }
+  return value || self;
 };
+
+// Recall this specific operation 
+// (or recall by array of meta instead of arguments)
+G.uncall = function(self, meta) {
+  return self.recall.apply(self, meta || self.$meta)
+}
+
+// Recall and remove from bufefer
+G.revoke = function(self) {
+  var value = G.uncall(self);
+  G.rebase(value, null)
+  return value;
+}
 
 // Clone operation from primitive and another operation 
 G.fork = function(primitive, value) {

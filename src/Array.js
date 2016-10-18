@@ -6,6 +6,12 @@ G.Array.prototype = new G
 // Remove node from tree
 G.Array.recall = function(self) {
   G.Array.unlink(self)
+  if (self.$parent) {
+    if (self.$previous && self.$next)
+      G.Array.register(self.$previous, self.$next, self.$parent)
+    else
+      G.Array.unregister(self)
+  }
   return self
 };
 
@@ -16,6 +22,8 @@ G.Array.call = function(self) {
     to = to.$last;
   G.Array.link(self.$leading, self)
   G.Array.link(to, to.$following)
+
+  // if element had parent before, attempt to hook it in place
   if (self.$parent) {
     // for each node in the remembered parent
     for (var item = self.$parent.$first; item; item = item.$next) {
@@ -24,13 +32,21 @@ G.Array.call = function(self) {
         if (before == self.$parent)
           break;
         if (before == item) {
+          if (before.$next)
+            G.Array.register(self, before.$next, self.$parent)
           G.Array.register(before, self, self.$parent)
+          
           return self
         }
-      }
+      } 
+      // attempt to finx anchor after
       for (var after = self; after = after.$following;) {
         if (after == item) {
+          if (after.$previous) {
+            G.Array.register(after.$previous, self, self.$parent)
+          }
           G.Array.register(self, after, self.$parent)
+          
           return self
         }
         if (after == self.$parent.$last)
@@ -59,12 +75,13 @@ G.Array.forEach = function(self, callback, argument) {
 }
 
 
-// Connect pointers of two sibling nodes together
+// Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {
   if ((left.$following = right))                          // fix $following/$leading refs
     left.$following.$leading = left;
 };
 
+// Connect two siblings with DOM pointers
 G.Array.register = function(left, right, parent) {
   left.$next = right;
   right.$previous = left;
@@ -78,19 +95,23 @@ G.Array.register = function(left, right, parent) {
   }
 }
 
+// Remove element from DOM tree
+G.Array.unregister = function(op) {
+  if (op.$previous)
+    op.$previous.$next = op.$next
+  if (op.$parent.$last == op)
+    op.$parent.$last = op.$previous
+  if (op.$next)
+    op.$next.$previous = op.$previous
+  if (op.$parent.$first == op)
+    op.$parent.$first = op.$next
+}
 // Remove span of nodes from the graph
 // Without second argument it removes op's children
 G.Array.unlink = function(op, to) {
   if (to == null)                                     // find last deepest child
     for (var to = op; to.$last;)
       to = to.$last; 
-
-  if (op.$parent) {                            // fix $first/$last refs in parent
-    if (op.$parent.$first == op)
-      op.$parent.$first = to && to.$following;
-    if (op.$parent.$last == op)
-      op.$parent.$last = op.$leading;
-  }
 
   if (to && to.$following && to == to.$following.$leading)     // fix $following/$leading refs
     to.$following.$leading = op.$leading          // in place of detachment
@@ -100,6 +121,7 @@ G.Array.unlink = function(op, to) {
   return to;
 }
 
+G.Array.multiple = true
 G.Array.verbs = {
 
   // Add value on top of the stack 
@@ -134,16 +156,29 @@ G.Array.verbs = {
   },
 
   // Nest value into another
-  inject: function(value, old) {
+  append: function(value, old) {
     if (old.$last) {
       for (var last = old; last.$last;)
         last = last.$last;
-      G.Array.register(old.$last, value, old);
       G.Array.link(last, value)
+      G.Array.register(old.$last, value, old);
     } else {
+      G.Array.link(old, value)
       old.$last = old.$first = value;
       value.$parent = old
+    }
+    return old
+  },
+
+  // Add element on top
+  prepend: function(value, old) {
+    if (old.$first) {
+      G.Array.link(value, old.$first)
+      G.Array.register(value, old.$first, old);
+    } else {
       G.Array.link(old, value)
+      old.$last = old.$first = value;
+      value.$parent = old
     }
     return old
   }

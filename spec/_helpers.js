@@ -40,15 +40,32 @@
       list.push(next);
       lastAfter = next;
     }
+    // validates each subtree (a bit redundant)
+    // depth-tree order is specced, so we check all other pointers based on it
     list.forEach(function(node) {
       if (node.$parent) {
         if (node.$parent.$following && node.$parent.$following.$parent == node.$parent) {
           if (node.$parent.$first != node.$parent.$following)
             throw '$first doesnt point properly'
+
+          if (node.$parent.$first.$previous)
+            throw '$first also has $previous'
+          var follower = node.$parent.$first
+          var leader;
           for (var next = node.$parent; next = next.$following;) {
-            if (next.$parent == node.$parent)
+            if (next.$parent == node.$parent) {
+              if (follower != next)
+                throw 'next pointer is not set properly'
+              if (next.$previous != leader) {
+                throw 'previous pointer is not set properly'
+              }
               var last = next;
+              leader = follower
+              follower = follower.$next
+            }
           }
+          if (last.$next)
+            throw '$last also has $next'
           if (last && node.$parent.$last != last)
             throw '$last doesnt point properly'
         }

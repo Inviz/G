@@ -1,4 +1,21 @@
 describe('G.Node', function() {
+  it ('should be able to set attributes', function() {
+    var span = new G.Node('span')
+    span.set('class', 'test')
+    expect(span.render().outerHTML).to.eql('<span class="test"></span>')
+
+    span.set('class', 'zest')
+    expect(span.render().outerHTML).to.eql('<span class="zest"></span>')
+
+    var coolzest = span.push('class', 'cool')
+    expect(span.render().outerHTML).to.eql('<span class="zest cool"></span>')
+
+    span.set('class', null)
+    expect(span.render().outerHTML).to.eql('<span></span>')
+
+    span.set('class', coolzest)
+    expect(span.render().outerHTML).to.eql('<span></span>')
+  })
   it ('should reuse JSX AST', function() {
 
     var tree = G.Node(
@@ -40,24 +57,25 @@ describe('G.Node', function() {
       return e.tag || e.text || e.rule
     };
 
+
     expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
   
     var IF = tree.$following.$following.$following;
     var ELSE = IF.$following.$following.$following.$following;
     
-    G.Node.recall(IF)
+    IF.recall()
     expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "else", "This this is not published", "button", "Publish", "p", "Test"])
   
     var unpublishButton = IF.$following.$following
     var publishButton = ELSE.$following.$following
-    G.Node.recall(unpublishButton)
+    unpublishButton.recall()
 
     expect(ValueGroup(IF).map(tags)).to.eql(["if", "Published"])
 
-    G.Node.call(IF)
+    IF.call()
     expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "else", "This this is not published", "button", "Publish", "p", "Test"])
   
-    G.Node.call(unpublishButton)
+    unpublishButton.call()
     expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
   
     expect(tree.render().outerHTML).to.eql(
@@ -67,8 +85,8 @@ describe('G.Node', function() {
     '<p>Test</p></div>')
 
 
-    G.Node.recall(IF)
-
+    IF.recall()
+    
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
     '<else>This this is not published<button test="blah">Publish</button></else>' + 

@@ -29,9 +29,10 @@ G.compile.struct = function(struct) {
   if (struct.verbs) {
     for (var verb in struct.verbs) {
       var handler = struct.verbs[verb]
+      handler.multiple = struct.multiple
       G.verbs[verb]          = handler;
-      struct[verb]           = G.compile.setter(verb);
-      struct.prototype[verb] = G.compile.verb(verb)
+      G[verb] = struct[verb] = G.compile.setter(handler);
+      struct.prototype[verb] = G.compile.verb(handler)
     }
   }
 
@@ -41,26 +42,45 @@ G.compile.struct = function(struct) {
 G.compile.verb = function(verb) {
   return function(key, value) {
     if (value == null) {
-      var action = G.recall
-      var getter = G.get
+      switch (arguments.length) {
+        case 1:
+        case 2:  return G.recall(this[key]);
+        case 3:  return G.recall(this[key], arguments[2]);
+        case 4:  return G.recall(this[key], arguments[2], arguments[3]);
+        default: return G.recall(this[key], arguments[2], arguments[3], arguments[4]);
+      }
     } else {
-      var action = G.call
-      var getter = G.create
-      var arg    = verb
+      switch (arguments.length) {
+        case 1:
+        case 2:  return G.call(G.create(this, key, value), verb);
+        case 3:  return G.call(G.create(this, key, value, arguments[2]), verb);
+        case 4:  return G.call(G.create(this, key, value, arguments[2], arguments[3]), verb);
+        default: return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), verb);
+      }
     }
-
-    switch (arguments.length) {
-      case 1:
-      case 2: var operation = getter(this, key, value); break;
-      case 3: var operation = getter(this, key, value, arguments[2]); break;
-      case 4: var operation = getter(this, key, value, arguments[2], arguments[3]); break;
-      case 5: var operation = getter(this, key, value, arguments[2], arguments[3], arguments[4]);
-    }
-
-    return action(operation, arg);
   };
 }
 
+G.compile.setter = function(verb) {
+  return function(context, key, value) {
+    if (value != null) {
+      switch (arguments.length) {
+        case 3:  return G.call(G.create(context, key, value), verb);
+        case 4:  return G.call(G.create(context, key, value, arguments[3]), verb);
+        case 5:  return G.call(G.create(context, key, value, arguments[3], arguments[4]), verb);
+        default: return G.call(G.create(context, key, value, arguments[3], arguments[4], arguments[5]), verb);
+      }
+    } else {
+      switch (arguments.length) {
+        case 2:
+        case 3:  return G.recall(context[key]);
+        case 4:  return G.recall(context[key], arguments[3]);
+        case 5:  return G.recall(context[key], arguments[3], arguments[4]);
+        default: return G.recall(context[key], arguments[3], arguments[4], arguments[5]);
+      }
+    }
+  };
+};
 G.compile.method = function(fn, scope) {
   var string = fn.toString();
   if (string.indexOf('[native') > -1)
@@ -72,6 +92,7 @@ G.compile.method = function(fn, scope) {
     return new Function(
       arguments.replace(scope + ',', ''), 
       body.replace(new RegExp(scope, 'g'), 'this')
+          .replace(/if\s*\(!this\)\s*return;/, '')
           // decrement argument counter if any
           .replace(/(var\s*offset\s*=\s*)(\d+)/, function(match, prefix, digit) {
             return prefix + (parseInt(digit) - 1);
@@ -80,21 +101,6 @@ G.compile.method = function(fn, scope) {
   }
 }
 
-G.compile.setter = function(verb) {
-  return function(context, key, value) {
-    if (value != null) {
-      if (context) {
-        var operation = G.create.apply(G, arguments)
-        if (operation != undefined)
-          return G.call(operation, verb);
-      } else {
-        return operation;
-      }
-    } else {
-      return G.recall(G.get.apply(G, arguments));
-    }
-  };
-};
 
 
 if (typeof global !== "undefined")

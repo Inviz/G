@@ -31,7 +31,7 @@ describe('G.watch', function() {
     expect(context.key.valueOf()).to.eql('pest123');
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test', 'pest123']));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['pest', 'pest123']));
-    before.recall();
+    before.recall(2);
     expect(context.key.valueOf()).to.eql('test123');
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test123', 'pest123']));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123']));
@@ -87,7 +87,7 @@ describe('G.watch', function() {
     }));
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value123', 'zalue123']));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue123']));
-    G.recall(context.key);
+    G.recall(context.key, 'meta2', 'scope');
     expect(context.key).to.eql(op);
     expect(context.key.valueOf()).to.eql('value123');
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value123', 'zalue123']));
@@ -96,7 +96,7 @@ describe('G.watch', function() {
       context: true,
       key: 'value123'
     }));
-    G.recall(context.key);
+    G.recall(context.key, 'meta1', 'scope');
     expect(context.key).to.eql(void 0);
 
     G.call(op2);

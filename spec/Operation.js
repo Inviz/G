@@ -70,7 +70,8 @@ describe('G', function() {
 
     // Remove operation from history 
     before = context.key.$preceeding;
-    G.recall(before, true);
+    debugger
+    G.revoke(before);
     expect(context.key.valueOf()).to.eql(55555);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([123456, 55555]));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));

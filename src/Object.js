@@ -73,7 +73,7 @@ G.undefine = function(context, key, watcher) {
     }
     value = G.match(args, value);
     if (value)
-      G.recall(value)
+      value.recall.apply(value, args)
   }
 }
 

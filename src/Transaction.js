@@ -58,7 +58,7 @@ G.affect = function(value, old) {
     if (current === group) {                        // 1. Side effects are already propagated
       var reapplied = G.effects(value, G.call);     //    Attempt to find them in graph
     } else {                                        // 2. Watcher configuration has changed
-      var recalled  = G.effects(value, G.recall);    //    Recall previous effects
+      var recalled  = G.effects(value, G.uncall);    //    Recall previous effects
     }                                                 
   }
 
@@ -106,7 +106,17 @@ G.callback = function(value, watcher, old) {
   if (watcher.$transform) {
     watcher = watcher.$transform
   } else if (watcher.$getter) {
-    return G.set(watcher.$context, watcher.$key, watcher)
+    var computed = G.compute(watcher);                //    Invoke computation callback
+    if (computed == null) {                           //    Proceed if value was computed
+      var current = watcher.$context[watcher.$key];
+      if (current)
+        return G.uncall(current, watcher.$meta)
+      return
+    } else {
+      var result = G.extend(computed, watcher.$context, watcher.$key);
+      result.$meta = watcher.$meta;
+      return G.call(result, 'set')
+    }
   }
   var transformed = watcher(value, old);
   if (transformed == null)
@@ -146,6 +156,7 @@ G.compute = function(value) {
   return getter.call(value.$context);
 },
 
+// Parse function to see which properties it uses
 G.analyze = function(fn) {
   if (!fn.$arguments) {
     var string = String(fn)
@@ -164,15 +175,17 @@ G.transact = function(value) {
 
 // Undo all state changes since transaction has started
 G.abort = function(value) {
-  last = G.effects(value, G.recall, false)
+  G.$recaller = value
+  last = G.effects(value, G.uncall)
+  G.$recaller = null
   if (G.$caller == value)
-    G.$caller = undefined
+    G.$caller = null
   return last;
 },
 
 // Reapply previously aborted transaction
 G.commit = function(value) {
-  return G.effects(value, G.call, false);
+  return G.effects(value, G.call);
 },
 
 // Find last operation in graph
@@ -198,13 +211,9 @@ G.unformatted = function(value) {
 
 // Iterate side effects caused by value 
 G.effects = function(value, callback, argument) {
-  var after, last;
-  after = value;
-  while (after = after.$after) {
-    if (after.$caller === value) {
-      last = callback(after, argument) || after;
-    }
-  }
+  for (var after = value; after = after.$after;)
+    if (after.$caller === value)
+      var last = callback(after, argument) || after;
   return last;
 }
 

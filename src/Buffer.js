@@ -14,10 +14,19 @@
 */
 
 // Find operation in the stack that matches meta of a given operation 
-G.match = function(meta, old) {
-  for (var other = old; other; other = other.$preceeding)
-    if (G._compareMeta(other.$meta, meta))
-      return other;
+G.match = function(meta, old, verb) {
+  if (verb && verb.multiple) {
+    //if (verb.unique) {}
+
+    //for (var item = old; old; old = old.$previous)
+    //  for (var other = old; other; other = other.$preceeding)
+    //    if (G._compareMeta(other.$meta, meta))
+    //      return other;
+  } else {
+    for (var other = old; other; other = other.$preceeding)
+      if (G._compareMeta(other.$meta, meta))
+        return other;
+  }
 };
 
 // Replace one operation in the stack with another 
