@@ -56,9 +56,9 @@ G.affect = function(value, old) {
   var current = value.$watched              
   if (current) {    
     if (current === group) {                        // 1. Side effects are already propagated
-      var reapplied = G.Effects(value, G.call);     //    Attempt to find them in graph
+      var reapplied = G.effects(value, G.call);     //    Attempt to find them in graph
     } else {                                        // 2. Watcher configuration has changed
-      var recalled  = G.Effects(value, G.recall);    //    Recall previous effects
+      var recalled  = G.effects(value, G.recall);    //    Recall previous effects
     }                                                 
   }
 
@@ -164,7 +164,7 @@ G.transact = function(value) {
 
 // Undo all state changes since transaction has started
 G.abort = function(value) {
-  last = G.Effects(value, G.recall, false)
+  last = G.effects(value, G.recall, false)
   if (G.$caller == value)
     G.$caller = undefined
   return last;
@@ -172,7 +172,7 @@ G.abort = function(value) {
 
 // Reapply previously aborted transaction
 G.commit = function(value) {
-  return G.Effects(value, G.call, false);
+  return G.effects(value, G.call, false);
 },
 
 // Find last operation in graph
@@ -197,7 +197,7 @@ G.unformatted = function(value) {
 },
 
 // Iterate side effects caused by value 
-G.Effects = function(value, callback, argument) {
+G.effects = function(value, callback, argument) {
   var after, last;
   after = value;
   while (after = after.$after) {

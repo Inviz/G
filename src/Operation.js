@@ -118,7 +118,7 @@ G.recall = function(self, hard) {
       if (value.$context.onChange)
         value.$context.onChange(value.$key, undefined, value);
       var from = G.unformatted(value)                 //    Get initial value before formatting
-      var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
+      var to = G.effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
       if (hard !== false && !G.$called)
         G.unlink(from, to, true)                      //    Patch graph and detach the tree at top

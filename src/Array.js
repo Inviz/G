@@ -14,8 +14,30 @@ G.Array.extend = G.Array.call
 G.Array.call = function(self) {
   for (var to = self; to.$last;)
     to = to.$last;
-  G.Array.link(self.$leading, self)      //    Patch graph and detach the tree at top
+  G.Array.link(self.$leading, self)
   G.Array.link(to, to.$following)
+  if (self.$parent) {
+    // for each node in the remembered parent
+    for (var item = self.$parent.$first; item; item = item.$next) {
+      // check if it matches anything before op
+      for (var before = self; before = before.$leading;) {
+        if (before == self.$parent)
+          break;
+        if (before == item) {
+          G.Array.register(before, self, self.$parent)
+          return self
+        }
+      }
+      for (var after = self; after = after.$following;) {
+        if (after == item) {
+          G.Array.register(self, after, self.$parent)
+          return self
+        }
+        if (after == self.$parent.$last)
+          break;
+      }
+    } 
+  }
   return self;
 };
 
@@ -41,16 +63,20 @@ G.Array.forEach = function(self, callback, argument) {
 G.Array.link = function(left, right) {
   if ((left.$following = right))                          // fix $following/$leading refs
     left.$following.$leading = left;
-  
-  if (left.$parent) {
-    if (left.$parent == right.$parent ) {            // Fix $first/$last refs in parent
-      if (left.$parent.$last == left)
-        left.$parent.$last = right;
-      if (left.$parent.$first == right)
-        left.$parent.$first = left;
-    }
-  }
 };
+
+G.Array.register = function(left, right, parent) {
+  left.$next = right;
+  right.$previous = left;
+  if (parent) {
+    if (parent.$last == left)
+      parent.$last = right;
+    if (parent.$first == right)
+      parent.$first = left;
+    left.$parent = parent
+    right.$parent = parent
+  }
+}
 
 // Remove span of nodes from the graph
 // Without second argument it removes op's children
@@ -79,45 +105,46 @@ G.Array.verbs = {
   // Add value on top of the stack 
   push: function(value, old) {
     G.Array.link(old, value)
-    if (old.$next) {
-      value.$next = old.$next;
-    }
-    old.$next = value;
-    value.$previous = old;
+    G.Array.register(old, value, old.$parent)
+
     return value;
   },
 
   // Add value to the bottom of the stack 
   unshift: function(value, old) {
-    var first;
-    first = old;
-    while (first.$previous) {
+    for (var first = old; first.$previous;)
       first = first.$previous;
-    }
-    first.$previous = value;
-    value.$next = first;
+    G.Array.link(value, first);
+    G.Array.register(value, first, old.$parent)
     return old;
   },
 
   // Replace element in a list 
   swap: function(value, old) {
-    value.$previous = old.$previous;
-    value.$next = old.$next;
-    old.$next = old.$previous = void 0;
+    if (old.$previous){
+      G.Array.link(old.$previous, value)
+      G.Array.register(old.$previous, value, old.$parent)
+    }
+    if (old.$next) {
+      G.Array.link(value, old.$next)
+      G.Array.register(value, old.$next, old.$parent)
+    }
+    old.$next = old.$previous = undefined;
     return value;
   },
 
   // Nest value into another
   inject: function(value, old) {
-    if (!old.$first)
-      old.$first = value;
-    for (var last = old; last.$last;)
-      last = last.$last;
-    last.$following = value;
-    value.$leading = last;
-    value.$parent = old
-    old.$last = value;
-
+    if (old.$last) {
+      for (var last = old; last.$last;)
+        last = last.$last;
+      G.Array.register(old.$last, value, old);
+      G.Array.link(last, value)
+    } else {
+      old.$last = old.$first = value;
+      value.$parent = old
+      G.Array.link(old, value)
+    }
     return old
   }
 };

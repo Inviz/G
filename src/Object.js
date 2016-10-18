@@ -122,31 +122,30 @@ G.observe = function(context, watcher) {
       context.$observers = [watcher]
 
   return G.merge(context, watcher);
-}
+};
+
 // Iterate keys
 G.each = function(context, callback) {
-  for (var key in context) {
-    if (context.hasOwnProperty(key)
-    &&  G.has(context, key)) {
+  var keys = Object.keys(context);
+  for (var i = 0, key; key = keys[i++];)
+    if (key.charAt(0) != '$')
       callback.call(context, key, context[key]);
-    }
-  }
   return context;
-},
+};
 
 // Export to clean javascript object
 G.clean = function(context) {
   var result = {}
-  for (var key in context) {
-    if (!G.has(context, key)) continue;
-    result[key] = context[key];
-  }
+  var keys = Object.keys(context);
+  for (var i = 0, key; key = keys[i++];)
+    if (key.charAt(0) != '$')
+      result[key] = context[key]
   return result
-},
+};
 
 // Serialize to json
 G.stringify = function(context) {
   return JSON.stringify(G.clean(context))
-}
+};
 
 

@@ -1,5 +1,5 @@
 (function() {
-  describe('List', function() {
+  describe('Array', function() {
     it('#push', function() {
       return it('should add items on top of the stack', function() {
         var context;
