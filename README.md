@@ -17,11 +17,11 @@ A system to manipulate state with ease.
    Unloading and deconstructing of complex interaction should be possible 
 
    *  Remove things one by one or in batch
-   	  It should be possible to tear down a big house brick by brick in any order.
-   	  The house can be rebuilt back by pieces 
+      It should be possible to tear down a big house brick by brick in any order.
+      The house can be rebuilt back by pieces 
 
    *  Unload code by removing its effects
-	  No domain-specific code should be ran when cleaning up.
+    No domain-specific code should be ran when cleaning up.
 
    *  Progressive state migration
       When state is changed

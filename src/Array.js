@@ -4,31 +4,31 @@ G.Array = function() {
 G.Array.prototype = new G
 
 // Remove node from tree
-G.Array.recall = function(operation) {
-  G.Array.unlink(operation)
-  return operation
+G.Array.recall = function(self) {
+  G.Array.unlink(self)
+  return self
 };
 
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call
-G.Array.call = function(op) {
-  for (var to = op; to.$last;)
+G.Array.call = function(self) {
+  for (var to = self; to.$last;)
     to = to.$last;
-  G.Array.link(op.$leading, op)                //    Patch graph and detach the tree at top
+  G.Array.link(self.$leading, self)      //    Patch graph and detach the tree at top
   G.Array.link(to, to.$following)
-  return op;
+  return self;
 };
 
 // Iterate children
-G.Array.Children = function(operation, callback, argument) {
-  for (var last = operation; last.$last;)
+G.Array.forEach = function(self, callback, argument) {
+  for (var last = self; last.$last;)
     last = last.$last
   
-  for (var after = operation; after.$following;) {
+  for (var after = self; after.$following;) {
     if (after.$following.$leading !== after)
       break;
     after = after.$following
-    if (after.$parent === operation)
+    if (after.$parent === self)
       callback(after, argument);
     if (after == last)
       break;
@@ -54,27 +54,27 @@ G.Array.link = function(left, right) {
 
 // Remove span of nodes from the graph
 // Without second argument it removes op's children
-G.Array.unlink = function(operation, to) {
+G.Array.unlink = function(op, to) {
   if (to == null)                                     // find last deepest child
-    for (var to = operation; to.$last;)
+    for (var to = op; to.$last;)
       to = to.$last; 
 
-  if (operation.$parent) {                            // fix $first/$last refs in parent
-    if (operation.$parent.$first == operation)
-      operation.$parent.$first = to && to.$following;
-    if (operation.$parent.$last == operation)
-      operation.$parent.$last = operation.$leading;
+  if (op.$parent) {                            // fix $first/$last refs in parent
+    if (op.$parent.$first == op)
+      op.$parent.$first = to && to.$following;
+    if (op.$parent.$last == op)
+      op.$parent.$last = op.$leading;
   }
 
   if (to && to.$following && to == to.$following.$leading)     // fix $following/$leading refs
-    to.$following.$leading = operation.$leading          // in place of detachment
-  if (operation.$leading)
-    if (operation == operation.$leading.$following)
-      operation.$leading.$following = to && to.$following;
+    to.$following.$leading = op.$leading          // in place of detachment
+  if (op.$leading)
+    if (op == op.$leading.$following)
+      op.$leading.$following = to && to.$following;
   return to;
 }
 
-G.Methods.Array = {
+G.Array.verbs = {
 
   // Add value on top of the stack 
   push: function(value, old) {

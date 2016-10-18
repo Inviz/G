@@ -487,7 +487,7 @@ describe ('G.set', function() {
       G.commit(transaction)
       expect(context.xaxa).to.eql(transaction.$after)
       expect(context.zozo).to.eql(transaction.$after.$after)
-      expect(context.key).to.eql(G.Formatted(transaction.$after.$after.$after))
+      expect(context.key).to.eql(G.formatted(transaction.$after.$after.$after))
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
 

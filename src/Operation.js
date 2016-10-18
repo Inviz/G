@@ -79,11 +79,11 @@ G.create = function(context, key, value) {
 // If method name is not provided, 
 // linked list of effects will not be altered 
 G.extend = G.call
-G.call = function(operation, method) {
-  var old = operation.$context[operation.$key];
-  var value = G.format(operation, old);               // Transform value 
+G.call = function(self, verb) {
+  var old = self.$context[self.$key];
+  var value = G.format(self, old);                    // Transform value 
        
-  if (method && (old != null)) {                      // If there was another value by that key
+  if (verb && (old != null)) {                        // If there was another value by that key
     if (!old.$key) {     
       value.$default = old;                           // That value is primitive, store it
     } else {     
@@ -91,12 +91,12 @@ G.call = function(operation, method) {
       if (other) {                                 
         value = G.update(value, old, other);          //   then replace it in stack
       } else {     
-        value = G.methods[method](value, old);        // invoke stack-manipulation method
+        value = G.verbs[verb](value, old);            // invoke stack-manipulation method
       }     
     }     
   }     
   if (value !== old && !value.failed) {     
-    G.record(value, old, method);                     // Place operation into dependency graph 
+    G.record(value, old, verb);                       // Place operation into dependency graph 
     value.$context[value.$key] = value;               // Actually change value 
     if (value.$context.onChange)
       value.$context.onChange(value.$key, value, old)
@@ -107,8 +107,8 @@ G.call = function(operation, method) {
 
 // Undo operation. Reverts value and its effects to previous versions. 
 // If hard argument is set, removes operation from history 
-G.recall = function(operation, hard) {
-  var value = G.Formatted(operation)
+G.recall = function(self, hard) {
+  var value = G.formatted(self)
   var old = value.$context[value.$key];
   if (old === value) {                                // 1. Return to previous version
     if (value.$preceeding) {                          //    If stack holds values before given
@@ -117,7 +117,7 @@ G.recall = function(operation, hard) {
       delete value.$context[value.$key];              // 2. Removing key from context 
       if (value.$context.onChange)
         value.$context.onChange(value.$key, undefined, value);
-      var from = G.Unformatted(value)                 //    Get initial value before formatting
+      var from = G.unformatted(value)                 //    Get initial value before formatting
       var to = G.Effects(value, G.recall, false)      //    Recurse to recall side effects, returns last one
       if (!to) to = value                             //      If there aren't any, use op itself as boundary
       if (hard !== false && !G.$called)
@@ -129,7 +129,7 @@ G.recall = function(operation, hard) {
 };
 
 // Clone operation from primitive and another operation 
-G.fork = G.prototype.fork = function(primitive, value) {
+G.fork = function(primitive, value) {
   if (value == null)
     value = this;
   var op = G.extend(primitive, value.$context, value.$key);
