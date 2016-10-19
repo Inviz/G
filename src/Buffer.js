@@ -23,12 +23,14 @@ G.match = function(meta, old, verb) {
     //    if (G._compareMeta(other.$meta, meta))
     //      return other;
   } else {
-    
-    for (var other = old; other; other = other.$previous)
+    if (G._compareMeta(old.$meta, meta))                  // Check current value
+      return old;
+
+    for (var other = old; other = other.$previous;)       // Check values in group
       if (G._compareMeta(other.$meta, meta))
         return other;
 
-    for (var other = old; other; other = other.$preceeding)
+    for (other = old; other; other = other.$preceeding)   // Check values in history
       if (G._compareMeta(other.$meta, meta))
         return other;
   }

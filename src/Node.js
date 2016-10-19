@@ -186,21 +186,19 @@ G.Node.detach = function(node) {
 
 G.Directive = function(attributes) {
   G.Node.extend(this, null, attributes);
+  for (var i = 1; i < arguments.length; i++)
+    G.Node.append(this, arguments[i])
 }
 G.Directive.prototype = new G.Node;
 
 G.If = function(attributes) {
   this.rule = 'if'
-  G.Directive.apply(this, attributes);
-  for (var i = 1; i < arguments.length; i++)
-    G.Node.append(this, arguments[i])
+  G.Directive.apply(this, arguments);
 }
 G.If.prototype = new G.Directive 
 
 G.Else = function(attributes) {
   this.rule = 'else'
   G.Directive.apply(this, arguments);
-  for (var i = 1; i < arguments.length; i++)
-    G.Node.append(this, arguments[i])
 }
 G.Else.prototype = new G.Directive 

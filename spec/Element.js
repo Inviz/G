@@ -40,9 +40,11 @@ describe('G.Node', function() {
     span.class.recall('spook source')
     expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
 
+    // Add a class without meta
     span.add('class', 'fool');
     expect(span.render().outerHTML).to.eql('<span class="cool zest fool"></span>')
 
+    // Add same class with meta, it doesnt create duplicate
     span.add('class', 'fool', 'something else says fool');
     expect(span.render().outerHTML).to.eql('<span class="cool zest fool"></span>')
 

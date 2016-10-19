@@ -119,57 +119,59 @@ G.call = function(self, verb) {
 // Undo operation. Reverts value and its effects to previous versions. 
 G.recall = function(self) {
   if (!self) return;
-  var key = self.$key;
-  var recalling = G.$recaller;
   var offset = 1;
+  var current = self.$context[self.$key]
+  if (!current) return;
   if (arguments.length > offset) {
     var meta = new Array(arguments.length - offset)
     for (var i = 0; i < arguments.length - offset; i++)
       meta[i] = arguments[i + offset];
   }
-  var current = self.$context[key]
-
   for (var old = current; old = G.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
     for (var head = old; head != current && head.$next;)
       head = head.$next;
     if (head === current) {      
-      var value = G.formatted(old);                     // 1. Return to previous version
-      if (value.$preceeding) {                          //    If stack holds values before given
-        return G.call(value.$preceeding);               //      Apply that value
-      } else {
-        if (!recalling) G.$recaller = self
-        if (value.$previous) {                          // 2. Removing value from group 
-          if (value == current) {
-            current = value.$previous;
-            value.$context[key] = value.$previous;
-          }
-          G.Array.recall(value);                        
-        } else {
-          current = undefined
-          delete value.$context[key];                    // 3. Removing key from context 
-        }
-        if (value.$context.onChange)
-          value.$context.onChange(key, current, value);
-      
-        var from = G.unformatted(value)                 //    Get initial value before formatting
-        var to = G.effects(value, G.uncall)             //    Recurse to recall side effects, returns last one
-        if (!to) to = value                             //      If there aren't any, use op itself as boundary
-        if (!recalling) {    
-          if (!G.$called) 
-            G.unlink(from, to, true)                    //    Patch graph and detach the tree at top
-          G.$recaller = null;
-        }                                               
-      }    
+      G.uncall(old)
+      current = self.$context[self.$key]
     }
+    if (!current || !next) break;
   }
-  return value || self;
+  return self;
 };
 
-// Recall this specific operation 
-// (or recall by array of meta instead of arguments)
-G.uncall = function(self, meta) {
-  return self.recall.apply(self, meta || self.$meta)
+G.uncall = function(self) {
+  var current = self.$context[self.$key]
+  var value = G.formatted(self);                    // 1. Return to previous version
+  if (value.$preceeding) {                          //    If stack holds values before given
+    if (!value.$succeeding)
+      return G.call(value.$preceeding);               //      Apply that value
+  } else {
+    var recalling = G.$recaller;
+    if (!recalling) G.$recaller = self
+    if (value.$previous) {                          // 2. Removing value from group 
+      if (value == current) {
+        current = value.$previous;
+        self.$context[self.$key] = value.$previous;
+      }
+      G.Array.recall(value);                        
+    } else {
+      current = undefined
+      delete self.$context[self.$key];                   // 3. Removing key from context 
+    }
+    if (value.$context.onChange)
+      value.$context.onChange(self.$key, current, value, current);
+  
+    var from = G.unformatted(value)                 //    Get initial value before formatting
+    var to = G.effects(value, G.uncall)             //    Recurse to recall side effects, returns last one
+    if (!to) to = value                             //      If there aren't any, use op itself as boundary
+    if (!recalling) {    
+      if (!G.$called) 
+        G.unlink(from, to, true)                    //    Patch graph and detach the tree at top
+      G.$recaller = null;
+    }                                               
+  }
+  return value;
 }
 
 // Recall and remove from bufefer

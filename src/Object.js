@@ -28,7 +28,8 @@ G.watch = function(context, key, watcher, pure) {
 
 // Remove key observer and undo its effects
 G.unwatch = function(context, key, watcher, pure) {
-  var watchers = pure ? context.$formatters : context.$watchers
+  var watchers = pure ? context.$formatters 
+                      : context.$watchers;
   if (watchers && watchers[key]) {                  
     watchers[key] =                                 // Removing a watcher creates new array 
       watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
@@ -71,9 +72,9 @@ G.undefine = function(context, key, watcher) {
       for (var i = 0; i < arguments.length - offset; i++)
         args[i] = arguments[i + offset]
     }
-    value = G.match(args, value);
-    if (value)
-      value.recall.apply(value, args)
+    var found = G.match(args, value);
+    if (found)
+      G.uncall(found)
   }
 }
 
@@ -81,7 +82,6 @@ G.undefine = function(context, key, watcher) {
 G.get = function(context, key, value) {
   if (context[key] == null || !context[key].$context)
     return context[key];
-
   var offset = 2;
   if (value == null)
     offset++

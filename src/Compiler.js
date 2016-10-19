@@ -1,16 +1,25 @@
 // Wrap functions, export methods to G namespace
 // This function will be called initially
 G.compile = function() {
-  G.compile.struct(G)
+  var verbs = G.compile.struct(G, {})
   for (var name in G) {
     // Find Uppercase methods
     var first = name.charAt(0)
     if (first == first.toUpperCase() && first != first.toLowerCase())
-      G.compile.struct(G[name])
+      verbs = G.compile.struct(G[name], verbs)
   }
 
+  if (verbs)
+    for (var verb in verbs) {      
+      G.watch[verb] = G.compile.observer(G.watch, verb)    // G.watch.set
+      G.define[verb] = G.compile.observer(G.define, verb)  // G.watch.push
+      G.prototype.watch[verb] = G.compile.observer(G.prototype.watch, verb)    // G.watch.set
+      G.prototype.define[verb] = G.compile.observer(G.prototype.define, verb)  // G.watch.push
+    }
 }
-G.compile.struct = function(struct) {
+G.compile.struct = function(struct, verbs) {
+
+
   // Convert G.watch to G.prototype.watch
   for (var property in struct) {
     if (struct.hasOwnProperty(property) 
@@ -21,22 +30,26 @@ G.compile.struct = function(struct) {
       // are patched up to use `this` in their prototype variants
       var instance = G.compile.method(struct[property], 'context')
                   || G.compile.method(struct[property], 'self')
-      if (instance)
+      if (instance) {
+        if (property == 'watch' || property == 'define')
+          instance
         struct.prototype[property] = instance
+      }
     }
   }
 
   if (struct.verbs) {
+    verbs[verb] = struct.verbs[verb];
     for (var verb in struct.verbs) {
       var handler = struct.verbs[verb]
-      handler.multiple = struct.multiple
-      G.verbs[verb]          = handler;
-      G[verb] = struct[verb] = G.compile.setter(handler);
-      struct.prototype[verb] = G.compile.verb(handler)
+      if (struct.multiple)                                 // Pass flag that allows method to set
+        handler.multiple = struct.multiple                 // multiple values /w same meta in array 
+      G.verbs[verb]          = handler;                    // Plain callback    `G.verbs.set(value, old)`
+      G[verb] = struct[verb] = G.compile.setter(handler);  // Gerneric function `G.set(context)`
+      struct.prototype[verb] = G.compile.verb(handler)     // Prototype method  `context.set()`
     }
   }
-
-  return struct;
+  return verbs;
 };
 
 G.compile.verb = function(verb) {
@@ -81,6 +94,20 @@ G.compile.setter = function(verb) {
     }
   };
 };
+
+G.compile.observer = function(fn, verb) {
+  var string = fn.toString()
+  var arguments = string.slice(string.indexOf('(') + 1, string.indexOf(')'))
+  var body = string.slice(string.indexOf('{') + 1, string.lastIndexOf('}'))
+
+  return new Function(
+    arguments, 
+    body.replace(/G.set/g, 'G.' + verb)
+        .replace(/'set'/g, "'" + verb + "'")
+  )
+
+}
+
 G.compile.method = function(fn, scope) {
   var string = fn.toString();
   if (string.indexOf('[native') > -1)
