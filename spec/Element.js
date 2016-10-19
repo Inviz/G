@@ -39,6 +39,21 @@ describe('G.Node', function() {
     // remove value, fall back to array
     span.class.recall('spook source')
     expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
+
+    span.add('class', 'fool');
+    expect(span.render().outerHTML).to.eql('<span class="cool zest fool"></span>')
+
+    span.add('class', 'fool', 'something else says fool');
+    expect(span.render().outerHTML).to.eql('<span class="cool zest fool"></span>')
+
+    // removes all classes without meta, but fool is still there - 
+    // it felt back to operation with meta
+    span.class.recall()
+    expect(span.render().outerHTML).to.eql('<span class="fool"></span>')
+    
+    span.class.recall('something else says fool')
+    expect(span.render().outerHTML).to.eql('<span></span>')
+
   })
   it ('should reuse JSX AST', function() {
 

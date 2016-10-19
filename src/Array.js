@@ -128,7 +128,19 @@ G.Array.verbs = {
   push: function(value, old) {
     G.Array.link(old, value)
     G.Array.register(old, value, old.$parent)
+    return value;
+  },
 
+  // Add unique value
+  add: function(value, old) {
+    for (var other = old; other; other = other.$previous) {
+      if (other.valueOf() == value.valueOf()) {
+        G.verbs.preset(value, old);
+        return;
+      }
+    }
+    G.Array.link(old, value)
+    G.Array.register(old, value, old.$parent)
     return value;
   },
 
