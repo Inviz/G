@@ -57,14 +57,14 @@ G.Node = function(tag, attributes) {
 }
 G.Node.prototype = new G.Array;
 
-G.Node.call = G.Array.call;
-G.Node.extend = G.Array.extend;
-G.Node.recall = function(self) {
-  if (self.$node)
-    G.Node.detach(self)
+G.Node.extend           = G.Node.call;
+G.Node.prototype.call   = G.Array.prototype.call;
+G.Node.prototype.recall = function() {
+  if (this.$node)
+    G.Node.detach(this)
   else
-    G.Array.forEach(self, G.Node.detach)
-  return G.Array.recall(self)
+    G.Array.forEach(this, G.Node.detach)
+  return G.Array.recall(this)
 };
 
 // Apply attribute changes to element
@@ -89,12 +89,6 @@ G.Node.append = function(context, child) {
     child.text = text
   }
   return G.verbs.append(child, context);
-}
-
-
-G.Node.transact = function(self) {
-  self.$transaction = G.Node.$transaction
-  G.Node.$transaction = self
 }
 
 
@@ -138,25 +132,31 @@ G.Node.prototype.updateAttribute = function(value) {
   }
 }
 
-G.Node.render = function(self, deep) {
-  if (!self.$node) {
-    if (self.tag) {
-      self.$node = document.createElement(self.tag);
-      self.$node.$operation = self;
-      self.each(self.onChange);
-    } else if (self.text) {
-      self.$node = document.createTextNode(self.text);
-      self.$node.$operation = self;
+G.Node.prototype.render = function(deep) {
+  if (!this.$node) {
+    if (this.tag) {
+      this.$node = document.createElement(this.tag);
+      this.$node.$operation = this;
+      this.each(this.onChange);
+    } else if (this.text) {
+      this.$node = document.createTextNode(this.text);
+      this.$node.$operation = this;
     }
   }
   if (deep !== false) {
-    G.Node.descend(self);
-    G.Node.commit(self, true)
+    G.Node.descend(this);
+    this.commit(true)
   }
-  return self.$node
+  return this.$node
 }
 
-G.Node.commit = function(self, soft) {
+
+G.Node.prototype.transact = function() {
+  this.$transaction = G.Node.$transaction
+  G.Node.$transaction = this
+}
+
+G.Node.prototype.commit = function(soft) {
   // iterate transaction stack
   for (var transaction = G.Node.$transaction; transaction;) {
     // if transaction is marked to render
@@ -171,9 +171,9 @@ G.Node.commit = function(self, soft) {
       // pop the stack
       if (!soft)
         G.Node.$transaction = transaction.$transaction;
-    } else if (transaction == self) {
+    } else if (transaction == this) {
       // restart loop
-      var target = self;
+      var target = this;
       transaction = G.Node.$transaction;
       continue;
     }

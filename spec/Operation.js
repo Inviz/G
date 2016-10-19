@@ -27,12 +27,43 @@ describe('G', function() {
     };
     op = G.set(context, 'key', 'value', 'meta', 'scope');
     op2 = G.set(context, 'key', 'value2', 'meta2', 'scope2');
+    op3 = G.set(context, 'zorro', 'value3', ['meta2', 'scope2']);
+    expect(op2.$meta).to.eql(op3.$meta)
     expect(context.key).to.eql(op2);
     expect(ValueStack(op2)).to.eql([op, op2]);
     expect(context.key.valueOf()).to.eql('value2');
-    return expect(G.stringify(context)).to.eql(G.stringify({
+    expect(G.stringify(context)).to.eql(G.stringify({
+      context: true,
+      key: 'value2',
+      zorro: 'value3'
+    }));
+
+    // does nothing, meta doesnt match
+    context.zorro.recall()
+    expect(G.stringify(context)).to.eql(G.stringify({
+      context: true,
+      key: 'value2',
+      zorro: 'value3'
+    }));
+
+    // now recall for sure (same as G.uncall(op3))
+    context.zorro.recall('meta2', 'scope2');
+    expect(G.stringify(context)).to.eql(G.stringify({
       context: true,
       key: 'value2'
+    }));
+
+    // recall with array
+    context.key.recall(['meta2', 'scope2'])
+    expect(G.stringify(context)).to.eql(G.stringify({
+      context: true,
+      key: 'value'
+    }));
+
+    // recall whatever
+    G.uncall(context.key)
+    expect(G.stringify(context)).to.eql(G.stringify({
+      context: true
     }));
   });
 

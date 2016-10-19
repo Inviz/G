@@ -8,32 +8,29 @@ G.compile = function() {
     if (first == first.toUpperCase() && first != first.toLowerCase())
       verbs = G.compile.struct(G[name], verbs)
   }
-
+  /*
   if (verbs)
     for (var verb in verbs) {      
       G.watch[verb] = G.compile.observer(G.watch, verb)    // G.watch.set
       G.define[verb] = G.compile.observer(G.define, verb)  // G.watch.push
       G.prototype.watch[verb] = G.compile.observer(G.prototype.watch, verb)    // G.watch.set
       G.prototype.define[verb] = G.compile.observer(G.prototype.define, verb)  // G.watch.push
-    }
+    }*/
 }
 G.compile.struct = function(struct, verbs) {
 
 
   // Convert G.watch to G.prototype.watch
-  for (var property in struct) {
-    if (struct.hasOwnProperty(property) 
+  for (var property in struct.prototype) {
+    if (struct.prototype.hasOwnProperty(property) 
     && property.charAt(0) != '_'
     && property.charAt(0) != '$'
-    && typeof struct[property] == 'function') {
+    && typeof struct.prototype[property] == 'function') {
       // function that accept `context` or `self` as first argument,
       // are patched up to use `this` in their prototype variants
-      var instance = G.compile.method(struct[property], 'context')
-                  || G.compile.method(struct[property], 'self')
+      var instance = G.compile.method(struct.prototype[property], 'self')
       if (instance) {
-        if (property == 'watch' || property == 'define')
-          instance
-        struct.prototype[property] = instance
+        struct[property] = instance
       }
     }
   }
@@ -57,18 +54,18 @@ G.compile.verb = function(verb) {
     if (value == null) {
       switch (arguments.length) {
         case 1:
-        case 2:  return G.recall(this[key]);
-        case 3:  return G.recall(this[key], arguments[2]);
-        case 4:  return G.recall(this[key], arguments[2], arguments[3]);
-        default: return G.recall(this[key], arguments[2], arguments[3], arguments[4]);
+        case 2:  return this[key].recall();
+        case 3:  return this[key].recall(arguments[2]);
+        case 4:  return this[key].recall(arguments[2], arguments[3]);
+        default: return this[key].recall(arguments[2], arguments[3], arguments[4]);
       }
     } else {
       switch (arguments.length) {
         case 1:
-        case 2:  return G.call(G.create(this, key, value), verb);
-        case 3:  return G.call(G.create(this, key, value, arguments[2]), verb);
-        case 4:  return G.call(G.create(this, key, value, arguments[2], arguments[3]), verb);
-        default: return G.call(G.create(this, key, value, arguments[2], arguments[3], arguments[4]), verb);
+        case 2:  return G.create(this, key, value).call(verb);
+        case 3:  return G.create(this, key, value, arguments[2]).call(verb);
+        case 4:  return G.create(this, key, value, arguments[2], arguments[3]).call(verb);
+        default: return G.create(this, key, value, arguments[2], arguments[3], arguments[4]).call(verb);
       }
     }
   };
@@ -78,18 +75,18 @@ G.compile.setter = function(verb) {
   return function(context, key, value) {
     if (value != null) {
       switch (arguments.length) {
-        case 3:  return G.call(G.create(context, key, value), verb);
-        case 4:  return G.call(G.create(context, key, value, arguments[3]), verb);
-        case 5:  return G.call(G.create(context, key, value, arguments[3], arguments[4]), verb);
-        default: return G.call(G.create(context, key, value, arguments[3], arguments[4], arguments[5]), verb);
+        case 3:  return G.create(context, key, value).call(verb);
+        case 4:  return G.create(context, key, value, arguments[3]).call(verb);
+        case 5:  return G.create(context, key, value, arguments[3], arguments[4]).call(verb);
+        default: return G.create(context, key, value, arguments[3], arguments[4], arguments[5]).call(verb);
       }
     } else {
       switch (arguments.length) {
         case 2:
-        case 3:  return G.recall(context[key]);
-        case 4:  return G.recall(context[key], arguments[3]);
-        case 5:  return G.recall(context[key], arguments[3], arguments[4]);
-        default: return G.recall(context[key], arguments[3], arguments[4], arguments[5]);
+        case 3:  return context[key].recall();
+        case 4:  return context[key].recall(arguments[3]);
+        case 5:  return context[key].recall(arguments[3], arguments[4]);
+        default: return context[key].recall(arguments[3], arguments[4], arguments[5]);
       }
     }
   };
@@ -114,18 +111,30 @@ G.compile.method = function(fn, scope) {
     return
   var arguments = string.slice(string.indexOf('(') + 1, string.indexOf(')'))
   var body = string.slice(string.indexOf('{') + 1, string.lastIndexOf('}'))
+  var index
+  var digit
+  body = body.replace(/this/g, scope) //fixme better regexp
 
-  if (arguments.indexOf(scope) == 0) {
-    return new Function(
-      arguments.replace(scope + ',', ''), 
-      body.replace(new RegExp(scope, 'g'), 'this')
-          .replace(/if\s*\(!this\)\s*return;/, '')
-          // decrement argument counter if any
-          .replace(/(var\s*offset\s*=\s*)(\d+)/, function(match, prefix, digit) {
-            return prefix + (parseInt(digit) - 1);
-          })
-    )
+      // decrement argument counter if any
+      .replace(/(Array.prototype.slice.call\(arguments,)\s*(\d+)/, function(match, prefix, d, i) {
+        digit = d
+        index = i
+        return prefix + (parseInt(d) + 1);
+      });
+
+  if (index) {
+    var z = body.lastIndexOf(digit, index);
+    if (z != -1) 
+      body = body.substring(0, z) + (parseInt(digit) + 1) + body.substring(z + 1);
   }
+  if (arguments)
+    arguments = scope + ', ' + arguments
+  else
+    arguments = scope
+  return new Function(
+    arguments, 
+    body
+  )
 }
 
 

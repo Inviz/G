@@ -4,67 +4,67 @@ G.Array = function() {
 G.Array.prototype = new G
 
 // Remove node from tree
-G.Array.recall = function(self) {
-  G.Array.unlink(self)
-  if (self.$previous && self.$next)
-    G.Array.register(self.$previous, self.$next, self.$parent)
+G.Array.prototype.recall = function() {
+  G.Array.unlink(this)
+  if (this.$previous && this.$next)
+    G.Array.register(this.$previous, this.$next, this.$parent)
   else
-    G.Array.unregister(self)
-  return self
+    G.Array.unregister(this)
+  return this
 };
 
 // Reapply node where it belongs in the tree
-G.Array.extend = G.Array.call
-G.Array.call = function(self) {
-  for (var to = self; to.$last;)
+G.Array.extend = G.Array.call;
+G.Array.prototype.call = function() {
+  for (var to = this; to.$last;)
     to = to.$last;
-  G.Array.link(self.$leading, self)
+  G.Array.link(this.$leading, this)
   G.Array.link(to, to.$following)
 
   // if element had parent before, attempt to hook it in place
-  if (self.$parent) {
+  if (this.$parent) {
     // for each node in the remembered parent
-    for (var item = self.$parent.$first; item; item = item.$next) {
+    for (var item = this.$parent.$first; item; item = item.$next) {
       // check if it matches anything before op
-      for (var before = self; before = before.$leading;) {
-        if (before == self.$parent)
+      for (var before = this; before = before.$leading;) {
+        if (before == this.$parent)
           break;
         if (before == item) {
           if (before.$next)
-            G.Array.register(self, before.$next, self.$parent)
-          G.Array.register(before, self, self.$parent)
+            G.Array.register(this, before.$next, this.$parent)
+          G.Array.register(before, this, this.$parent)
           
-          return self
+          return this
         }
       } 
       // attempt to finx anchor after
-      for (var after = self; after = after.$following;) {
+      for (var after = this; after = after.$following;) {
         if (after == item) {
           if (after.$previous) {
-            G.Array.register(after.$previous, self, self.$parent)
+            G.Array.register(after.$previous, this, this.$parent)
           }
-          G.Array.register(self, after, self.$parent)
+          G.Array.register(this, after, this.$parent)
           
-          return self
+          return this
         }
-        if (after == self.$parent.$last)
+        if (after == this.$parent.$last)
           break;
       }
     } 
   }
-  return self;
+  return this;
 };
 
 // Iterate children
-G.Array.forEach = function(self, callback, argument) {
-  for (var last = self; last.$last;)
+G.Array.prototype.forEach = function(callback, argument) {
+  for (var last = this; last.$last;)
     last = last.$last
   
-  for (var after = self; after.$following;) {
+  for (var after = this; after.$following;) {
     if (after.$following.$leading !== after)
       break;
     after = after.$following
-    if (after.$parent === self)
+    if (after.$parent === this)
       callback(after, argument);
     if (after == last)
       break;
