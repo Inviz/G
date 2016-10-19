@@ -50,15 +50,15 @@ G.affect = function(value, old) {
     var group = watchers[value.$key]
 
   var caller = G.$caller; 
-  var called = G.$called;                            // For duration of function call
-  G.$caller  = G.$called = value                     // Reassign call stack pointers 
+  var called = G.$called;                           // For duration of function call
+  G.$caller  = G.$called = value                    // Reassign call stack pointers 
   
   var current = value.$watched              
   if (current) {    
     if (current === group) {                        // 1. Side effects are already propagated
-      var reapplied = G.effects(value, G.call);     //    Attempt to find them in graph
+      var reapplied = G.effects(value, G.call, 'restore');     //    Attempt to find them in graph
     } else {                                        // 2. Watcher configuration has changed
-      var recalled  = G.effects(value, G.uncall);    //    Recall previous effects
+      var recalled  = G.effects(value, G.uncall);   //    Recall previous effects
     }                                                 
   }
 

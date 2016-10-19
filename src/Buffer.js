@@ -48,7 +48,6 @@ G.rebase = function(old, value) {
       old.$succeeding.$preceeding = old.$preceeding;
     if (old.$preceeding != null)
       old.$preceeding.$succeeding = old.$succeeding;
-    old.$succeeding = old.$preceeding = undefined;
   }
   return value;
 };
@@ -89,6 +88,7 @@ G.verbs = {
   set: function(value, old) {
     value.$preceeding = old;
     old.$succeeding = value;
+    value.$succeeding = undefined;
     return value;
   },
 
@@ -101,6 +101,11 @@ G.verbs = {
     }
     first.$preceeding = value;
     value.$succeeding = first;
+    value.$preceeding = undefined;
     return;
+  },
+
+  restore: function(value, old) {
+    return value;
   }
 };

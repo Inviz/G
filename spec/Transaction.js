@@ -128,6 +128,7 @@ describe ('G.set', function() {
         asis: 'value666'
       }));
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666']));
+      expect(G.stringify(ValueStack(context.asis))).to.eql(G.stringify(['value666']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
 
       // Second operation over same key with different meta values 
@@ -135,6 +136,7 @@ describe ('G.set', function() {
       op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
       expect(context.key).to.eql(op2);
       expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(G.stringify(ValueStack(context.asis))).to.eql(G.stringify(['zalue666']));
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
       expect(G.stringify(context)).to.eql(G.stringify({

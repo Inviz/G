@@ -25,8 +25,6 @@ var G = function(context, key, value) {
     G.observe(this, context);
   }
 
-  if (G.$caller)    
-    this.$meta = G.$caller.$meta;                     // Pick up meta from caller operation
   if (arguments.length > 3) {                         
     if (this.$meta)                                   // Use/merge extra arguments as meta
       this.$meta = this.$meta.slice();           
@@ -57,7 +55,9 @@ G.create = function(context, key, value) {
     } else {                                          // 3. Applying operation as value
       var primitive = value.valueOf()                 //    Get its primitive value
       var result = G.extend(primitive, context, key)  //    Construct new operation
-      result.$meta = value.$meta                      //    Pass meta
+      if (result.$context == value.$context &&            
+          result.$key     == value.$key)              //    If operation is from before
+      result.$meta = value.$meta                      //      Restore meta 
     }
   } else {
     var result = G.extend(value, context, key)        // 4. Operation from primitive
@@ -145,7 +145,7 @@ G.uncall = function(self) {
   var value = G.formatted(self);                    // 1. Return to previous version
   if (value.$preceeding) {                          //    If stack holds values before given
     if (!value.$succeeding)
-      return G.call(value.$preceeding);               //      Apply that value
+      G.call(value.$preceeding);               //      Apply that value
   } else {
     var recalling = G.$recaller;
     if (!recalling) G.$recaller = self
@@ -163,7 +163,7 @@ G.uncall = function(self) {
       value.$context.onChange(self.$key, current, value, current);
   
     var from = G.unformatted(value)                 //    Get initial value before formatting
-    var to = G.effects(value, G.uncall)             //    Recurse to recall side effects, returns last one
+    var to = G.effects(value, G.revoke)             //    Recurse to recall side effects, returns last one
     if (!to) to = value                             //      If there aren't any, use op itself as boundary
     if (!recalling) {    
       if (!G.$called) 

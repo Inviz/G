@@ -67,27 +67,16 @@ G.Node.recall = function(self) {
   return G.Array.recall(self)
 };
 
-
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
   if (!this.$node)
     return;
-  var descriptor = G.Node.attributes[key];
-  if (descriptor) {
-    var descripted = descriptor.call(this, value, old);
-    if (descripted === null)
-      return;
-    if (descripted !== undefined)
-      value = descripted
-  }
-  
-  if (this.tag) {
-    var formatted = this.decorate(value);
-    if (value) {
-      this.$node.setAttribute(value.$key, formatted);
-    } else {
-      this.$node.removeAttribute(old.$key)
-    }
+  var transaction = G.Node.$transaction
+  if (transaction) {
+    (transaction.$mutations || (transaction.$mutations = [])).push(value || old)
+    return
+  } else {
+    this.updateAttribute(value || old)
   }
 }
 
@@ -100,6 +89,12 @@ G.Node.append = function(context, child) {
     child.text = text
   }
   return G.verbs.append(child, context);
+}
+
+
+G.Node.transact = function(self) {
+  self.$transaction = G.Node.$transaction
+  G.Node.$transaction = self
 }
 
 
@@ -124,20 +119,68 @@ G.Node.prototype.decorate = function(value) {
   return result
 }
 
-G.Node.prototype.render = function(deep) {
-  if (!this.$node) {
-    if (this.tag) {
-      this.$node = document.createElement(this.tag);
-      this.$node.$operation = this;
-      this.each(this.onChange);
-    } else if (this.text) {
-      this.$node = document.createTextNode(this.text);
-      this.$node.$operation = this;
+G.Node.prototype.updateAttribute = function(value) {
+  var old = this[value.$key];
+  var descriptor = G.Node.attributes[value.$key];
+  if (descriptor) {
+    var descripted = descriptor.call(this, value, old);
+    if (descripted === null)
+    if (descripted !== undefined)
+      value = descripted
+  }
+  if (this.tag) {
+    var formatted = this.decorate(old);
+    if (formatted) {
+      this.$node.setAttribute(value.$key, formatted);
+    } else {
+      this.$node.removeAttribute(value.$key)
     }
   }
-  if (deep !== false)
-    G.Node.descend(this);
-  return this.$node
+}
+
+G.Node.render = function(self, deep) {
+  if (!self.$node) {
+    if (self.tag) {
+      self.$node = document.createElement(self.tag);
+      self.$node.$operation = self;
+      self.each(self.onChange);
+    } else if (self.text) {
+      self.$node = document.createTextNode(self.text);
+      self.$node.$operation = self;
+    }
+  }
+  if (deep !== false) {
+    G.Node.descend(self);
+    G.Node.commit(self, true)
+  }
+  return self.$node
+}
+
+G.Node.commit = function(self, soft) {
+  // iterate transaction stack
+  for (var transaction = G.Node.$transaction; transaction;) {
+    // if transaction is marked to render
+    if (target) {
+      if (transaction.$mutations) {
+        for (var i = 0; transaction.$mutations[i]; i++) {
+          var attribute = transaction.$mutations[i];
+          if (attribute.$context)
+            attribute.$context.updateAttribute(attribute);
+        }
+      }
+      // pop the stack
+      if (!soft)
+        G.Node.$transaction = transaction.$transaction;
+    } else if (transaction == self) {
+      // restart loop
+      var target = self;
+      transaction = G.Node.$transaction;
+      continue;
+    }
+    if (transaction == target)
+      break;
+    transaction = transaction.$transaction
+  }
 }
 
 // Render descendant nodes
