@@ -4,17 +4,41 @@ describe('G.Node', function() {
     span.set('class', 'test')
     expect(span.render().outerHTML).to.eql('<span class="test"></span>')
 
-    span.set('class', 'zest')
+    // add class
+    var zest = span.set('class', 'zest')
     expect(span.render().outerHTML).to.eql('<span class="zest"></span>')
 
-    var coolzest = span.push('class', 'cool')
+    // rewrite class
+    var cool = span.push('class', 'cool')
     expect(span.render().outerHTML).to.eql('<span class="zest cool"></span>')
 
-    span.set('class', null)
-    expect(span.render().outerHTML).to.eql('<span></span>')
+    // add class 
+    var zuul = span.unshift('class', 'zuul', 'spook source')
+    expect(span.render().outerHTML).to.eql('<span class="zuul zest cool"></span>')
 
-    span.set('class', coolzest)
-    expect(span.render().outerHTML).to.eql('<span></span>')
+    // recall all classes set with no extra arguments
+    span.class.recall()
+    expect(span.render().outerHTML).to.eql('<span class="zuul"></span>')
+    
+    // add class on top
+    span.unshift('class', cool)
+    expect(span.render().outerHTML).to.eql('<span class="cool zuul"></span>')
+
+    // push class to the end
+    span.push('class', zest)
+    expect(span.render().outerHTML).to.eql('<span class="cool zuul zest"></span>')
+
+    // recall zuul class by its meta
+    span.class.recall('spook source')
+    expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
+
+    // replace array with a single value
+    span.set('class', zuul)
+    expect(span.render().outerHTML).to.eql('<span class="zuul"></span>')
+
+    // remove value, fall back to array
+    span.class.recall('spook source')
+    expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
   })
   it ('should reuse JSX AST', function() {
 

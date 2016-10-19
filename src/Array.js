@@ -6,12 +6,10 @@ G.Array.prototype = new G
 // Remove node from tree
 G.Array.recall = function(self) {
   G.Array.unlink(self)
-  if (self.$parent) {
-    if (self.$previous && self.$next)
-      G.Array.register(self.$previous, self.$next, self.$parent)
-    else
-      G.Array.unregister(self)
-  }
+  if (self.$previous && self.$next)
+    G.Array.register(self.$previous, self.$next, self.$parent)
+  else
+    G.Array.unregister(self)
   return self
 };
 
@@ -99,12 +97,14 @@ G.Array.register = function(left, right, parent) {
 G.Array.unregister = function(op) {
   if (op.$previous)
     op.$previous.$next = op.$next
-  if (op.$parent.$last == op)
-    op.$parent.$last = op.$previous
   if (op.$next)
     op.$next.$previous = op.$previous
-  if (op.$parent.$first == op)
-    op.$parent.$first = op.$next
+  if (op.$parent) {
+    if (op.$parent.$last == op)
+      op.$parent.$last = op.$previous
+    if (op.$parent.$first == op)
+      op.$parent.$first = op.$next
+  }
 }
 // Remove span of nodes from the graph
 // Without second argument it removes op's children

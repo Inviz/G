@@ -23,6 +23,11 @@ G.match = function(meta, old, verb) {
     //    if (G._compareMeta(other.$meta, meta))
     //      return other;
   } else {
+    
+    for (var other = old; other; other = other.$previous)
+      if (G._compareMeta(other.$meta, meta))
+        return other;
+
     for (var other = old; other; other = other.$preceeding)
       if (G._compareMeta(other.$meta, meta))
         return other;
@@ -94,6 +99,6 @@ G.verbs = {
     }
     first.$preceeding = value;
     value.$succeeding = first;
-    return old;
+    return;
   }
 };

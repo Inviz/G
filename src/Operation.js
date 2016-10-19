@@ -81,36 +81,43 @@ G.create = function(context, key, value) {
 G.extend = G.call
 G.call = function(self, verb) {
   if (!self) return;
-  var old = self.$context[self.$key];
-  var value = G.format(self, old);                    // Transform value 
-       
+  var context = self.$context;
+  var key     = self.$key;
+  var old     = context[key];
+  var value   = G.format(self, old);                  // Transform value 
+  var result  = value;     
+           
   if (verb && (old != null)) {                        // If there was another value by that key
-    if (!old.$key) {     
+    if (!old.$key) {
       value.$default = old;                           // That value is primitive, store it
     } else {
       if (typeof verb == 'string')
         verb = G.verbs[verb];     
       var other = G.match(value.$meta, old, verb)     // Find value with the same meta 
       if (other) {                                 
-        value = G.update(value, old, other);          //   then replace it in stack
+        result = G.update(value, old, other);         //   then replace it in stack
       } else {     
-        value = verb(value, old);                     // invoke stack-manipulation method
+        result = verb(value, old);                    // invoke stack-manipulation method
       }     
+      if (result === undefined)                      // No side effect is caused
+        return old;
     }     
-  }     
-  if (value !== old && !value.failed) {     
-    G.record(value, old, verb);                       // Place operation into dependency graph 
-    value.$context[value.$key] = value;               // Actually change value 
-    if (value.$context.onChange)
-      value.$context.onChange(value.$key, value, old)
-    G.affect(value, old);                             // Apply side effects and invoke observers 
+  } else if (result == old) {
+    return;
+  }
+  G.record(result, old, verb);                      // Place operation into dependency graph 
+  if (old !== result)
+    context[key] = result;                            // Actually change value 
+  G.affect(result, old);                            // Apply side effects and invoke observers 
+
+  if (context.onChange) {                       // Notify 
+    context.onChange(key, result, old)
   }
   return value;
 };
 
 // Undo operation. Reverts value and its effects to previous versions. 
-// If hard argument is set, removes operation from history 
-G.recall = function(self, hard) {
+G.recall = function(self) {
   if (!self) return;
   var key = self.$key;
   var recalling = G.$recaller;
@@ -121,28 +128,40 @@ G.recall = function(self, hard) {
       meta[i] = arguments[i + offset];
   }
   var current = self.$context[key]
-  var old = G.match(meta, current)
-  if (old === current) {      
-    var value = G.formatted(current);                          // 1. Return to previous version
-    if (value.$preceeding) {                          //    If stack holds values before given
-      return G.call(value.$preceeding);               //      Apply that value
-    } else {
-      if (!recalling) G.$recaller = self
 
+  for (var old = current; old = G.match(meta, old); old = next) {
+    var next = old.$previous || old.$preceeding;
+    for (var head = old; head != current && head.$next;)
+      head = head.$next;
+    if (head === current) {      
+      var value = G.formatted(old);                     // 1. Return to previous version
+      if (value.$preceeding) {                          //    If stack holds values before given
+        return G.call(value.$preceeding);               //      Apply that value
+      } else {
+        if (!recalling) G.$recaller = self
+        if (value.$previous) {                          // 2. Removing value from group 
+          if (value == current) {
+            current = value.$previous;
+            value.$context[key] = value.$previous;
+          }
+          G.Array.recall(value);                        
+        } else {
+          current = undefined
+          delete value.$context[key];                    // 3. Removing key from context 
+        }
+        if (value.$context.onChange)
+          value.$context.onChange(key, current, value);
       
-      delete value.$context[key];              // 2. Removing key from context 
-      if (value.$context.onChange)
-        value.$context.onChange(key, null, value);
-      var from = G.unformatted(value)                 //    Get initial value before formatting
-
-      var to = G.effects(value, G.uncall)      //    Recurse to recall side effects, returns last one
-      if (!to) to = value                             //      If there aren't any, use op itself as boundary
-      if (!recalling) {
-        if (!G.$called) 
-          G.unlink(from, to, true)
-        G.$recaller = null;
-      }                                               //    Patch graph and detach the tree at top
-    }    
+        var from = G.unformatted(value)                 //    Get initial value before formatting
+        var to = G.effects(value, G.uncall)             //    Recurse to recall side effects, returns last one
+        if (!to) to = value                             //      If there aren't any, use op itself as boundary
+        if (!recalling) {    
+          if (!G.$called) 
+            G.unlink(from, to, true)                    //    Patch graph and detach the tree at top
+          G.$recaller = null;
+        }                                               
+      }    
+    }
   }
   return value || self;
 };
