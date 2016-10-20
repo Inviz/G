@@ -41,9 +41,15 @@ G.compile.struct = function(struct, verbs) {
       var handler = struct.verbs[verb]
       if (struct.multiple)                                 // Pass flag that allows method to set
         handler.multiple = struct.multiple                 // multiple values /w same meta in array 
-      G.verbs[verb]          = handler;                    // Plain callback    `G.verbs.set(value, old)`
-      G[verb] = struct[verb] = G.compile.setter(handler);  // Gerneric function `G.set(context)`
-      struct.prototype[verb] = G.compile.verb(handler)     // Prototype method  `context.set()`
+      G.verbs[verb]  = handler;                    // Plain callback    `G.verbs.set(value, old)`
+      G['$' + verb]  = G.compile.setter(handler);           // Gerneric function `G.set(context)`
+      if (!G[verb])
+        G[verb]      = G['$' + verb]      
+      if (!struct[verb])
+        struct[verb] = G['$' + verb]    
+      struct.prototype['$' + verb] = G.compile.verb(handler)     // Prototype method  `context.set()`
+      if (!struct.prototype[verb])  
+        struct.prototype[verb] = struct.prototype['$' + verb];
     }
   }
   return verbs;
@@ -120,7 +126,10 @@ G.compile.method = function(fn, scope) {
         digit = d
         index = i
         return prefix + (parseInt(d) + 1);
-      });
+      })
+
+      // genericize method reference
+      .replace(/G.prototype/g, 'G')
 
   if (index) {
     var z = body.lastIndexOf(digit, index);

@@ -53,30 +53,43 @@ G.affect = function(value, old) {
   var called = G.$called;                           // For duration of function call
   G.$caller  = G.$called = value                    // Reassign call stack pointers 
   
-  var current = value.$watched              
-  if (current) {    
-    if (current === group) {                        // 1. Side effects are already propagated
-      var reapplied = G.effects(value, G.call, 'restore');     //    Attempt to find them in graph
-    } else {                                        // 2. Watcher configuration has changed
-      var recalled  = G.effects(value, G.uncall);   //    Recall previous effects
-    }                                                 
-  }
+  var observers = value.$context.$observers;
+  var present, removed
 
-  if (group && !reapplied) {                        // 3. Watchers need to be notified of new value 
-    value.$watched = group                          //    Store watcher configuration for the value
-    for (var i = 0, j = group.length; i < j; i++)   //    Invoke callbacks in order
-      value = G.callback(value, group[i], old);
-  } else if (recalled) {                            // 4. All watchers were recalled, 
-    value.$after = recalled.$after &&               //    Value needs to point to next op after
-                   G.formatted(recalled.$after)     //    last recalled effect
+  // Reapply 
+  for (var after = value; after = after.$after;) {
+    if (after.$caller !== value) continue;
+    var cause = after.$cause;
+    if (observers && observers.indexOf(cause) > -1
+         || group &&     group.indexOf(cause) > -1) {
+      G.restore(after.$context, after.$key, after, after.$meta);
+      (present || (present = [])).push(cause)
+    } else {
+      (removed || (removed = [])).push(after)
+    }
   }
+  if (removed)
+    for (var i = 0; i < removed.length; i++) {
+      G.uncall(removed[i]);
+      if (value.$after == removed[i])
+        value.$after = G.formatted(removed[i]).$after
+    }
+  if (group)
+    for (var i = 0; i < group.length; i++)
+      if (!present || present.indexOf(group[i]) == -1)
+        G.callback(value, group[i], old, true);
+  if (observers)
+    for (var i = 0; i < observers.length; i++)
+      if (!present || present.indexOf(observers[i]) == -1)
+        G.callback(value, observers[i], old, true);
+
    
   if (G.$called.$after)                             // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
   G.$caller = caller;                               // Revert global pointers to previous values 
   G.$called = called;
   return value;
-},
+}
 
 // register operation in graph
 G.record = function(value, old, method, last, transform) {
@@ -88,7 +101,9 @@ G.record = function(value, old, method, last, transform) {
     if (caller) {
       value.$caller = caller; 
       var called = G.$called || G.head(caller)      // Rewind transaction to last operation
-    } 
+    }
+    if (G.$cause)
+      value.$cause = G.$cause;
     if (old && old.$after !== value)                // 2. Updating effect graph:
       value.$after = old.$after;                    //    Remember old value's next op (1-way)
     if (old && caller && old.$caller == caller) {   //    If new value has the same caller as old
@@ -102,7 +117,7 @@ G.record = function(value, old, method, last, transform) {
 },
 
 // Run callback with the given value
-G.callback = function(value, watcher, old) {
+G.callback = function(value, watcher, old, cause) {
   if (watcher.$transform) {
     watcher = watcher.$transform
   } else if (watcher.$getter) {
@@ -110,7 +125,7 @@ G.callback = function(value, watcher, old) {
     if (computed == null) {                           //    Proceed if value was computed
       var current = watcher.$context[watcher.$key];
       if (current)
-        return G.uncall(current, watcher.$meta)
+        G.uncall(current, watcher.$meta)
       return
     } else {
       var result = G.extend(computed, watcher.$context, watcher.$key);
@@ -118,7 +133,13 @@ G.callback = function(value, watcher, old) {
       return G.call(result, 'set')
     }
   }
+  if (cause) {
+    var caused = G.$cause
+    G.$cause = watcher;
+  }
   var transformed = watcher(value, old);
+  if (cause)
+    G.$cause = caused;
   if (transformed == null)
     return value;
   if (!transformed.$context) {

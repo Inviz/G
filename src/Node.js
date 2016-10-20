@@ -101,6 +101,48 @@ G.Node.attributes = {
 
   tag: function() {
     return null;
+  },
+
+  type: function(value) {
+    var type = G.Node.types[value];
+    if (type) {
+
+    }
+  },
+
+  name: function() {
+    this.$inherited.values.propagate(this.name, this.value);
+  },
+
+  action: function() {
+    this.push('action', this.action)
+  }
+}
+
+// sort values in accordance to DOM order
+G.verbs.propagate = function(value, old) {
+  return value;
+}
+
+G.Node.tags = {
+  form: function() {
+    this.set('values', new G);
+  },
+  fieldset: function() {
+    this.scope('values', this.inherited.values)
+  },
+  dialog: function() {
+
+  }
+}
+
+G.Node.types = {
+  radio: function() {
+    this.preset('radiogroup', this.name);
+    this.unshift('action', 'check');
+  },
+  checkbox: function() {
+    this.preset('action', 'check');
   }
 }
 

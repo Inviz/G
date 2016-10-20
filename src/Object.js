@@ -92,6 +92,10 @@ G.prototype.has = function(key) {
 
 // Merge two objects
 G.prototype.merge = function(object) {
+  if (typeof object == 'string')
+    return G.prototype.$merge.apply(this, arguments);
+  if (arguments.length > 1)
+    var meta = Array.prototype.slice.call(arguments, 1);
   for (var key in object) {
     if (object.hasOwnProperty(key)
     &&  G.has(object, key)) { 
@@ -102,13 +106,29 @@ G.prototype.merge = function(object) {
   return op;
 }
 
+// Merge object underneath (not shadowing original values)
+G.prototype.defaults = function(object) {
+  if (typeof object == 'string')
+    return G.prototype.$defaults.apply(this, arguments);
+  if (arguments.length > 1)
+    var meta = Array.prototype.slice.call(arguments, 1);
+  for (var key in object) {
+    if (object.hasOwnProperty(key)
+    &&  G.has(object, key)) { 
+      var value = object[key];
+      var op = G.preset(this, key, value, meta);
+    }
+  }
+  return op;
+}
+
 // Merge two objects and subscribe for updates
 G.prototype.observe = function(watcher) {
-  if (this.watch)
-    if (this.$observers)
-      this.$observers.push(watcher)
+  if (watcher.watch)
+    if (watcher.$observers)
+      watcher.$observers.push(watcher)
     else 
-      this.$observers = [watcher]
+      watcher.$observers = [watcher]
 
   return G.merge(this, watcher);
 };
@@ -136,5 +156,3 @@ G.prototype.clean = function() {
 G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))
 };
-
-

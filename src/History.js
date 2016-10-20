@@ -116,7 +116,25 @@ G.verbs = {
     return;
   },
 
+  // Attempt to place value optimistically where it once belonged
   restore: function(value, old) {
     return value;
+  },
+
+
+  // merge two objects
+  merge: function(value, old) {
+    old.merge(value)
+    return old
+  },
+
+  // merge object underneath another
+  defaults: function(value, old) {
+    old.defaults(value)
+    return old
   }
+
 };
+
+G.verbs.merge.multiple = 
+G.verbs.defaults.multiple = true;

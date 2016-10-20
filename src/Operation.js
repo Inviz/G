@@ -99,10 +99,14 @@ G.prototype.call = function(verb) {
     context[key] = result;                            // Actually change value 
   G.affect(result, old);                              // Apply side effects and invoke observers 
 
-  if (context.onChange)                               // Notify 
-    context.onChange(key, result, old)
+  G.notify(context, key, result, old)                          // Notify 
   return value;
 };
+
+G.notify = function(context, key, value, old) {
+  if (context.onChange)                               
+    context.onChange(key, value, old)
+}
 
 // Undo operation. Reverts value and its effects to previous versions. 
 G.prototype.recall = function() {
@@ -143,8 +147,7 @@ G.prototype.uncall = function() {
       current = undefined
       delete context[this.$key];                    // 3. Removing key from context 
     }
-    if (context.onChange)
-      context.onChange(this.$key, current, value);
+    G.notify(context, this.$key, current, value)    // Notify 
   
     var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
@@ -157,14 +160,14 @@ G.prototype.uncall = function() {
       G.$recaller = null;                           // Reset recursion pointer
     }                                               
   }
-  return value;
+  return to;
 }
 
-// Recall and remove from bufefer
+// Recall and remove from history
 G.prototype.revoke = function() {
-  var value = G.uncall(this);
-  G.rebase(value, null)
-  return value;
+  G.uncall(this);
+  G.rebase(G.formatted(this), null)
+  return this;
 }
 
 // Clone operation from primitive and another operation 

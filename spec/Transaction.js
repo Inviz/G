@@ -204,7 +204,7 @@ describe ('G.set', function() {
 
       // Two different objects 
       var context, op, op2, subject;
-      for (var i = 0; i < 10000; i++) {
+      for (var i = 0; i < 100000; i++) {
       context = {
         'context': 'context'
       };

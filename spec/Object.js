@@ -170,6 +170,23 @@ describe('G.watch', function() {
     expect(post.author.name.valueOf()).to.eql('George')
 
 
+    var defaults = new G({
+      title: 'author',
+      pet: 'hamster'
+    })
+    post.set('author', author) // copy 
+    expect(post.author).to.not.eql(author)
+    expect(post.author.stringify()).to.eql(author.stringify())
+
+    post.defaults('author', defaults)
+    expect(post.author.stringify()).to.not.eql(author.stringify())
+    expect(post.author.stringify()).to.eql('{"name":"George","pet":"dog","title":"author"}')
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['hamster', 'dog']));
+
+    author.pet.recall()
+    expect(post.author.stringify()).to.eql('{"name":"George","pet":"hamster","title":"author"}')
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['hamster']));
+
     post.author.set('name', 'Vasya', 666)
     expect(post.author.name.valueOf()).to.eql('Vasya')
 
