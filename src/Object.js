@@ -124,25 +124,44 @@ G.prototype.defaults = function(object) {
 G.prototype.observe = function(source) {
   if (!source.watch) {
     return this.merge(source);
-  } else if (source.$value) {
+  } else if (source.$origin) {
     var target = source;
-    source = source.$value;
+    target.$target = this;
+    source = source.$origin;
   } else {
     var target = this;
   }
   var watchers = [target]
-  
+
+
   if (source.$observers)
-    source.$observers.push(source)
+    source.$observers.push(target)
   else 
     source.$observers = watchers
   
   var keys = Object.keys(source);
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$')
-      G.affect(source[key], undefined, watchers);
+      G.affect(source[key], null, watchers);
   return this;
 };
+
+G.prototype.unobserve = function(source) {
+  if (source.$origin) {
+    var target = source;
+    source = source.$origin;
+  } else {
+    var target = this;
+  }
+  var index = source.$observers.indexOf(target);
+  if (index == -1)
+    return this;
+  source.$observers.splice(index, 1);
+  var keys = Object.keys(source);
+  for (var i = 0, key; key = keys[i++];)
+    if (key.charAt(0) != '$')
+      G.affect(source[key]);
+}
 
 // Iterate keys
 G.prototype.each = function(callback) {

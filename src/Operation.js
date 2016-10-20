@@ -23,7 +23,7 @@ var G = function(context, key, value) {
     if (context != null)         
       this.$context = context;                       // Store context, object that holds operations
     if (value)                                       // If value is given to constructor, it's object
-      this.$value = value;                           // Keep reference to original object to reify later
+      this.$origin = value;                           // Keep reference to original object to reify later
   } else if (context && this instanceof G) {
     G.observe(this, context);
   }
@@ -94,7 +94,14 @@ G.prototype.call = function(verb) {
   } else if (result == old) {
     return;
   }
-  result = G.record(result, old, verb);               // Place operation into dependency graph 
+  
+  if (result.$origin) {                                   // If shallow reference is used as value
+    var reference = result;
+    result = new G(reference);
+    result.$key = reference.$key
+    result.$context = reference.$context
+  }
+  G.record(value, old, verb);               // Place operation into dependency graph 
   if (old !== result)
     context[key] = result;                            // Actually change value 
   G.affect(result, old);                              // Apply side effects and invoke observers 
@@ -116,6 +123,9 @@ G.prototype.recall = function() {
   if (arguments.length > 0)
     var meta = Array.prototype.slice.call(arguments, 0);
 
+  if (this.$origin) {
+    return this.$target.unobserve(this)
+  }
   for (var old = current; old = G.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
     for (var head = old; head != current && head.$next;)

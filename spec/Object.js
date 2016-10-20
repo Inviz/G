@@ -192,18 +192,24 @@ describe('G.watch', function() {
     expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['George']));
 
     author.set('name', null)
-
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
     expect(author.name).to.eql(undefined);
 
-    //author.set('name', 'Goga')
-    //expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Goga', 'Vasya']));
-    //expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Goga']));
+    author.set('pet', 'bull')
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['hamster', 'bull']));
 
-    debugger
+    defaults.set('pet', 'cat')
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
+
     authorship.recall()
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
-    expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['George']));
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat']));
+    
+    author.set('name', 'Borya')
+    expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Borya']));
+    authorship.call('defaults')
+    expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Borya', 'Vasya']));
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['bull', 'cat']));
 
     //post.author.set('author.name', 'Anonymous')
 

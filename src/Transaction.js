@@ -49,10 +49,10 @@ G.affect = function(value, old, observers) {
   G.$caller  = G.$called = value                    // Reassign call stack pointers 
   
 
-  if (observers == null) {                          // migrate automatically
+  if (observers == null) {       // migrate automatically
     var context = value.$context
-    var watchers = context.$watchers           // Formatters configuration for whole context
-    if (watchers)                                     // is stored in weak map      
+    var watchers = context.$watchers                // Formatters configuration for whole context
+    if (watchers)                                   // is stored in weak map      
       var group = watchers[value.$key]
 
     var observers = context.$observers;
@@ -70,17 +70,17 @@ G.affect = function(value, old, observers) {
         (removed || (removed = [])).push(after)
       }
     }
-    if (removed)
-      for (var i = 0; i < removed.length; i++) {
-        var recalled = G.uncall(removed[i]);
-        if (value.$after == recalled)
-          value.$after = G.formatted(removed[i]).$after
-      }
-    if (group)
-      for (var i = 0; i < group.length; i++)
-        if (!present || present.indexOf(group[i]) == -1)
-          G.callback(value, group[i], old, true);
   }
+  if (removed)
+    for (var i = 0; i < removed.length; i++) {
+      var recalled = G.revoke(removed[i]);
+      if (value.$after == recalled)
+        value.$after = G.formatted(removed[i]).$after
+    }
+  if (group)
+    for (var i = 0; i < group.length; i++)
+      if (!present || present.indexOf(group[i]) == -1)
+        G.callback(value, group[i], old, true);
   if (observers)
     for (var i = 0; i < observers.length; i++)
       if (!present || present.indexOf(observers[i]) == -1)
@@ -100,15 +100,10 @@ G.record = function(value, old, method, last, transform) {
     value.$transform = transform;                   //    Store transformation function
     G.link(last, value)                             //    Keep reference to input value 
   } else {
-    if (value.$value) {                                   // If shallow reference is used as value
-      var origin = value;
-      value = new G(origin.$value);
-      value.$key = origin.$key
-      value.$context = origin.$context
-    }
     var caller = G.$caller;                         // Store pointer to caller operation
     if (caller) {
-      value.$caller = caller; 
+      if (!value.$caller)
+        value.$caller = caller; 
       var called = G.$called || G.head(caller)      // Rewind transaction to last operation
     }
     if (G.$cause)
@@ -143,11 +138,11 @@ G.callback = function(value, watcher, old, cause) {
     }
   // live merging objects
   } else if (typeof watcher == 'object') {
-    if (watcher.$value) { // merge observer
+    if (watcher.$origin) { // merge observer
       if (watcher.$method) {
-        return G[watcher.$method](watcher.$context[watcher.$key], value.$key, value, watcher.$meta)
+        return G[watcher.$method](watcher.$target, value.$key, value, watcher.$meta)
       } else {
-        return G.set(watcher.$value, value.$key, value)
+        return G.set(watcher.$target, value.$key, value)
       }
     } else {
       return G.set(watcher, value.$key, value)
