@@ -43,48 +43,51 @@ G.format = function(value, old) {
 },
 
 // Process side effects 
-G.affect = function(value, old) {
-  var current;
-  var watchers = value.$context.$watchers           // Formatters configuration for whole context
-  if (watchers)                                     // is stored in weak map      
-    var group = watchers[value.$key]
-
+G.affect = function(value, old, observers) {
   var caller = G.$caller; 
   var called = G.$called;                           // For duration of function call
   G.$caller  = G.$called = value                    // Reassign call stack pointers 
   
-  var observers = value.$context.$observers;
-  var present, removed
 
-  // Reapply 
-  for (var after = value; after = after.$after;) {
-    if (after.$caller !== value) continue;
-    var cause = after.$cause;
-    if (observers && observers.indexOf(cause) > -1
-         || group &&     group.indexOf(cause) > -1) {
-      G.restore(after.$context, after.$key, after, after.$meta);
-      (present || (present = [])).push(cause)
-    } else {
-      (removed || (removed = [])).push(after)
+  if (observers == null) {                          // migrate automatically
+    var context = value.$context
+    var watchers = context.$watchers           // Formatters configuration for whole context
+    if (watchers)                                     // is stored in weak map      
+      var group = watchers[value.$key]
+
+    var observers = context.$observers;
+    var present, removed
+
+    // Reapply 
+    for (var after = value; after = after.$after;) {
+      if (after.$caller !== value) continue;
+      var cause = after.$cause;
+      if (observers && observers.indexOf(cause) > -1
+           || group &&     group.indexOf(cause) > -1) {
+        G.restore(after.$context, after.$key, after, after.$meta);
+        (present || (present = [])).push(cause)
+      } else {
+        (removed || (removed = [])).push(after)
+      }
     }
+    if (removed)
+      for (var i = 0; i < removed.length; i++) {
+        var recalled = G.uncall(removed[i]);
+        if (value.$after == recalled)
+          value.$after = G.formatted(removed[i]).$after
+      }
+    if (group)
+      for (var i = 0; i < group.length; i++)
+        if (!present || present.indexOf(group[i]) == -1)
+          G.callback(value, group[i], old, true);
   }
-  if (removed)
-    for (var i = 0; i < removed.length; i++) {
-      G.uncall(removed[i]);
-      if (value.$after == removed[i])
-        value.$after = G.formatted(removed[i]).$after
-    }
-  if (group)
-    for (var i = 0; i < group.length; i++)
-      if (!present || present.indexOf(group[i]) == -1)
-        G.callback(value, group[i], old, true);
   if (observers)
     for (var i = 0; i < observers.length; i++)
       if (!present || present.indexOf(observers[i]) == -1)
         G.callback(value, observers[i], old, true);
 
    
-  if (G.$called.$after)                             // When updating side effects, link to next ops is 1-way 
+  if (G.$called && G.$called.$after)                             // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
   G.$caller = caller;                               // Revert global pointers to previous values 
   G.$called = called;
@@ -97,6 +100,12 @@ G.record = function(value, old, method, last, transform) {
     value.$transform = transform;                   //    Store transformation function
     G.link(last, value)                             //    Keep reference to input value 
   } else {
+    if (value.$value) {                                   // If shallow reference is used as value
+      var origin = value;
+      value = new G(origin.$value);
+      value.$key = origin.$key
+      value.$context = origin.$context
+    }
     var caller = G.$caller;                         // Store pointer to caller operation
     if (caller) {
       value.$caller = caller; 
@@ -131,6 +140,17 @@ G.callback = function(value, watcher, old, cause) {
       var result = G.extend(computed, watcher.$context, watcher.$key);
       result.$meta = watcher.$meta;
       return G.call(result, 'set')
+    }
+  // live merging objects
+  } else if (typeof watcher == 'object') {
+    if (watcher.$value) { // merge observer
+      if (watcher.$method) {
+        return G[watcher.$method](watcher.$context[watcher.$key], value.$key, value, watcher.$meta)
+      } else {
+        return G.set(watcher.$value, value.$key, value)
+      }
+    } else {
+      return G.set(watcher, value.$key, value)
     }
   }
   if (cause) {

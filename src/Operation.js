@@ -22,9 +22,9 @@ var G = function(context, key, value) {
     this.$key = key;                                  // Store key
     if (context != null)         
       this.$context = context;                       // Store context, object that holds operations
-    if (value)
-      G.observe(this, value);
-  } else if (context) {
+    if (value)                                       // If value is given to constructor, it's object
+      this.$value = value;                           // Keep reference to original object to reify later
+  } else if (context && this instanceof G) {
     G.observe(this, context);
   }
 
@@ -94,7 +94,7 @@ G.prototype.call = function(verb) {
   } else if (result == old) {
     return;
   }
-  G.record(result, old, verb);                        // Place operation into dependency graph 
+  result = G.record(result, old, verb);               // Place operation into dependency graph 
   if (old !== result)
     context[key] = result;                            // Actually change value 
   G.affect(result, old);                              // Apply side effects and invoke observers 
@@ -133,34 +133,39 @@ G.prototype.uncall = function() {
   var context = this.$context;
   var current = context[this.$key]
   var value = G.formatted(this);                    // 1. Return to previous version
-  if (value.$preceeding) {                          //    If stack holds values before given
+  var from = G.unformatted(value)                 // Get initial value before formatting
+    
+
+  var prec = value.$preceeding;
+  if (prec && prec.$succeeding == value) {                          //    If stack holds values before given
     if (!value.$succeeding)
       G.call(value.$preceeding);                    //      Apply that value
   } else {
     if (value.$previous) {                          // 2. Removing value from group 
       if (value == current) {
         current = value.$previous;
-        context[this.$key] = value.$previous;
+        context[this.$key] = value.$previous;       // reset head pointer on 
       }
-      G.Array.recall(value);                        
-    } else {
+      G.Array.recall(value); 
+      G.notify(context, this.$key, current, value)    // Notify 
+                         
+    } else if (current === value) {
       current = undefined
       delete context[this.$key];                    // 3. Removing key from context 
-    }
-    G.notify(context, this.$key, current, value)    // Notify 
+      G.notify(context, this.$key, current, value)    // Notify 
   
+    }
+    
     var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
-    var from = G.unformatted(value)                 // Get initial value before formatting
     var to = G.effects(value, G.revoke)             // Recurse to recall side effects, returns last one
-    if (!to) to = value                             //   If there aren't any, use op itthis as boundary
-    if (!recalling) {    
-      if (!G.$called)                               // If there will be no replacement
-        G.unlink(from, to, true)                    // Patch graph and detach the tree at top
-      G.$recaller = null;                           // Reset recursion pointer
-    }                                               
+    if (!recalling) G.$recaller = null;
   }
-  return to;
+  if (!recalling) {    
+    G.unlink(from, to || value, true)               // Patch graph and detach the tree at top
+                                                    // Reset recursion pointer
+  }                                               
+  return to || value;
 }
 
 // Recall and remove from history

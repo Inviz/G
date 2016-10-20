@@ -164,6 +164,7 @@ describe('G.watch', function() {
     author.set('name', 'George')
     author.set('pet', 'dog')
     var authorship = post.set('author', author)
+    expect(post.author).to.not.eql(author)
 
 
     expect(post.author.stringify()).to.eql(author.stringify())
@@ -174,11 +175,8 @@ describe('G.watch', function() {
       title: 'author',
       pet: 'hamster'
     })
-    post.set('author', author) // copy 
-    expect(post.author).to.not.eql(author)
-    expect(post.author.stringify()).to.eql(author.stringify())
 
-    post.defaults('author', defaults)
+    post.defaults('author', defaults, 'hola')
     expect(post.author.stringify()).to.not.eql(author.stringify())
     expect(post.author.stringify()).to.eql('{"name":"George","pet":"dog","title":"author"}')
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['hamster', 'dog']));
@@ -192,6 +190,15 @@ describe('G.watch', function() {
 
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['George', 'Vasya']));
     expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['George']));
+
+    author.set('name', null)
+
+    expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
+    expect(author.name).to.eql(undefined);
+
+    //author.set('name', 'Goga')
+    //expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Goga', 'Vasya']));
+    //expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Goga']));
 
     debugger
     authorship.recall()

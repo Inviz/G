@@ -92,45 +92,56 @@ G.prototype.has = function(key) {
 
 // Merge two objects
 G.prototype.merge = function(object) {
-  if (typeof object == 'string')
-    return G.prototype.$merge.apply(this, arguments);
-  if (arguments.length > 1)
-    var meta = Array.prototype.slice.call(arguments, 1);
-  for (var key in object) {
-    if (object.hasOwnProperty(key)
-    &&  G.has(object, key)) { 
-      var value = object[key];
-      var op = G.set(this, key, value);
-    }
+  if (typeof object != 'string') {
+    if (object.watch)
+      return G.verbs.merge(object, this);
+
+    var keys = Object.keys(object);
+    for (var i = 0, key; key = keys[i++];)
+      if (key.charAt(0) != '$')
+        G.set(this, key, object[key]);
+    return this;
   }
-  return op;
+  return G.prototype.$merge.apply(this, arguments);
 }
 
 // Merge object underneath (not shadowing original values)
 G.prototype.defaults = function(object) {
-  if (typeof object == 'string')
-    return G.prototype.$defaults.apply(this, arguments);
-  if (arguments.length > 1)
-    var meta = Array.prototype.slice.call(arguments, 1);
-  for (var key in object) {
-    if (object.hasOwnProperty(key)
-    &&  G.has(object, key)) { 
-      var value = object[key];
-      var op = G.preset(this, key, value, meta);
-    }
+  if (typeof object != 'string') {
+    if (object.watch)
+      return G.verbs.defaults(object, this);
+
+    var keys = Object.keys(object);
+    for (var i = 0, key; key = keys[i++];)
+      if (key.charAt(0) != '$')
+        G.preset(this, key, object[key]);
+    return this;
   }
-  return op;
+  return G.prototype.$defaults.apply(this, arguments);
 }
 
-// Merge two objects and subscribe for updates
-G.prototype.observe = function(watcher) {
-  if (watcher.watch)
-    if (watcher.$observers)
-      watcher.$observers.push(watcher)
-    else 
-      watcher.$observers = [watcher]
-
-  return G.merge(this, watcher);
+// Merge two G objects and subscribe for updates
+G.prototype.observe = function(source) {
+  if (!source.watch) {
+    return this.merge(source);
+  } else if (source.$value) {
+    var target = source;
+    source = source.$value;
+  } else {
+    var target = this;
+  }
+  var watchers = [target]
+  
+  if (source.$observers)
+    source.$observers.push(source)
+  else 
+    source.$observers = watchers
+  
+  var keys = Object.keys(source);
+  for (var i = 0, key; key = keys[i++];)
+    if (key.charAt(0) != '$')
+      G.affect(source[key], undefined, watchers);
+  return this;
 };
 
 // Iterate keys

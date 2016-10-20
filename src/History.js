@@ -124,13 +124,32 @@ G.verbs = {
 
   // merge two objects
   merge: function(value, old) {
-    old.merge(value)
+    if (value.watch) {
+      if (!old.$chain) {
+        old.$chain = [value]
+      } else {
+        old.$chain.push(value)
+      }
+      old.observe(value)
+    } else {
+      old.merge(value)
+    }
     return old
   },
 
   // merge object underneath another
   defaults: function(value, old) {
-    old.defaults(value)
+    if (value.watch) {
+      if (!old.$chain) {
+        old.$chain = [value]
+      } else {
+        old.$chain.unshift(value)
+      } 
+      value.$method = 'preset'
+      old.observe(value)
+    } else {
+      old.defaults(value)
+    }
     return old
   }
 
