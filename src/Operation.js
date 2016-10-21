@@ -147,18 +147,18 @@ G.prototype.uncall = function() {
     
 
   var prec = value.$preceeding;
-  if (prec && prec.$succeeding == value) {                          //    If stack holds values before given
-    if (!value.$succeeding)
-      G.call(value.$preceeding);                    //      Apply that value
+  if (prec && prec.$succeeding == value) {          // If stack holds values before given
+    if (value == current)                           // And value is current
+      if (!value.$succeeding)                       // And it's on top of history
+        G.call(value.$preceeding);                  // Apply previous version of a value
   } else {
-    if (value.$previous) {                          // 2. Removing value from group 
+    if (value.$previous || value.$next) {                          // 2. Removing value from group 
       if (value == current) {
         current = value.$previous;
         context[this.$key] = value.$previous;       // reset head pointer on 
       }
       G.Array.recall(value); 
       G.notify(context, this.$key, current, value)    // Notify 
-                         
     } else if (current === value) {
       current = undefined
       delete context[this.$key];                    // 3. Removing key from context 

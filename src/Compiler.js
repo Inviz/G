@@ -6,20 +6,10 @@ G.compile = function() {
     // Find Uppercase methods
     var first = name.charAt(0)
     if (first == first.toUpperCase() && first != first.toLowerCase())
-      verbs = G.compile.struct(G[name], verbs)
+      verbs = G.compile.struct(G[name])
   }
-  /*
-  if (verbs)
-    for (var verb in verbs) {      
-      G.watch[verb] = G.compile.observer(G.watch, verb)    // G.watch.set
-      G.define[verb] = G.compile.observer(G.define, verb)  // G.watch.push
-      G.prototype.watch[verb] = G.compile.observer(G.prototype.watch, verb)    // G.watch.set
-      G.prototype.define[verb] = G.compile.observer(G.prototype.define, verb)  // G.watch.push
-    }*/
 }
-G.compile.struct = function(struct, verbs) {
-
-
+G.compile.struct = function(struct) {
   // Convert G.watch to G.prototype.watch
   for (var property in struct.prototype) {
     if (struct.prototype.hasOwnProperty(property) 
@@ -36,7 +26,6 @@ G.compile.struct = function(struct, verbs) {
   }
 
   if (struct.verbs) {
-    verbs[verb] = struct.verbs[verb];
     for (var verb in struct.verbs) {
       var handler = struct.verbs[verb]
       if (struct.multiple)                                 // Pass flag that allows method to set
@@ -52,7 +41,6 @@ G.compile.struct = function(struct, verbs) {
         struct.prototype[verb] = struct.prototype['$' + verb];
     }
   }
-  return verbs;
 };
 
 G.compile.verb = function(verb) {

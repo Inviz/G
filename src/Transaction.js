@@ -142,7 +142,7 @@ G.callback = function(value, watcher, old, cause) {
       if (watcher.$method) {
         return G[watcher.$method](watcher.$target, value.$key, value, watcher.$meta)
       } else {
-        return G.set(watcher.$target, value.$key, value)
+        return G.set(watcher.$target, value.$key, value, watcher.$meta)
       }
     } else {
       return G.set(watcher, value.$key, value)

@@ -59,7 +59,6 @@ describe ('G.set', function() {
       expect(context.asis).to.eql(void 0);
       expect(context.key).to.eql(void 0);
 
-      // Todo: Cleanup cycling links 
       G.call(op2);
       expect(context.key).to.eql(op2);
       expect(subject.mutated.valueOf()).to.eql('zalue123');

@@ -20,7 +20,7 @@ describe('G.watch', function() {
   it('should retransform value on redo', function() {
     var before, callback, context;
     context = {};
-    G.set(context, 'key', 'test');
+    G.set(context, 'key', 'test', 1);
     expect(context.key.valueOf()).to.eql('test');
     var before = G.set(context, 'key', 'pest', 2);
     expect(context.key.valueOf()).to.eql('pest');
@@ -143,7 +143,7 @@ describe('G.watch', function() {
     G.call(lastName)
     expect(context.fullName.valueOf()).to.eql('John Doe')
 
-    G.preset(context, 'fullName', 'Unknown')
+    G.preset(context, 'fullName', 'Unknown', 'value by default')
     expect(context.fullName.valueOf()).to.eql('John Doe')
     G.recall(lastName)
     expect(context.fullName.valueOf()).to.eql('Unknown')
@@ -163,7 +163,7 @@ describe('G.watch', function() {
     var author = new G()
     author.set('name', 'George')
     author.set('pet', 'dog')
-    var authorship = post.set('author', author)
+    var authorship = post.set('author', author, 123)
     expect(post.author).to.not.eql(author)
 
 
@@ -205,7 +205,7 @@ describe('G.watch', function() {
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat']));
     
-    author.set('name', 'Borya')
+    author.set('name', 'Borya', 123)
     expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Borya']));
     authorship.call('defaults')
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Borya', 'Vasya']));

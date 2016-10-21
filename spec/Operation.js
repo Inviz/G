@@ -20,6 +20,19 @@ describe('G', function() {
       key: 'value'
     }));
   });
+  it ('values with meta dont overwrite values without', function() {
+    var context = {}
+    var op1 = G.set(context, 'key', 'value');
+    var op2 = G.set(context, 'key', 'value', 'meta', 'scope');
+    expect(ValueStack(op2)).to.eql([op2, op1]);
+  });
+  it ('presetting values without meta still puts them after ones with meta', function() {
+    var context = {}
+    var op1 = G.set(context, 'key', 'value', 'meta', 'scope');
+    var op2 = G.preset(context, 'key', 'value');
+    expect(ValueStack(op2)).to.eql([op1, op2]);
+  });
+
   it('should keep stack of values with different meta', function() {
     var context, op, op2;
     context = {
@@ -71,9 +84,9 @@ describe('G', function() {
   it('should update values by meta', function() {
     var before, context, key1234;
     context = {};
-    G.set(context, 'key', 123);
+    G.set(context, 'key', 123, 'meta1');
     expect(context.key.valueOf()).to.eql(123);
-    G.set(context, 'key', 1234);
+    G.set(context, 'key', 1234, 'meta1');
     key1234 = context.key;
     expect(context.key.valueOf()).to.eql(1234);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([1234]));
@@ -82,7 +95,7 @@ describe('G', function() {
     expect(context.key.valueOf()).to.eql(555);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([1234, 555]));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([555]));
-    G.set(context, 'key', 12345);
+    G.set(context, 'key', 12345, 'meta1');
     expect(context.key.valueOf()).to.eql(555);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([12345, 555]));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([555]));
@@ -94,7 +107,7 @@ describe('G', function() {
     expect(context.key.valueOf()).to.eql(55555);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([12345, 5555, 55555]));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));
-    G.set(context, 'key', 123456);
+    G.set(context, 'key', 123456, 'meta1');
     expect(context.key.valueOf()).to.eql(55555);
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify([123456, 5555, 55555]));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify([55555]));
@@ -119,21 +132,21 @@ describe('G', function() {
     context = new G({
       context: true
     });
-    context.set('a', 'Test');
+    context.set('a', 'Test', 'unique');
     expect(context.a.valueOf()).to.eql('Test');
     expect(context.a.$context).to.eql(context);
-    context.set('a', 'Test2');
+    context.set('a', 'Test2', 'unique');
     expect(context.a.valueOf()).to.eql('Test2');
     expect(context.a.$context).to.eql(context);
     expect(context.a.$preceeding).to.eql(void 0);
     expect(context.a.$succeeding).to.eql(void 0);
     context.set('a', 'Test3', 'b');
     expect(context.a.valueOf()).to.eql('Test3');
-    context.set('a', null);
+    context.set('a', null, 'unique');
     expect(context.a.valueOf()).to.eql('Test3');
     context.set('a', null, 'b');
     expect(context.a.valueOf()).to.eql('Test2');
-    context.set('a', null);
+    context.set('a', null, 'unique');
     expect(context.a).to.eql(undefined);
   });
 });

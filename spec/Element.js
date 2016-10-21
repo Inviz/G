@@ -1,15 +1,15 @@
 describe('G.Node', function() {
   it ('should be able to set attributes', function() {
     var span = new G.Node('span')
-    span.set('class', 'test')
+    span.set('class', 'test', ':)')
     expect(span.render().outerHTML).to.eql('<span class="test"></span>')
 
     // add class
-    var zest = span.set('class', 'zest')
+    var zest = span.set('class', 'zest', ':)')
     expect(span.$node.outerHTML).to.eql('<span class="zest"></span>')
 
     // rewrite class
-    var cool = span.push('class', 'cool')
+    var cool = span.push('class', 'cool', ':)')
     expect(span.$node.outerHTML).to.eql('<span class="zest cool"></span>')
 
     // add class 
@@ -17,7 +17,7 @@ describe('G.Node', function() {
     expect(span.$node.outerHTML).to.eql('<span class="zuul zest cool"></span>')
 
     // recall all classes set with no extra arguments
-    span.class.recall()
+    span.class.recall(':)')
     expect(span.$node.outerHTML).to.eql('<span class="zuul"></span>')
     
     // add class on top
@@ -41,7 +41,7 @@ describe('G.Node', function() {
     expect(span.$node.outerHTML).to.eql('<span class="cool zest"></span>')
 
     // Add a class without meta
-    span.add('class', 'fool');
+    span.add('class', 'fool', ':)');
     expect(span.$node.outerHTML).to.eql('<span class="cool zest fool"></span>')
 
     // Add same class with meta, it doesnt create duplicate
@@ -50,7 +50,7 @@ describe('G.Node', function() {
 
     // removes all classes without meta, but fool is still there - 
     // it felt back to operation with meta
-    span.class.recall()
+    span.class.recall(':)')
     expect(span.$node.outerHTML).to.eql('<span class="fool"></span>')
 
     span.class.recall('something else says fool')
@@ -62,17 +62,17 @@ describe('G.Node', function() {
   it ('should be able to set attributes when in transaction', function() {
     var span = new G.Node('span')
     span.transact()
-    span.set('class', 'test')
+    span.set('class', 'test', ':)')
     expect(span.$node).to.eql(undefined)
     expect(span.render().outerHTML).to.eql('<span class="test"></span>')
 
     // add class
-    var zest = span.set('class', 'zest')
+    var zest = span.set('class', 'zest', ':)')
     expect(span.$node.outerHTML).to.eql('<span class="test"></span>')
     expect(span.render().outerHTML).to.eql('<span class="zest"></span>')
 
     // rewrite class
-    var cool = span.push('class', 'cool')
+    var cool = span.push('class', 'cool', ':)')
     expect(span.$node.outerHTML).to.eql('<span class="zest"></span>')
     expect(span.render().outerHTML).to.eql('<span class="zest cool"></span>')
 
@@ -81,8 +81,8 @@ describe('G.Node', function() {
     expect(span.$node.outerHTML).to.eql('<span class="zest cool"></span>')
     expect(span.render().outerHTML).to.eql('<span class="zuul zest cool"></span>')
 
-    // recall all classes set with no extra arguments
-    span.class.recall()
+    // recall all classes set with `:)` 
+    span.class.recall(':)')
     expect(span.$node.outerHTML).to.eql('<span class="zuul zest cool"></span>')
     expect(span.render().outerHTML).to.eql('<span class="zuul"></span>')
     
@@ -111,8 +111,8 @@ describe('G.Node', function() {
     expect(span.$node.outerHTML).to.eql('<span class="zuul"></span>')
     expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
 
-    // Add a class without meta
-    span.add('class', 'fool');
+    // Add a class with same meta meta
+    span.add('class', 'fool', ':)');
     expect(span.$node.outerHTML).to.eql('<span class="cool zest"></span>')
     expect(span.render().outerHTML).to.eql('<span class="cool zest fool"></span>')
 
@@ -123,7 +123,7 @@ describe('G.Node', function() {
 
     // removes all classes without meta, but fool is still there - 
     // it felt back to operation with meta
-    span.class.recall()
+    span.class.recall(':)')
     expect(span.$node.outerHTML).to.eql('<span class="cool zest fool"></span>')
     expect(span.render().outerHTML).to.eql('<span class="fool"></span>')
 

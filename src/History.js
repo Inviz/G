@@ -89,6 +89,11 @@ G._setMeta = function(op, meta) {
       op.$meta = meta
   }
 }
+
+G._isUserData = function(op) {
+  return !op.$meta
+};
+
 G.verbs = {
   // Bypass stack of values and write over 
   assign: function(value, old) {
@@ -97,22 +102,47 @@ G.verbs = {
 
   // Reassignment - Sets operation as head of the stack 
   set: function(value, old) {
-    value.$preceeding = old;
-    old.$succeeding = value;
-    value.$succeeding = undefined;
-    return value;
+
+    if (!G._isUserData(value) && G._isUserData(old))
+      for (var last = old; last.$preceeding && G._isUserData(last);)
+        last = last.$preceeding
+
+    if (last) {
+      value.$preceeding = last.$preceeding;
+      last.$preceeding = value;
+      value.$succeeding = last;
+      return old;
+    } else {
+      if (value.$succeeding = old.$succeeding)
+        value.$succeeding.$preceeding = value
+      old.$succeeding = value;
+      value.$preceeding = old;
+      return value;
+    }
   },
 
   // Preassignment - Puts value at stack bottom, will not fire callbacks 
   preset: function(value, old) {
-    var first;
-    first = old;
-    while (first.$preceeding) {
-      first = first.$preceeding;
+
+    if (G._isUserData(value))
+      for (var last = old; last.$preceeding && G._isUserData(last);)
+        last = last.$preceeding
+
+    if (last) {
+      value.$succeeding = last.$succeeding;
+      last.$succeeding = value;
+      value.$preceeding = last;
+      if (last == old)
+        return value
+      else
+        return old;
+    } else {
+      for (var first = old; first.$preceeding;)
+        first = first.$preceeding;
+      first.$preceeding = value;
+      value.$succeeding = first;
+      value.$preceeding = undefined;
     }
-    first.$preceeding = value;
-    value.$succeeding = first;
-    value.$preceeding = undefined;
     return;
   },
 
