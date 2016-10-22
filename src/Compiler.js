@@ -45,6 +45,8 @@ G.compile.struct = function(struct) {
   }
 };
 
+
+// object.class.push('abc', 'cde')
 G.compile.verb = function(verb) {
   return function(key, value) {
     if (value == null) {

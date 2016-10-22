@@ -244,7 +244,7 @@ describe('G.watch', function() {
       pet: 'hamster'
     })
 
-    post.defaults('author', defaults, 'hola')
+    var placeholders = post.defaults('author', defaults, 'hola')
     expect(post.author.stringify()).to.not.eql(author.stringify())
     expect(post.author.stringify()).to.eql('{"name":"George","pet":"dog","title":"author"}')
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['hamster', 'dog']));
@@ -269,7 +269,7 @@ describe('G.watch', function() {
     defaults.set('pet', 'cat')
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
 
-    authorship.recall()
+    authorship.uncall()
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat']));
     
@@ -300,6 +300,29 @@ describe('G.watch', function() {
     expect(b.b).to.eql(undefined)
     expect(b.$meta).to.eql(['b'])
     // remove top value and expose lazy value
+    a.uncall()
+    // the value is a different objectm, but meta is kept in place
+    expect(context.b).to.not.eql(context.collection)
+    expect(context.collection.b).to.not.eql(undefined)
+    expect(context.collection.$meta).to.eql(['b'])
+  })
+
+  it ('should stack objects lazily', function() {
+    var context = new G
+    var A = new G({a: 1})
+    var B = new G({b: 1})
+    var a = context.set('collection', A, 'a')
+    var b = context.preset('collection', B, 'b')
+    // top operation is shallow subscription
+    expect(a).to.not.eql(context.collection)
+    expect(a.a).to.eql(undefined)
+    expect(context.collection.a.$meta).to.eql(['a'])
+    // the other is just a shallow ref without subscription
+    expect(b.b).to.eql(undefined)
+    expect(b.$meta).to.eql(['b'])
+    expect(context.collection.b).to.eql(undefined)
+    // remove top value and expose lazy value
+    debugger
     a.uncall()
     // the value is a different objectm, but meta is kept in place
     expect(context.b).to.not.eql(context.collection)

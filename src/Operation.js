@@ -23,7 +23,7 @@ var G = function(context, key, value) {
     if (context != null)         
       this.$context = context;                       // Store context, object that holds operations
     if (value)                                       // If value is given to constructor, it's object
-      this.$origin = value;                           // Keep reference to original object to reify later
+      this.$source = value;                           // Keep reference to original object to reify later
   } else if (context && this instanceof G) {
     G.observe(this, context);
   }
@@ -82,7 +82,7 @@ G.prototype.call = function(verb) {
     } else {
       if (typeof verb == 'string')
         verb = G.verbs[verb];
-      if (value.$origin && !verb.reifying) {          // When value is a lazy reference to object
+      if (value.$source && !verb.reifying) {          // When value is a lazy reference to object
         result = G.reify(context, key, result);       // Turn it into observable object
         value = G.reify.reuse(result, value)          // Decide if it should throw away ref
       }
@@ -100,7 +100,7 @@ G.prototype.call = function(verb) {
     }     
   } else if (result == old) {
     return;
-  } else if (value.$origin) {
+  } else if (value.$source) {
     result = G.reify(context, key, value);
     value = G.reify.reuse(result, value)
   }
@@ -120,9 +120,6 @@ G.prototype.recall = function() {
   if (arguments.length > 0)
     var meta = Array.prototype.slice.call(arguments, 0);
 
-  if (this.$origin) {
-    return this.$target.unobserve(this)
-  }
   for (var old = current; old = G.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
     for (var head = old; head != current && head.$next;)
@@ -137,11 +134,18 @@ G.prototype.recall = function() {
 };
 
 G.prototype.uncall = function() {
+  var target = this.$target;                       // 1. Unmerging object
+  if (target) {
+    target.unobserve(this)
+    if (target.$chain.length == 0)                 // todo check no extra keys
+      return G.uncall(this.$target);
+    return this;
+  }
+
   var context = this.$context;
   var current = context[this.$key]
-  var value = G.formatted(this);                    // 1. Return to previous version
-  var from = G.unformatted(value)                 // Get initial value before formatting
-    
+  var value = G.formatted(this);                    // 2. Return to previous version
+  var from = G.unformatted(value)                   // Get initial value before formatting
 
   var prec = value.$preceeding;
   if (prec && prec.$succeeding == value) {          // If stack holds values before given
@@ -149,20 +153,18 @@ G.prototype.uncall = function() {
       if (!value.$succeeding)                       // And it's on top of history
         G.call(value.$preceeding);                  // Apply previous version of a value
   } else {
-    if (value.$previous || value.$next) {                          // 2. Removing value from group 
+    if (value.$previous || value.$next) {           // 3. Removing value from group 
       if (value == current) {
         current = value.$previous;
         context[this.$key] = value.$previous;       // reset head pointer on 
       }
       G.Array.recall(value); 
-      G.notify(context, this.$key, current, value)    // Notify 
+      G.notify(context, this.$key, current, value)  // Notify 
     } else if (current === value) {
       current = undefined
-      delete context[this.$key];                    // 3. Removing key from context 
+      delete context[this.$key];                    // 4. Removing key from context 
       G.notify(context, this.$key, current, value)  // Notify 
-  
     }
-    
     var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
     var to = G.effects(value, G.revoke)             // Recurse to recall side effects, returns last one

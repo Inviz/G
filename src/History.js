@@ -108,7 +108,7 @@ G.verbs = {
       value.$succeeding = last;
       return old;
     } else {
-      if (value.$origin)
+      if (value.$source)
         value = G.reify(value.$context, value.$key, value)
       if (value.$succeeding = old.$succeeding)
         value.$succeeding.$preceeding = value
@@ -126,7 +126,7 @@ G.verbs = {
         last = last.$preceeding
 
     if (last) {
-      if (last == old && value.$origin)
+      if (last == old && value.$source)
         value = G.reify(value.$context, value.$key, value)
       value.$succeeding = last.$succeeding;
       last.$succeeding = value;
@@ -154,11 +154,6 @@ G.verbs = {
   // merge two objects
   merge: function(value, old) {
     if (value.watch) {
-      if (!old.$chain) {
-        old.$chain = [value]
-      } else {
-        old.$chain.push(value)
-      }
       old.observe(value)
     } else {
       old.merge(value)
@@ -168,13 +163,8 @@ G.verbs = {
   // merge object underneath another
   defaults: function(value, old) {
     if (value.watch) {
-      if (!old.$chain) {
-        old.$chain = [value]
-      } else {
-        old.$chain.unshift(value)
-      } 
       value.$method = 'preset'
-      old.observe(value)
+      old.observe(value, true)
     } else {
       old.defaults(value)
     }

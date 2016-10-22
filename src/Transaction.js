@@ -121,9 +121,9 @@ G.record = function(value, old, method, last, transform) {
 }
 
 G.reify = function(context, key, value) {
-  if (value.$origin.$context == context            // If origin matches context and key
-    && value.$origin.$key == key) {                
-    return value.$origin;                        // Use origin object instead of reference
+  if (value.$source.$context == context            // If origin matches context and key
+    && value.$source.$key == key) {                
+    return value.$source;                        // Use origin object instead of reference
   } else {
     var result = new G(value);
     result.$key = value.$key;
@@ -134,7 +134,7 @@ G.reify = function(context, key, value) {
 }
 
 G.reify.reuse = function(target, source) {
-  if (!source.$origin.observe) {
+  if (!source.$source.observe) {
     target.$meta = source.$meta;
     return target;
   } else {
@@ -159,7 +159,7 @@ G.callback = function(value, watcher, old, cause) {
     }
   // live merging objects
   } else if (typeof watcher == 'object') {
-    if (watcher.$origin) { // merge observer
+    if (watcher.$source) { // merge observer
       if (watcher.$method) {
         return G[watcher.$method](watcher.$target, value.$key, value, watcher.$meta)
       } else {

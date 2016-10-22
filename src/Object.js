@@ -130,13 +130,13 @@ G.prototype.defaults = function(object) {
 }
 
 // Merge two G objects and subscribe for updates
-G.prototype.observe = function(source) {
+G.prototype.observe = function(source, preset) {
   if (!source.watch) {
     return this.merge(source);
-  } else if (source.$origin) {
+  } else if (source.$source) {
     var target = source;
     target.$target = this;
-    source = source.$origin;
+    source = source.$source;
     if (!source.watch) {
       return this.merge(source);
     }
@@ -145,7 +145,13 @@ G.prototype.observe = function(source) {
   }
   var watchers = [target]
 
-
+  if (!this.$chain) {
+    this.$chain = [source]
+  } else if (preset) {
+    this.$chain.unshift(source)
+  } else {
+    this.$chain.push(source)
+  }
   if (source.$observers)
     source.$observers.push(target)
   else 
@@ -159,12 +165,15 @@ G.prototype.observe = function(source) {
 };
 
 G.prototype.unobserve = function(source) {
-  if (source.$origin) {
+  if (source.$source) {
     var target = source;
-    source = source.$origin;
+    source = source.$source;
   } else {
     var target = this;
   }
+  var index = this.$chain.indexOf(source);
+  if (index > -1)
+    this.$chain.splice(index, 1)
   var index = source.$observers.indexOf(target);
   if (index == -1)
     return this;
