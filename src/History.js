@@ -14,27 +14,22 @@
 */
 
 // Find operation in group or history that matches meta of a given operation 
-G.match = function(meta, old, verb) {
-  if (verb && verb.multiple) {
-    // verbs with multiple flag (e.g. Array verbs)
-    // allow multiple values with the same meta in a list 
-  } else {
-    // Allow meta to be passed as array
-    if (meta && meta.length == 1 && meta[0] instanceof Array)
-      meta = meta[0];
+G.match = function(meta, old) {
+  // Allow meta to be passed as array
+  if (meta && meta.length == 1 && meta[0] instanceof Array)
+    meta = meta[0];
 
-    if (G._compareMeta(old.$meta, meta))            // 1. Current value matches
-      return old;
+  if (G._compareMeta(old.$meta, meta))            // 1. Current value matches
+    return old;
 
-    for (var other = old; other = other.$previous;) 
-      if (G._compareMeta(other.$meta, meta))        // 2. Group value matched
-        return other;
+  for (var other = old; other = other.$previous;) 
+    if (G._compareMeta(other.$meta, meta))        // 2. Group value matched
+      return other;
 
-    for (other = old; other;) {                     
-      if (G._compareMeta(other.$meta, meta))        // 3. Value in history matched
-        return other;
-      other = other.$preceeding
-    }
+  for (other = old; other;) {                     
+    if (G._compareMeta(other.$meta, meta))        // 3. Value in history matched
+      return other;
+    other = other.$preceeding
   }
 };
 
@@ -113,6 +108,8 @@ G.verbs = {
       value.$succeeding = last;
       return old;
     } else {
+      if (value.$origin)
+        value = G.reify(value.$context, value.$key, value)
       if (value.$succeeding = old.$succeeding)
         value.$succeeding.$preceeding = value
       old.$succeeding = value;
@@ -129,13 +126,15 @@ G.verbs = {
         last = last.$preceeding
 
     if (last) {
+      if (last == old && value.$origin)
+        value = G.reify(value.$context, value.$key, value)
       value.$succeeding = last.$succeeding;
       last.$succeeding = value;
       value.$preceeding = last;
       if (last == old)
         return value
       else
-        return old;
+        return;
     } else {
       for (var first = old; first.$preceeding;)
         first = first.$preceeding;
@@ -143,7 +142,7 @@ G.verbs = {
       value.$succeeding = first;
       value.$preceeding = undefined;
     }
-    return;
+    return false;
   },
 
   // Attempt to place value optimistically where it once belonged
@@ -164,7 +163,6 @@ G.verbs = {
     } else {
       old.merge(value)
     }
-    return old
   },
 
   // merge object underneath another
@@ -180,10 +178,13 @@ G.verbs = {
     } else {
       old.defaults(value)
     }
-    return old
   }
 
 };
 
 G.verbs.merge.multiple = 
-G.verbs.defaults.multiple = true;
+G.verbs.defaults.multiple = 
+G.verbs.merge.reifying = 
+G.verbs.defaults.reifying = 
+G.verbs.set.reifying = 
+G.verbs.preset.reifying = true;

@@ -1,5 +1,29 @@
 (function() {
-  describe('Array', function() {
+
+
+  describe('G.Array', function() {
+    it('should create empty array', function() {
+      
+    })
+    it('should create empty array', function() {
+      var context = new G;
+      debugger
+      var trex = context.push('toys', {name: 'T-Rex', price: 195.99});
+      var doll = context.push('toys', {name: 'Doll'});
+      var product = new G({
+        price: 95.99,
+        description: 'Serious toy',
+        //content: function() {
+        //  return this.title + 'for $' + this.price
+        //}
+      })
+      debugger
+      context.toys.forEach(function(toy) {
+        toy.defaults(product)
+      })
+
+      expect(String(trex.description)).to.eql('Serious toy')
+    })
     it('#push', function() {
       return it('should add items on top of the stack', function() {
         var context;

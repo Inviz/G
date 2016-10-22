@@ -22,7 +22,7 @@ A groupping of values, similar to array.
 // Process pure value transformations 
 G.format = function(value, old) {
   var formatters = value.$context.$formatters;      // Formatters configuration for whole context
-  if (formatters)                                   // is stored in weak map
+  if (formatters)                                   // is stored in sub-object
     var group = formatters[value.$key];
 
   var current = G.formatted(value)                  // Use value as it was formatted previously
@@ -49,10 +49,10 @@ G.affect = function(value, old, observers) {
   G.$caller  = G.$called = value                    // Reassign call stack pointers 
   
 
-  if (observers == null) {       // migrate automatically
+  if (observers == null) {                          // migrate automatically
     var context = value.$context
-    var watchers = context.$watchers                // Formatters configuration for whole context
-    if (watchers)                                   // is stored in weak map      
+    var watchers = context.$watchers                // Watchers configuration for whole context
+    if (watchers)                                   // is stored in sub-object
       var group = watchers[value.$key]
 
     var observers = context.$observers;
@@ -87,7 +87,7 @@ G.affect = function(value, old, observers) {
         G.callback(value, observers[i], old, true);
 
    
-  if (G.$called && G.$called.$after)                             // When updating side effects, link to next ops is 1-way 
+  if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
   G.$caller = caller;                               // Revert global pointers to previous values 
   G.$called = called;
@@ -118,14 +118,35 @@ G.record = function(value, old, method, last, transform) {
     if (G.$called) G.$called = value;               // Global: Remember operation as last
   }
   return value;
-},
+}
 
+G.reify = function(context, key, value) {
+  if (value.$origin.$context == context            // If origin matches context and key
+    && value.$origin.$key == key) {                
+    return value.$origin;                        // Use origin object instead of reference
+  } else {
+    var result = new G(value);
+    result.$key = value.$key;
+    result.$meta = value.$meta;
+    result.$context = value.$context;
+    return result;
+  }
+}
+
+G.reify.reuse = function(target, source) {
+  if (!source.$origin.observe) {
+    target.$meta = source.$meta;
+    return target;
+  } else {
+    return source
+  }
+}
 // Run callback with the given value
 G.callback = function(value, watcher, old, cause) {
   if (watcher.$transform) {
     watcher = watcher.$transform
   } else if (watcher.$getter) {
-    var computed = G.compute(watcher);                //    Invoke computation callback
+    var computed = G.compute(watcher, value);                //    Invoke computation callback
     if (computed == null) {                           //    Proceed if value was computed
       var current = watcher.$context[watcher.$key];
       if (current)
@@ -181,15 +202,24 @@ G.unlink = function(from, to, hard) {
 },
 
 // Run computed property callback if all properties it uses are set
-G.compute = function(value) {
-  var getter = value.$getter;
+G.compute = function(watcher, trigger) {
+  var getter = watcher.$getter;
   var args = getter.$arguments;
   if (!args)
     args = G.analyze(getter).$arguments;
-  for (var i = 0; i < args.length; i++)
-    if (value.$context[args[i]] === undefined)
-      return;
-  return getter.call(value.$context);
+  for (var i = 0; i < args.length; i++) {
+    var context = watcher.$context;
+    var bits = args[i]
+    for (var j = 0; j < bits.length; j++) {       
+      if (trigger && trigger.$key == bits[j]     
+        && trigger instanceof G) {               // When observer returned object
+        trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
+      }
+      if (!(context = context[bits[j]]))         // Proceed if argument has value
+        return;
+    }
+  }
+  return getter.call(watcher.$context);
 },
 
 // Parse function to see which properties it uses
@@ -197,9 +227,15 @@ G.analyze = function(fn) {
   if (!fn.$arguments) {
     var string = String(fn)
     fn.$arguments = []
-    for (var match; match = G.$findProperties.exec(string);)
-      if (!match[2])
-        fn.$arguments.push(match[1])
+    var matches = string.match(G.$findProperties);
+    for (var i = 0; i < matches.length; i++) {
+      var clean = matches[i].replace(G.$cleanProperty, '');
+      if (clean.length) {
+        fn.$arguments.push(clean.split('.'))
+      } else {
+        console.warn(match, 5)
+      }
+    }
   }
   return fn;
 },
@@ -253,5 +289,8 @@ G.effects = function(value, callback, argument) {
   return last;
 }
 
-G.$findProperties = /this\s*\.\s*([_a-zA-Z-0-9]+)\s*(\()?/g
+// find used properties in callbacks like this.author.name
+G.$findProperties = /this\s*\.\s*(?:[_a-zA-Z-0-9.\s]+)\s*(?:\()?/g
+// clean up property, cut off chained method call
+G.$cleanProperty = /^this\.|(?:.|^)\s*([_a-zA-Z-0-9]+)\s*(\()|\s*/g
 

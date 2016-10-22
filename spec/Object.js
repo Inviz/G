@@ -153,8 +153,76 @@ describe('G.watch', function() {
 
     G.undefine(context, 'fullName', Property, 'ololo')
     expect(context.fullName.valueOf()).to.eql('Unknown')
+    expect(context.$watchers).to.eql({
+        firstName: undefined,
+        lastName: undefined
+    })
 
     //G.define.preset(context, 'fullName', Property)
+  })
+  it ('should assign computed properties that observe deep keys', function() {
+    
+    var called = 0;
+    var Property = function() {
+      return 'Story by' + ' ' + this.author.name.toUpperCase()
+    }
+    var post = new G();
+    var author = post.set('author', {});
+
+    post.define('title', Property);
+    expect(post.title).to.eql(undefined)
+
+    post.author.set('name', 'HP Lovecraft')
+    expect(post.title.valueOf()).to.eql('Story by HP LOVECRAFT')
+    
+    post.author.name.recall()
+    expect(post.title).to.eql(undefined)
+    
+    post.author.set('name', 'LN Tolstoy')
+    expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
+
+    expect(author.$watchers).to.not.eql(undefined);
+    expect(author.$watchers).to.not.eql({name: undefined});
+    post.author.recall();
+    expect(author.$watchers).to.eql({name: undefined});
+
+    post.set('author', author);
+    expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
+    expect(post.author).to.eql(author)
+
+    post.preset('author', {name: 'Boka & Joka'}, 'music revolution')
+    expect(author.$watchers).to.not.eql(undefined);
+    expect(author.$watchers).to.not.eql({name: undefined});
+    expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
+    expect(post.author).to.eql(author);
+
+    post.author.uncall()
+    var boka = post.author;
+    expect(author.$watchers).to.eql({name: undefined});
+    expect(boka.$watchers).to.not.eql(undefined);
+    expect(boka.$watchers).to.not.eql({name: undefined});
+    expect(post.title.valueOf()).to.eql('Story by BOKA & JOKA')
+    expect(post.author).to.not.eql(author);
+
+    author.call()
+    expect(boka.$watchers).to.eql({name: undefined});
+    expect(author.$watchers).to.not.eql(undefined);
+    expect(author.$watchers).to.not.eql({name: undefined});
+    expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
+    expect(post.author).to.eql(author);
+
+    post.undefine('title', Property);
+    expect(post.title).to.eql(undefined)
+    expect(author.$watchers).to.eql({name: undefined});
+    expect(boka.$watchers).to.eql({name: undefined});
+    expect(post.$watchers).to.eql({author: undefined});
+
+    post.define('title', Property);
+    expect(boka.$watchers).to.eql({name: undefined});
+    expect(author.$watchers).to.not.eql(undefined);
+    expect(author.$watchers).to.not.eql({name: undefined});
+    expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
+    expect(post.author).to.eql(author);
   })
   
   it ('should assign objects', function() {
@@ -218,5 +286,24 @@ describe('G.watch', function() {
 
 
 
+  })
+
+  it ('should stack objects lazily', function() {
+    var context = new G
+    var a = context.set('collection', {a: 1}, 'a')
+    var b = context.preset('collection', {b: 2}, 'b')
+    // top value is eagerly reified into observable object
+    expect(a).to.eql(context.collection)
+    expect(a.a).to.not.eql(undefined)
+    expect(a.$meta).to.eql(['a'])
+    // the other stacked value is not converted into full blown object
+    expect(b.b).to.eql(undefined)
+    expect(b.$meta).to.eql(['b'])
+    // remove top value and expose lazy value
+    a.uncall()
+    // the value is a different objectm, but meta is kept in place
+    expect(context.b).to.not.eql(context.collection)
+    expect(context.collection.b).to.not.eql(undefined)
+    expect(context.collection.$meta).to.eql(['b'])
   })
 });

@@ -81,39 +81,36 @@ G.prototype.call = function(verb) {
       value.$default = old;                           // That value is primitive, store it
     } else {
       if (typeof verb == 'string')
-        verb = G.verbs[verb];     
-      var other = G.match(value.$meta, old, verb)     // Find value with the same meta 
+        verb = G.verbs[verb];
+      if (value.$origin && !verb.reifying) {          // When value is a lazy reference to object
+        result = G.reify(context, key, result);       // Turn it into observable object
+        value = G.reify.reuse(result, value)          // Decide if it should throw away ref
+      }
+      if (!verb.multiple)                             // If it's not collection of sort
+        var other = G.match(value.$meta, old, verb)   // Attempt to find value with the same meta 
       if (other) {                                 
-        result = G.update(value, old, other);         //   then replace it in stack
-      } else {     
-        result = verb(value, old);                    // invoke stack-manipulation method
-      }     
-      if (result === undefined)                       // No side effect is caused
-        return old;
+        result = G.update(result, old, other);        //   then replace it in stack
+      } else {    
+        result = verb(result, old);                    // invoke stack-manipulation method
+      }
+      if (result === false)                           // No side effect will be observed
+        return value;
+      if (result == null)
+        result = old;
     }     
   } else if (result == old) {
     return;
+  } else if (value.$origin) {
+    result = G.reify(context, key, value);
+    value = G.reify.reuse(result, value)
   }
-  
-  if (result.$origin) {                                   // If shallow reference is used as value
-    var reference = result;
-    result = new G(reference);
-    result.$key = reference.$key
-    result.$context = reference.$context
-  }
-  G.record(value, old, verb);               // Place operation into dependency graph 
+  G.record(value, old, verb);                         // Place operation into dependency graph 
   if (old !== result)
     context[key] = result;                            // Actually change value 
   G.affect(result, old);                              // Apply side effects and invoke observers 
-
-  G.notify(context, key, result, old)                          // Notify 
+  G.notify(context, key, result, old)                 // Notify 
   return value;
 };
-
-G.notify = function(context, key, value, old) {
-  if (context.onChange)                               
-    context.onChange(key, value, old)
-}
 
 // Undo operation. Reverts value and its effects to previous versions. 
 G.prototype.recall = function() {
@@ -162,7 +159,7 @@ G.prototype.uncall = function() {
     } else if (current === value) {
       current = undefined
       delete context[this.$key];                    // 3. Removing key from context 
-      G.notify(context, this.$key, current, value)    // Notify 
+      G.notify(context, this.$key, current, value)  // Notify 
   
     }
     

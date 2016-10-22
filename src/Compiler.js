@@ -39,6 +39,8 @@ G.compile.struct = function(struct) {
       struct.prototype['$' + verb] = G.compile.verb(handler)     // Prototype method  `context.set()`
       if (!struct.prototype[verb])  
         struct.prototype[verb] = struct.prototype['$' + verb];
+      if (!G.prototype[verb])
+        G.prototype[verb] = struct.prototype['$' + verb];
     }
   }
 };

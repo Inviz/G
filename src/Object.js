@@ -50,25 +50,34 @@ G.prototype.unwatch = function(key, watcher, pure) {
 };
 
 // Add computed property
-G.prototype.define = function(key, watcher) {
-  G.analyze(watcher);
+G.prototype.define = function(key, callback) {
+  G.analyze(callback);
   var observer = new G(this, key)
-  observer.$getter = watcher
+  observer.$getter = callback
   if (arguments.length > 2)
     observer.$meta = Array.prototype.slice.call(arguments, 2);
-  for (var i = 0; i < watcher.$arguments.length; i++)
-    G.watch(this, watcher.$arguments[i], observer, false)
+  for (var i = 0; i < callback.$arguments.length; i++)
+    G.watch(this, callback.$arguments[i][0], observer, false)
 }
 
 // Remove computed property
-G.prototype.undefine = function(key, watcher) {
-  var value = this[key];
-  if (value) {
-    if (arguments.length > 2)
-      var meta = Array.prototype.slice.call(arguments, 2);
-    var found = G.match(meta, value);
-    if (found)
-      G.uncall(found)
+G.prototype.undefine = function(key, callback) {
+  for (var i = 0; i < callback.$arguments.length; i++) {
+    var args = callback.$arguments[i]
+    var argument = callback.$arguments[i];
+
+    var context = this;
+    for (var j = 0; j < args.length; j++) {
+      var watchers = context.$watchers[argument[j]];
+      for (var k= 0; k < watchers.length; k++) {
+        if (watchers[k].$getter == callback && watchers[k].$key == key) {
+          G.unwatch(context, args[j], watchers[k], false)
+        }
+      }
+      context = context[args[j]]
+      if (!context)
+        break;
+    }
   }
 }
 
@@ -128,6 +137,9 @@ G.prototype.observe = function(source) {
     var target = source;
     target.$target = this;
     source = source.$origin;
+    if (!source.watch) {
+      return this.merge(source);
+    }
   } else {
     var target = this;
   }
@@ -186,3 +198,31 @@ G.prototype.clean = function() {
 G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))
 };
+
+
+G.notify = function(context, key, value, old) {
+  if (context.onChange)                               
+    context.onChange(key, value, old)
+  
+  if (old instanceof G && context.$watchers) {
+    context.unwatch.object(context, key, old);
+  }
+}
+
+G.prototype.unwatch.object = function(context, key, value) {    
+  var parent = context.$watchers[key];              // Check if this key was observed
+  if (parent) {   
+    for (var i = 0; i < parent.length; i++) {       
+      if (!parent[i].$getter) continue;    
+      var args = parent[i].$getter.$arguments;      // By watcher with complex arguments
+      if (!args) continue;   
+      for (var j = 0; j < args.length; j++) {       // check if it observed a property in current object
+        if (args[i].length > 1) {   
+          var anchor = args[i].indexOf(key);        // find property in accessor chain
+          var prop = args[i][anchor + 1];           // get next property if any
+          value.unwatch(prop, parent[i]);           // remove observer from detached object
+        }
+      }
+    }
+  }
+}

@@ -63,7 +63,7 @@ G.Node.prototype.recall = function() {
   if (this.$node)
     G.Node.detach(this)
   else
-    G.Array.forEach(this, G.Node.detach)
+    G.children(this, G.Node.detach)
   return G.Array.recall(this)
 };
 
@@ -115,9 +115,18 @@ G.Node.attributes = {
   },
 
   action: function() {
+    this.add('class', 'selected')
+  },
+
+  do: function() {
     this.push('action', this.action)
+  },
+
+  onclick: function() {
+    
   }
 }
+
 
 // sort values in accordance to DOM order
 G.verbs.propagate = function(value, old) {
@@ -129,7 +138,7 @@ G.Node.tags = {
     this.set('values', new G);
   },
   fieldset: function() {
-    this.scope('values', this.inherited.values)
+    //this.scope('values', this.inherited.values)
   },
   dialog: function() {
 

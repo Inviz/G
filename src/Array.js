@@ -56,7 +56,7 @@ G.Array.prototype.call = function() {
 };
 
 // Iterate children
-G.Array.prototype.forEach = function(callback, argument) {
+G.prototype.children = function(callback, argument) {
   for (var last = this; last.$last;)
     last = last.$last
   
@@ -64,12 +64,21 @@ G.Array.prototype.forEach = function(callback, argument) {
     if (after.$following.$leading !== after)
       break;
     after = after.$following
-    if (after.$parent === this)
+    if (!after.$parent || after.$parent === this)
       callback(after, argument);
     if (after == last)
       break;
   }
   return last;
+}
+
+G.prototype.forEach = function(callback) {
+  for (var first = this; first.$previous;)
+    first = first.$previous;
+
+  for(;first; first = first.$next) {
+    callback(first)
+  }
 }
 
 
@@ -78,6 +87,13 @@ G.Array.link = function(left, right) {
   if ((left.$following = right))                          // fix $following/$leading refs
     left.$following.$leading = left;
 };
+
+G.Array.rebase = function(old, value) {
+  if ((value.$next = old.$next))
+    result.$next.$previous = result;
+  if ((value.$previous = old.$previous))
+    result.$previous.$next = result;
+}
 
 // Connect two siblings with DOM pointers
 G.Array.register = function(left, right, parent) {
@@ -150,7 +166,6 @@ G.Array.verbs = {
       first = first.$previous;
     G.Array.link(value, first);
     G.Array.register(value, first, old.$parent)
-    return old;
   },
 
   // Replace element in a list 
@@ -164,7 +179,6 @@ G.Array.verbs = {
       G.Array.register(value, old.$next, old.$parent)
     }
     old.$next = old.$previous = undefined;
-    return value;
   },
 
   // Nest value into another
@@ -179,7 +193,6 @@ G.Array.verbs = {
       old.$last = old.$first = value;
       value.$parent = old
     }
-    return old
   },
 
   // Add element on top
@@ -192,7 +205,6 @@ G.Array.verbs = {
       old.$last = old.$first = value;
       value.$parent = old
     }
-    return old
   }
 };
 
