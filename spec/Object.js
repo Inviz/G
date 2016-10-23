@@ -15,6 +15,8 @@ describe('G.watch', function() {
     G.unwatch(context, 'key', callback, true);
     expect(context.key.valueOf()).to.eql('test');
     expect(ValueStack(context.key)).to.eql([context.key]);
+
+
     return expect(StateGraph(context.key)).to.eql([context.key]);
   });
   it('should retransform value on redo', function() {
@@ -31,6 +33,7 @@ describe('G.watch', function() {
     expect(context.key.valueOf()).to.eql('pest123');
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test', 'pest123']));
     expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['pest', 'pest123']));
+
     before.recall(2);
     expect(context.key.valueOf()).to.eql('test123');
     expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test123', 'pest123']));
@@ -288,45 +291,4 @@ describe('G.watch', function() {
 
   })
 
-  it ('should stack objects lazily', function() {
-    var context = new G
-    var a = context.set('collection', {a: 1}, 'a')
-    var b = context.preset('collection', {b: 2}, 'b')
-    // top value is eagerly reified into observable object
-    expect(a).to.eql(context.collection)
-    expect(a.a).to.not.eql(undefined)
-    expect(a.$meta).to.eql(['a'])
-    // the other stacked value is not converted into full blown object
-    expect(b.b).to.eql(undefined)
-    expect(b.$meta).to.eql(['b'])
-    // remove top value and expose lazy value
-    a.uncall()
-    // the value is a different objectm, but meta is kept in place
-    expect(context.b).to.not.eql(context.collection)
-    expect(context.collection.b).to.not.eql(undefined)
-    expect(context.collection.$meta).to.eql(['b'])
-  })
-
-  it ('should stack objects lazily', function() {
-    var context = new G
-    var A = new G({a: 1})
-    var B = new G({b: 1})
-    var a = context.set('collection', A, 'a')
-    var b = context.preset('collection', B, 'b')
-    // top operation is shallow subscription
-    expect(a).to.not.eql(context.collection)
-    expect(a.a).to.eql(undefined)
-    expect(context.collection.a.$meta).to.eql(['a'])
-    // the other is just a shallow ref without subscription
-    expect(b.b).to.eql(undefined)
-    expect(b.$meta).to.eql(['b'])
-    expect(context.collection.b).to.eql(undefined)
-    // remove top value and expose lazy value
-    debugger
-    a.uncall()
-    // the value is a different objectm, but meta is kept in place
-    expect(context.b).to.not.eql(context.collection)
-    expect(context.collection.b).to.not.eql(undefined)
-    expect(context.collection.$meta).to.eql(['b'])
-  })
 });

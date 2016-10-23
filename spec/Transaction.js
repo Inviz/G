@@ -88,7 +88,7 @@ describe ('G.set', function() {
         mutated: 'value123'
       }));
     });
-    it('should handle transformations and side effects together', function() {
+    it('should handle transformations and side effects togethez', function() {
 
       // Two different objects 
       var context, op, op2, subject;
@@ -199,11 +199,11 @@ describe ('G.set', function() {
       return 1;
     });
 
-    it('should handle transformations and side effects together x 10000', function() {
+    it('should handle transformations and side effects together x 50000', function() {
 
       // Two different objects 
       var context, op, op2, subject;
-      for (var i = 0; i < 100000; i++) {
+      for (var i = 0; i < 50000; i++) {
       context = {
         'context': 'context'
       };
@@ -484,13 +484,125 @@ describe ('G.set', function() {
       expect(context.key).to.eql(undefined)
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
+      G.$debug(transaction);
 
       G.commit(transaction)
       expect(context.xaxa).to.eql(transaction.$after)
       expect(context.zozo).to.eql(transaction.$after.$after)
       expect(context.key).to.eql(G.formatted(transaction.$after.$after.$after))
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
-      
 
     })
+
+
+    it('should propagate value through callbacks and rebuild the tree', function() {
+      var A = new G;
+
+      var watcher2 = function(value) {
+        G.set(value.$context, value.$key + '-left', value);
+        if (value.$key.indexOf('left-right') > -1 || value.$key.indexOf('right-right') > -1)
+        G.set(value.$context, value.$key + '-middle', value);
+        G.set(value.$context, value.$key + '-right', value);
+      };
+
+      G.watch(A, 'key-left', watcher2);
+      G.watch(A, 'key', watcher2);
+      
+      var transaction = G.transact() // same as `G.$caller = new G`
+
+      A.set('key', 'test');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test', 'test', 'test', 'test']));
+      
+      A.set('key', 'test2');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2']));
+      G.commit(transaction)
+      G.$caller = null  
+      return;
+    })
+
+
+
+
+    it('should propagate value through callbacks and rebuild the bigger tree', function() {
+      var A = new G;
+      var B = new G;
+      var C = new G;
+
+      // Watcher causes two side effects 
+      var watcher1 = function(value) {
+        G.set(value.$context, value.$key + '-deeper', value);
+      };
+
+      var watcher2 = function(value) {
+        G.set(value.$context, value.$key + '-left', value);
+        if (value.$key.indexOf('left-right') > -1 || value.$key.indexOf('right-right') > -1)
+        G.set(value.$context, value.$key + '-middle', value);
+        G.set(value.$context, value.$key + '-right', value);
+      };
+
+      G.watch(A, 'key-left', watcher2);
+      G.watch(A, 'key-right', watcher2);
+      G.watch(A, 'key-left-left', watcher2);
+      G.watch(A, 'key-left-right', watcher2);
+      G.watch(A, 'key-right-right', watcher2);
+      G.watch(A, 'key', watcher2);
+
+      
+      var transaction = G.transact() // same as `G.$caller = new G`
+
+
+      A.set('key', 'test');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test', 'test', 'test', 'test',
+                                                                                    'test', 'test', 'test', 'test', 'test',
+                                                                                    'test', 'test', 'test', 'test', 'test']));
+      
+
+      A.set('key', 'test2');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2']));
+      //G.$debug(transaction, 'big tree'); 
+      G.unwatch(A, 'key-left-right', watcher2);
+
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2']));
+
+      //G.$debug(transaction, 'remove deep left observer');
+
+      G.unwatch(A, 'key-left', watcher2);
+
+      //G.$debug(transaction, 'remove left observer');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2']));
+
+      G.unwatch(A, 'key-right', watcher2);
+      //G.$debug(transaction, 'remove right observer');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2']));
+      
+      G.watch(A, 'key-right', watcher2);
+      //G.$debug(transaction, 'put everything back');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2']));
+      G.watch(A, 'key-left', watcher2);
+      //G.$debug(transaction, 'put everything back');
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2']));
+      G.watch(A, 'key-left-right', watcher2);
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2',
+                                                                                    'test2', 'test2', 'test2', 'test2', 'test2']));
+      G.$debug(transaction, 'put everything back');
+      G.commit(transaction)
+      G.$caller = null  
+      return;
+    })
+
+
+
+
+
+
+
 })

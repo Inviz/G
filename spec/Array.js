@@ -17,12 +17,14 @@
         //  return this.title + 'for $' + this.price
         //}
       })
-      debugger
-      context.toys.forEach(function(toy) {
+      var loop = context.toys.forEach(function(toy) {
         toy.defaults(product)
       })
 
       expect(String(trex.description)).to.eql('Serious toy')
+      expect(String(doll.description)).to.eql('Serious toy')
+
+
     })
     it('#push', function() {
       return it('should add items on top of the stack', function() {

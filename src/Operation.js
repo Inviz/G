@@ -168,12 +168,10 @@ G.prototype.uncall = function() {
     var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
     var to = G.effects(value, G.revoke)             // Recurse to recall side effects, returns last one
-    if (!recalling) G.$recaller = null;
+    if (!recalling) G.$recaller = null;             // Reset recursion pointer
   }
-  if (!recalling) {    
+  if (!recalling) 
     G.unlink(from, to || value, true)               // Patch graph and detach the tree at top
-                                                    // Reset recursion pointer
-  }                                               
   return to || value;
 }
 

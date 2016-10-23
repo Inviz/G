@@ -17,6 +17,7 @@
     <script src="../src/History.js"></script>
     <script src="../src/Array.js"></script>
     <script src="../src/Node.js"></script>
+    <script src="../src/Debug.js"></script>
     <script>
     G.compile()
     </script>
@@ -25,9 +26,53 @@
       #mocha .test {
         overflow: auto;
       }
+      #debug-wrap {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: rgba(0,0,0,0.1);
+        padding: 20px 20px 20px 0;
+      }
+      #debug {
+        position: relative;
+        white-space: pre;
+        font-size: 20px;
+        line-height: 20px;
+        min-width: 400px;
+      }
+      #debug strong {
+        font: 12px Arial ;
+        color: #666;
+        margin-top: 2em;
+        margin-bottom: 0.5em;
+        margin-left: 20px;
+        display: block;
+
+      }
+      #debug span {
+        cursor: pointer;
+      }
+      #debug span:hover:before {
+        position: absolute;
+        bottom: 100%;
+        margin-bottom: 10px;
+        left: 20px;
+        white-space: pre;
+        content: attr(c) "\A" attr(k);
+      }
+      #debug span:hover:after {
+        position: absolute;
+        bottom: 100%;
+        right: 20px;
+        margin-bottom: 10px;
+        content: attr(v);
+      }
     </style>
   </head>
   <body>
+    <div id="debug-wrap">
+    <div id="debug"></div>
+    </div>
     <div id="mocha"></div>
     <div id="fixtures"></div>
     <script src="./_helpers.js"></script>
@@ -78,5 +123,7 @@
         };
       }
     </script>
+<svg width="960" height="2000"></svg>
+
   </body>
 </html>

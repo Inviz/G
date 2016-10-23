@@ -21,10 +21,13 @@ G.prototype.watch = function(key, watcher, pure) {
     } else if (pure) {                              // 2. New formatter is added 
       return G.call(value, 'set');                  //    Re-apply value 
     } else {                                        // 3. New value observer       
-      return G.affect(value);                       //    Update side effects    
+      var after = value.$after;                     // Get pointer to next operation
+      G.affect(value);                              // Run callbacks
+      if (after)
+        G.link(G.head(value), after)           // Patch graph
     }
   }
-},
+}
 
 // Remove key observer and undo its effects
 G.prototype.unwatch = function(key, watcher, pure) {
@@ -219,11 +222,11 @@ G.notify = function(context, key, value, old) {
 }
 
 G.prototype.unwatch.object = function(context, key, value) {    
-  var parent = context.$watchers[key];              // Check if this key was observed
+  var parent = context.$watchers[key];              
   if (parent) {   
-    for (var i = 0; i < parent.length; i++) {       
+    for (var i = 0; i < parent.length; i++) {       // Check if this key was observed
       if (!parent[i].$getter) continue;    
-      var args = parent[i].$getter.$arguments;      // By watcher with complex arguments
+      var args = parent[i].$getter.$arguments;      //   by a watcher with complex arguments
       if (!args) continue;   
       for (var j = 0; j < args.length; j++) {       // check if it observed a property in current object
         if (args[i].length > 1) {   

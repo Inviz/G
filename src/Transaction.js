@@ -90,7 +90,10 @@ G.affect = function(value, old, observers) {
   if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
   G.$caller = caller;                               // Revert global pointers to previous values 
-  G.$called = called;
+  if (caller && caller.$context) {
+  }
+  else
+    G.$called = called;
   return value;
 }
 
@@ -153,6 +156,8 @@ G.callback = function(value, watcher, old, cause) {
         G.uncall(current, watcher.$meta)
       return
     } else {
+      if (computed.valueOf() == watcher.$context[watcher.$key])
+        return;
       var result = G.extend(computed, watcher.$context, watcher.$key);
       result.$meta = watcher.$meta;
       return G.call(result, 'set')
