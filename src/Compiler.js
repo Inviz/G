@@ -16,7 +16,7 @@ G.compile.struct = function(struct) {
     && property.charAt(0) != '_'
     && property.charAt(0) != '$'
     && typeof struct.prototype[property] == 'function') {
-      // function that accept `context` or `self` as first argument,
+      // function that accept `self` as first argument,
       // are patched up to use `this` in their prototype variants
       var instance = G.compile.method(struct.prototype[property], 'self')
       if (instance) {
@@ -28,15 +28,15 @@ G.compile.struct = function(struct) {
   if (struct.verbs) {
     for (var verb in struct.verbs) {
       var handler = struct.verbs[verb]
-      if (struct.multiple)                                 // Pass flag that allows method to set
-        handler.multiple = struct.multiple                 // multiple values /w same meta in array 
-      G.verbs[verb]  = handler;                    // Plain callback    `G.verbs.set(value, old)`
-      G['$' + verb]  = G.compile.setter(handler);           // Gerneric function `G.set(context)`
+      if (struct.multiple)                            // Pass flag that allows method to set
+        handler.multiple = struct.multiple            // multiple values /w same meta in array 
+      G.verbs[verb]  = handler;                       // Plain callback    `G.verbs.set(value, old)`
+      G['$' + verb]  = G.compile.setter(verb);        // Gerneric function `G.set(context)`
       if (!G[verb])
         G[verb]      = G['$' + verb]      
       if (!struct[verb])
         struct[verb] = G['$' + verb]    
-      struct.prototype['$' + verb] = G.compile.verb(handler)     // Prototype method  `context.set()`
+      struct.prototype['$' + verb] = G.compile.verb(verb)     // Prototype method  `context.set()`
       if (!struct.prototype[verb])  
         struct.prototype[verb] = struct.prototype['$' + verb];
       if (!G.prototype[verb])
@@ -49,21 +49,21 @@ G.compile.struct = function(struct) {
 // object.class.push('abc', 'cde')
 G.compile.verb = function(verb) {
   return function(key, value) {
-    if (value == null) {
-      switch (arguments.length) {
-        case 1:
-        case 2:  return this[key].recall();
-        case 3:  return this[key].recall(arguments[2]);
-        case 4:  return this[key].recall(arguments[2], arguments[3]);
-        default: return this[key].recall(arguments[2], arguments[3], arguments[4]);
-      }
-    } else {
+    if (value != null) {
       switch (arguments.length) {
         case 1:
         case 2:  return G.create(this, key, value).call(verb);
         case 3:  return G.create(this, key, value, arguments[2]).call(verb);
         case 4:  return G.create(this, key, value, arguments[2], arguments[3]).call(verb);
         default: return G.create(this, key, value, arguments[2], arguments[3], arguments[4]).call(verb);
+      }
+    } else {
+      switch (arguments.length) {
+        case 1:
+        case 2:  return this[key].recall();
+        case 3:  return this[key].recall(arguments[2]);
+        case 4:  return this[key].recall(arguments[2], arguments[3]);
+        default: return this[key].recall(arguments[2], arguments[3], arguments[4]);
       }
     }
   };

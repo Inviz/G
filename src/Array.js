@@ -6,10 +6,7 @@ G.Array.prototype = new G
 // Remove node from tree
 G.Array.prototype.recall = function() {
   G.Array.unlink(this)
-  if (this.$previous && this.$next)
-    G.Array.register(this.$previous, this.$next, this.$parent)
-  else
-    G.Array.unregister(this)
+  G.Array.unregister(this)
   return this
 };
 
@@ -18,39 +15,46 @@ G.Array.extend = G.Array.call;
 G.Array.prototype.call = function() {
   for (var to = this; to.$last;)
     to = to.$last;
-  G.Array.link(this.$leading, this)
-  G.Array.link(to, to.$following)
-
   // if element had parent before, attempt to hook it in place
-  if (this.$parent) {
-    // for each node in the remembered parent
-    for (var item = this.$parent.$first; item; item = item.$next) {
-      // check if it matches anything before op
-      for (var before = this; before = before.$leading;) {
-        if (before == this.$parent)
-          break;
-        if (before == item) {
-          if (before.$next)
-            G.Array.register(this, before.$next, this.$parent)
-          G.Array.register(before, this, this.$parent)
-          
-          return this
+  var last = this.$parent ? this.$parent.$last : this.$context[this.$key];
+  // for each node in the remembered parent
+  for (var item = last; item; item = item.$previous) {
+    // check if it matches anything before op
+    for (var before = this; before = before.$leading;) {
+      if (before == this.$parent)
+        break;
+      if (before == item) {
+        if (before.$next) {
+          G.Array.register(this, before.$next, this.$parent)
+          G.Array.link(this, before.$next)
+
         }
-      } 
-      // attempt to finx anchor after
-      for (var after = this; after = after.$following;) {
-        if (after == item) {
-          if (after.$previous) {
-            G.Array.register(after.$previous, this, this.$parent)
-          }
-          G.Array.register(this, after, this.$parent)
-          
-          return this
-        }
-        if (after == this.$parent.$last)
-          break;
+
+        G.Array.register(before, this, this.$parent)
+        G.Array.link(before, this)
+        if (before == last)
+          return this;
+        else
+          return last;
       }
     } 
+  } 
+  for (var item = last; item; item = item.$previous) {
+    // attempt to fix anchor after
+    for (var after = this; after = after.$following;) {
+      if (after == item) {
+        if (after.$previous) {
+          G.Array.register(after.$previous, this, this.$parent)
+          G.Array.link(after.$previous, this)
+        }
+        G.Array.register(this, after, this.$parent)
+        G.Array.link(this, after)
+        
+        return this
+      }
+      if (after == last)
+        break;
+    }
   }
   return this;
 };
@@ -73,32 +77,77 @@ G.prototype.children = function(callback, argument) {
 }
 
 G.prototype.forEach = function(callback) {
+  if (!callback.$arguments)
+    G.analyze(callback);
+
   for (var first = this; first.$previous;)
     first = first.$previous;
 
-  for(;first; first = first.$next) {
-    callback(first)
+  var iterators = [callback]
+  for(;first; first = first.$next)
+    G.Array.iterate(first, iterators);
+}
+
+G.Array.iterate = function(array, iterators) {
+  for (var i = 0; i < iterators.length; i++) {
+    var callback = iterators[i];
+    if (!array.$iterators) {
+      array.$iterators = [callback]
+    } else if (array.$iterators.indexOf(callback) > -1) {
+      return
+    } else {
+      array.$iterators.push(callback);
+    }
+
+    G.affect(array, undefined, iterators)
+    if (callback.$properties) {
+      console.info(callback.$properties)
+      callback.$iteratee = array;
+      for (var j = 0; j < callback.$properties.length; j++)
+        G.watch(array, callback.$properties[j][0], callback)
+      callback.$iteratee = null;
+    }
   }
 }
 
+G.Array.uniterate = function(array, iterators) {
+  if (!iterators)
+    iterators = array.$iterators;
+  for (var i = 0; i < iterators.length; i++) {
+    var callback = iterators[i];
+    
+    if (callback.$properties) {
+      console.info(callback.$properties)
+      callback.$iteratee = array;
+      for (var j = 0; j < callback.$properties.length; j++)
+        G.unwatch(array, callback.$properties[j][0], callback)
+      callback.$iteratee = null;
+    }
+  }
+  for (var i = iterators.length; --i > -1;) {
+    var j = array.$iterators.indexOf(iterators[i]);
+    if (j > -1)
+      array.$iterators.splice(j, 1)
+  }
 
-// Connect depth first pointers of two sibling nodes together
-G.Array.link = function(left, right) {
-  if ((left.$following = right))                          // fix $following/$leading refs
-    left.$following.$leading = left;
-};
-
+}
+/*
 G.Array.rebase = function(old, value) {
   if ((value.$next = old.$next))
     result.$next.$previous = result;
   if ((value.$previous = old.$previous))
     result.$previous.$next = result;
-}
+}*/
 
 // Connect two siblings with DOM pointers
 G.Array.register = function(left, right, parent) {
   left.$next = right;
   right.$previous = left;
+  if (left.$iterators)
+    G.Array.iterate(right, left.$iterators)
+  else if (right.$iterators) {
+    G.Array.iterate(left, right.$iterators)
+  }
   if (parent) {
     if (parent.$last == left)
       parent.$last = right;
@@ -111,10 +160,19 @@ G.Array.register = function(left, right, parent) {
 
 // Remove element from DOM tree
 G.Array.unregister = function(op) {
-  if (op.$previous)
-    op.$previous.$next = op.$next
-  if (op.$next)
-    op.$next.$previous = op.$previous
+  if (op.$previous) {
+    if (op.$previous.$next == op)
+      op.$previous.$next = op.$next
+    op.$previous = undefined
+  }
+
+  if (op.$iterators)
+    G.Array.uniterate(op)
+  if (op.$next) {
+    if (op.$next.$previous == op)
+      op.$next.$previous = op.$previous
+    op.$next = undefined;
+  }
   if (op.$parent) {
     if (op.$parent.$last == op)
       op.$parent.$last = op.$previous
@@ -122,6 +180,12 @@ G.Array.unregister = function(op) {
       op.$parent.$first = op.$next
   }
 }
+// Connect depth first pointers of two sibling nodes together
+G.Array.link = function(left, right) {
+  if ((left.$following = right))                          // fix $following/$leading refs
+    left.$following.$leading = left;
+};
+
 // Remove span of nodes from the graph
 // Without second argument it removes op's children
 G.Array.unlink = function(op, to) {

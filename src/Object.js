@@ -52,6 +52,24 @@ G.prototype.unwatch = function(key, watcher, pure) {
   }
 };
 
+G.prototype.unwatch.object = function(context, key, value) {    
+  var parent = context.$watchers[key];              
+  if (parent) {   
+    for (var i = 0; i < parent.length; i++) {       // Check if this key was observed
+      if (!parent[i].$getter) continue;    
+      var args = parent[i].$getter.$arguments;      //   by a watcher with complex arguments
+      if (!args) continue;   
+      for (var j = 0; j < args.length; j++) {       // check if it observed a property in current object
+        if (args[i].length > 1) {   
+          var anchor = args[i].indexOf(key);        // find property in accessor chain
+          var prop = args[i][anchor + 1];           // get next property if any
+          value.unwatch(prop, parent[i]);           // remove observer from detached object
+        }
+      }
+    }
+  }
+}
+
 // Add computed property
 G.prototype.define = function(key, callback) {
   G.analyze(callback);
@@ -221,20 +239,25 @@ G.notify = function(context, key, value, old) {
   }
 }
 
-G.prototype.unwatch.object = function(context, key, value) {    
-  var parent = context.$watchers[key];              
-  if (parent) {   
-    for (var i = 0; i < parent.length; i++) {       // Check if this key was observed
-      if (!parent[i].$getter) continue;    
-      var args = parent[i].$getter.$arguments;      //   by a watcher with complex arguments
-      if (!args) continue;   
-      for (var j = 0; j < args.length; j++) {       // check if it observed a property in current object
-        if (args[i].length > 1) {   
-          var anchor = args[i].indexOf(key);        // find property in accessor chain
-          var prop = args[i][anchor + 1];           // get next property if any
-          value.unwatch(prop, parent[i]);           // remove observer from detached object
-        }
-      }
-    }
+G.reify = function(value, target) {
+  if (!target) target = value;
+  if (value.$source.$context == target.$context     // If origin matches context and key
+    && value.$source.$key == target.$key) {                
+    return value.$source;                           // Use origin object instead of reference
+  } else {
+    var result = new G(value);                     
+    result.$key = target.$key;
+    result.$context = target.$context;
+    result.$meta = value.$meta;
+    return result;
+  }
+}
+
+G.reify.reuse = function(target, source) {          // If plain JS object was referenced
+  if (!source.$source.observe) {                    // Use G object as value
+    target.$meta = source.$meta;
+    return target;
+  } else {
+    return source
   }
 }

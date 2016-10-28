@@ -18,7 +18,7 @@ as `G.extend('Hello world', context, key)`
  * @constructor
  */
 var G = function(context, key, value) {
-  if (key != null) {     
+  if (key != null) {
     this.$key = key;                                  // Store key
     if (context != null)         
       this.$context = context;                       // Store context, object that holds operations
@@ -39,7 +39,8 @@ var G = function(context, key, value) {
 
 // Create operation - one property changed value 
 G.create = function(context, key, value) {
-  if (typeof value == 'object') {                     // 
+  switch (typeof value) {
+  case 'object':
     if (value.$getter) {                              // 1. Computed property value
       var computed = G.compute(value);                //    Invoke computation callback
       if (computed == null)                           //    Proceed if value was computed
@@ -55,7 +56,12 @@ G.create = function(context, key, value) {
           result.$key     == value.$key)              //    If operation is from before
       result.$meta = value.$meta                      //      Restore meta 
     }
-  } else {
+    break;
+  case 'function':
+      1
+
+    break;
+  default:
     var result = G.extend(value, context, key)        // 4. Operation from primitive
   }
   if (arguments.length > 3)                           // Use/merge extra arguments as meta
@@ -70,49 +76,49 @@ G.create = function(context, key, value) {
 G.extend = G.call
 G.prototype.call = function(verb) {
   if (!this) return;
-  var context = this.$context;
-  var key     = this.$key;
-  var old     = context[key];
-  var value   = G.format(this, old);                  // Transform value 
-  var result  = value;     
-           
-  if (verb && (old != null)) {                        // If there was another value by that key
-    if (!old.$key) {
-      value.$default = old;                           // That value is primitive, store it
-    } else {
-      if (typeof verb == 'string')
-        verb = G.verbs[verb];
-      if (value.$source && !verb.reifying) {          // When value is a lazy reference to object
-        result = G.reify(context, key, result);       // Turn it into observable object
-        value = G.reify.reuse(result, value)          // Decide if it should throw away ref
-      }
-      if (!verb.multiple)                             // If it's not collection of sort
-        var other = G.match(value.$meta, old, verb)   // Attempt to find value with the same meta 
-      if (other) {                                 
-        result = G.update(result, old, other);        //   then replace it in stack
-      } else {    
-        result = verb(result, old);                    // invoke stack-manipulation method
-      }
-      if (result === false)                           // No side effect will be observed
-        return value;
-      if (result == null)
-        result = old;
-    }     
-  } else if (result == old) {
-    return;
-  } else if (value.$source) {
-    result = G.reify(context, key, value);
-    value = G.reify.reuse(result, value)
+  var old = this.$context[this.$key];
+  var value = G.format(this, old);                  // Transform value 
+  
+  if (typeof verb == 'string')
+    verb = G.verbs[verb];
+
+  if (value.$source && (!old || !verb || !verb.reifying)) {
+    var result = G.reify(value, this);                // Create a G object from shallow reference
+    value = G.reify.reuse(result, value)              // Use it instead of value, if possible
+  } else if (value.$multiple) {
+    var result = G.Array.call(value, old)
+  } else {
+    var result = value;
   }
-  G.record(value, old, verb);                         // Place operation into dependency graph 
+  if (verb && old != null && old.$key) {              // If there was another value by that key
+    if (!verb.multiple)                             // If it's not collection of sort
+      var other = G.match(value.$meta, old)         // Attempt to find value with the same meta 
+    if (other) {
+      if (G.equals(other, result))
+        return G.record.rewrite(other)                                 
+      result = G.update(result, old, other);        //   then replace it in stack
+    } else {    
+      result = verb(result, old);                   // invoke stack-manipulation method
+    }
+    if (result === false) {                         // No side effect will be observed
+      G.record(value, old);
+      G.$called = G.$caller && G.$caller.$context && value;
+      return value
+    }
+    if (result == null)
+      result = old;
+    if (verb.multiple)
+      result.$multiple = true
+
+  }
   if (old !== result)
-    context[key] = result;                            // Actually change value 
+    this.$context[this.$key] = result;                // Actually change value 
+  G.record(value, old);                               // Place operation into dependency graph 
+  G.notify(this.$context, this.$key, result, old)     // Notify 
   G.affect(result, old);                              // Apply side effects and invoke observers 
-  G.notify(context, key, result, old)                 // Notify 
   return value;
 };
 
-// Undo operation. Reverts value and its effects to previous versions. 
 G.prototype.recall = function() {
   if (!this) return;
   var current = this.$context[this.$key]
@@ -133,12 +139,12 @@ G.prototype.recall = function() {
   return this;
 };
 
+// Undo operation. Reverts value and its effects to previous versions. 
 G.prototype.uncall = function() {
-  var target = this.$target;                       // 1. Unmerging object
-  if (target) {
-    target.unobserve(this)
-    if (target.$chain.length == 0)                 // todo check no extra keys
-      return G.uncall(this.$target);
+  if (this.$target) {                               // 1. Unmerging object
+    this.$target.unobserve(this)
+    if (this.$target.$chain.length == 0)            // todo check no extra keys
+      return G.uncall(this.$target); 
     return this;
   }
 
@@ -153,7 +159,7 @@ G.prototype.uncall = function() {
       if (!value.$succeeding)                       // And it's on top of history
         G.call(value.$preceeding);                  // Apply previous version of a value
   } else {
-    if (value.$previous || value.$next) {           // 3. Removing value from group 
+    if (value.$multiple) {                          // 3. Removing value from group 
       if (value == current) {
         current = value.$previous;
         context[this.$key] = value.$previous;       // reset head pointer on 
@@ -190,6 +196,12 @@ G.fork = function(primitive, value) {
   op.$meta = value.$meta;
   return op;
 };
+
+G.equals = function(value, old) {
+  return value.valueOf() == old.valueOf() && 
+//         value.$caller == old.$caller && 
+         G._compareMeta(value.$meta, old.$meta);
+}
 
 // References current operation 
 G.$caller = G.$called = null;

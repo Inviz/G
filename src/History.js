@@ -10,7 +10,7 @@
   object.set('a', 1);               // will write 1 with meta of undefined
   object.set('a', 2);               // will rewrite 1, because meta matches
   object.set('a', 3, 'super pony'); // makes stack of of 2 and 3 (distinct meta)
-  object.a.recall();                // pops 3 from stack, reverts to 2
+  object.a.recall('super pony');    // pops 3 from stack, reverts to 2
 */
 
 // Find operation in group or history that matches meta of a given operation 
@@ -109,7 +109,7 @@ G.verbs = {
       return old;
     } else {
       if (value.$source)
-        value = G.reify(value.$context, value.$key, value)
+        value = G.reify(value)
       if (value.$succeeding = old.$succeeding)
         value.$succeeding.$preceeding = value
       old.$succeeding = value;
@@ -127,7 +127,7 @@ G.verbs = {
 
     if (last) {
       if (last == old && value.$source)
-        value = G.reify(value.$context, value.$key, value)
+        value = G.reify(value)
       value.$succeeding = last.$succeeding;
       last.$succeeding = value;
       value.$preceeding = last;
@@ -147,7 +147,18 @@ G.verbs = {
 
   // Attempt to place value optimistically where it once belonged
   restore: function(value, old) {
+    if (value.$succeeding) {
+      value.$succeeding = old;
+      value.$preceeding = old.$preceeding;
+      old.$preceeding = value;
+      return false
+    } else {
+      value.$preceeding = old;
+      value.$succeeding = old.$succeeding;
+      old.$succeeding = value;
     return value;
+
+    }
   },
 
 

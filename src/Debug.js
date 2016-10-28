@@ -36,7 +36,6 @@ G.$debug.prototype.build = function(effect, caller) {
   return siblings;
 }
 G.$debug.prototype.concat = function(target, source, shift, separator, width) {
-    console.log(target.join('\n').replace(/<[^>]+>/g, ''))
   for (var i = 0; i < source.length; i++)
     if (!target[i + shift])
       target[i + shift] = new Array(width + 1).join(' ') + separator + source[i]
