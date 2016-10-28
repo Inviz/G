@@ -1,209 +1,4 @@
-// Add observer for key, call it if there's a value with that key
-G.prototype.watch = function(key, watcher, pure) {
-  if (pure) {
-    var watchers = this.$formatters
-    if (!watchers) watchers = this.$formatters = {}
-  } else {
-    var watchers = this.$watchers
-    if (!watchers) watchers = this.$watchers = {}
-  }
-  if (watchers[key]) {                              // Adding watcher creates new array
-    watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
-  } else {                                          // recompute stale values
-    watchers[key] = [watcher];
-  }
-  var value = this[key]
-  if (value) {
-    while (value.$transform)        
-      value = value.$before;
-    if (!value.$context) {                          // 1. Value was not unboxed yet
-      return G.set(this, key, value);            //    Apply primitive value 
-    } else if (pure) {                              // 2. New formatter is added 
-      return G.call(value, 'set');                  //    Re-apply value 
-    } else {                                        // 3. New value observer       
-      var after = value.$after;                     // Get pointer to next operation
-      G.affect(value);                              // Run callbacks
-      if (after)
-        G.link(G.head(value), after)           // Patch graph
-    }
-  }
-}
 
-// Remove key observer and undo its effects
-G.prototype.unwatch = function(key, watcher, pure) {
-  var watchers = pure ? this.$formatters 
-                      : this.$watchers;
-  if (watchers && watchers[key]) {                  
-    watchers[key] =                                 // Removing a watcher creates new array 
-      watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
-        return other !== watcher;                   // recompute stale values
-      });
-    if (!watchers[key].length)
-      watchers[key] = undefined
-  }
-
-  var value = this[key];
-  if (value) {      
-    if (pure) {                                     // 1. Removing a value formatter
-      return G.call(value, 'set');                  //    Reapply value
-    } else {                                        // 2. Removing an observer
-      return G.affect(value);                       //    Update side effects
-    }
-  }
-};
-
-G.prototype.unwatch.object = function(context, key, value) {    
-  var parent = context.$watchers[key];              
-  if (parent) {   
-    for (var i = 0; i < parent.length; i++) {       // Check if this key was observed
-      if (!parent[i].$getter) continue;    
-      var args = parent[i].$getter.$arguments;      //   by a watcher with complex arguments
-      if (!args) continue;   
-      for (var j = 0; j < args.length; j++) {       // check if it observed a property in current object
-        if (args[i].length > 1) {   
-          var anchor = args[i].indexOf(key);        // find property in accessor chain
-          var prop = args[i][anchor + 1];           // get next property if any
-          value.unwatch(prop, parent[i]);           // remove observer from detached object
-        }
-      }
-    }
-  }
-}
-
-// Add computed property
-G.prototype.define = function(key, callback) {
-  G.analyze(callback);
-  var observer = new G(this, key)
-  observer.$getter = callback
-  if (arguments.length > 2)
-    observer.$meta = Array.prototype.slice.call(arguments, 2);
-  for (var i = 0; i < callback.$arguments.length; i++)
-    G.watch(this, callback.$arguments[i][0], observer, false)
-}
-
-// Remove computed property
-G.prototype.undefine = function(key, callback) {
-  for (var i = 0; i < callback.$arguments.length; i++) {
-    var args = callback.$arguments[i]
-    var argument = callback.$arguments[i];
-
-    var context = this;
-    for (var j = 0; j < args.length; j++) {
-      var watchers = context.$watchers[argument[j]];
-      for (var k= 0; k < watchers.length; k++) {
-        if (watchers[k].$getter == callback && watchers[k].$key == key) {
-          G.unwatch(context, args[j], watchers[k], false)
-        }
-      }
-      context = context[args[j]]
-      if (!context)
-        break;
-    }
-  }
-}
-
-// Get value that matches meta arguments
-G.prototype.get = function(key, value) {
-  if (this[key] == null || !this[key].$context)
-    return this[key];
-  var arity = (this.watch ? 1 : 2) + (value == null ? 0 : 1)
-  if (arguments.length > arity)
-    var meta = Array.prototype.slice.call(arguments, arity);
-  return G.match(meta, this[key]);
-}
-
-// Check if key is enumerable
-G.prototype.has = function(key) {
-  return (this.hasOwnProperty(key)
-   && typeof this[key] != 'function' 
-   && key.charAt(0) != '$')
-}
-
-
-// Merge two objects
-G.prototype.merge = function(object) {
-  if (typeof object != 'string') {
-    if (object.watch)
-      return G.verbs.merge(object, this);
-
-    var keys = Object.keys(object);
-    for (var i = 0, key; key = keys[i++];)
-      if (key.charAt(0) != '$')
-        G.set(this, key, object[key]);
-    return this;
-  }
-  return G.prototype.$merge.apply(this, arguments);
-}
-
-// Merge object underneath (not shadowing original values)
-G.prototype.defaults = function(object) {
-  if (typeof object != 'string') {
-    if (object.watch)
-      return G.verbs.defaults(object, this);
-
-    var keys = Object.keys(object);
-    for (var i = 0, key; key = keys[i++];)
-      if (key.charAt(0) != '$')
-        G.preset(this, key, object[key]);
-    return this;
-  }
-  return G.prototype.$defaults.apply(this, arguments);
-}
-
-// Merge two G objects and subscribe for updates
-G.prototype.observe = function(source, preset) {
-  if (!source.watch) {
-    return this.merge(source);
-  } else if (source.$source) {
-    var target = source;
-    target.$target = this;
-    source = source.$source;
-    if (!source.watch) {
-      return this.merge(source);
-    }
-  } else {
-    var target = this;
-  }
-  var watchers = [target]
-
-  if (!this.$chain) {
-    this.$chain = [source]
-  } else if (preset) {
-    this.$chain.unshift(source)
-  } else {
-    this.$chain.push(source)
-  }
-  if (source.$observers)
-    source.$observers.push(target)
-  else 
-    source.$observers = watchers
-  
-  var keys = Object.keys(source);
-  for (var i = 0, key; key = keys[i++];)
-    if (key.charAt(0) != '$')
-      G.affect(source[key], null, watchers);
-  return this;
-};
-
-G.prototype.unobserve = function(source) {
-  if (source.$source) {
-    var target = source;
-    source = source.$source;
-  } else {
-    var target = this;
-  }
-  var index = this.$chain.indexOf(source);
-  if (index > -1)
-    this.$chain.splice(index, 1)
-  var index = source.$observers.indexOf(target);
-  if (index == -1)
-    return this;
-  source.$observers.splice(index, 1);
-  var keys = Object.keys(source);
-  for (var i = 0, key; key = keys[i++];)
-    if (key.charAt(0) != '$')
-      G.affect(source[key]);
-}
 
 // Iterate keys
 G.prototype.each = function(callback) {
@@ -224,11 +19,29 @@ G.prototype.clean = function() {
   return result
 };
 
+// Get value that matches meta arguments
+G.prototype.get = function(key, value) {
+  if (this[key] == null || !this[key].$context)
+    return this[key];
+  var arity = (this.watch ? 1 : 2) + (value == null ? 0 : 1)
+  if (arguments.length > arity)
+    var meta = Array.prototype.slice.call(arguments, arity);
+  return G.match(meta, this[key]);
+}
+
+// Check if key is enumerable
+G.prototype.has = function(key) {
+  return (this.hasOwnProperty(key)
+   && typeof this[key] != 'function' 
+   && key.charAt(0) != '$')
+}
+
+
+
 // Serialize to json
 G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))
 };
-
 
 G.notify = function(context, key, value, old) {
   if (context.onChange)                               

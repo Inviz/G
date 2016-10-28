@@ -46,6 +46,7 @@ G.create = function(context, key, value) {
       if (computed == null)                           //    Proceed if value was computed
         return 
       var result = G.extend(computed, context, key);  //    Enrich primitive value
+      result.$cause = value
       result.$meta = value.$meta                      //    Pick up watcher meta
     } else if (!value.$key || value instanceof G) {   // 2. Wrapping plain object
       var result = new G(context, key, value)         //    Create new G wrapper
@@ -115,7 +116,9 @@ G.prototype.call = function(verb) {
     this.$context[this.$key] = result;                // Actually change value 
   G.record(value, old);                               // Place operation into dependency graph 
   G.notify(this.$context, this.$key, result, old)     // Notify 
+  G.affect.push(result, old);                         
   G.affect(result, old);                              // Apply side effects and invoke observers 
+  G.affect.pop()
   return value;
 };
 

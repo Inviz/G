@@ -44,11 +44,6 @@ G.format = function(value, old) {
 
 // Process side effects 
 G.affect = function(value, old, observers) {
-  var caller = G.$caller; 
-  var called = G.$called;                           // For duration of function call
-  G.$caller  = G.$called = value                    // Reassign call stack pointers 
-  
-
   if (observers == null) {                          // migrate automatically
     var watchers = value.$context.$watchers;        // Watchers configuration for whole context
     if (watchers)                                   // is stored in sub-object
@@ -92,16 +87,27 @@ G.affect = function(value, old, observers) {
         if (!value.$iterators || value.$iterators.indexOf(iterators[i]) == -1)
           G.callback(value, iterators[i], old, true);
 
+  return value;
+}
+
+G.$callers = [];
+
+G.affect.push = function(value) {
+  G.$callers.push(G.$caller);
+  G.$caller  = G.$called = value                    // Reassign call stack pointers 
+};
+
+G.affect.pop = function() {
    
   if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
-  G.$caller = caller;                               // Revert global pointers to previous values 
-  if (caller && caller.$context) {
-  }
-  else
-    G.$called = called;
-  return value;
-}
+    
+  if (G.$caller.$caller != G.$callers[G.$callers.length - 1])
+    debugger
+  G.$caller = G.$callers.pop();                               // Revert global pointers to previous values 
+  if (!G.$caller || !G.$caller.$context)
+    G.$called = null;
+};
 
 // register operation in graph
 G.record = function(value, old) {
@@ -134,7 +140,8 @@ G.record.causation = function(value) {
   if (G.$caller && G.$caller.$key == 'price')
     debugger
   value.$caller = G.$caller; 
-  value.$cause = G.$cause;
+  if (G.$cause)
+    value.$cause = G.$cause;
   return G.$called
 }
 
@@ -164,110 +171,6 @@ G.reify.reuse = function(target, source) {          // If plain JS object was re
   } else {
     return source
   }
-}
-// Run callback with the given value
-G.callback = function(value, watcher, old, cause) {
-  if (typeof watcher == 'object') {
-    if (watcher.$getter) {
-      return G.callback.property(value, watcher);
-    } else {
-      return G.callback.proxy(value, watcher)
-    }
-  } else if (watcher.$properties) {
-    return G.callback.iterator(value, old, cause, watcher);
-  }
-  if (cause) {
-    var caused = G.$cause
-    G.$cause = watcher;
-  }
-  var transformed = watcher(value, old);
-  
-  if (cause)
-    G.$cause = caused;
-  if (transformed == null)
-    return value;
-  if (!transformed.$context) {
-    transformed = G.fork(transformed, value);
-  }
-  return G.record.transformation(transformed, old, value, watcher);
-};
-
-G.callback.iterator = function(value, old, cause, watcher) {
-
-  if (watcher.$iteratee) // iterator called itself recursively, abort
-    return
-
-  var called = G.$called;
-  var caller = G.$caller;
-  var caused = G.$cause;
-  G.$cause = watcher;
-
-  if (!value.$iterators || value.$iterators.indexOf(watcher) == -1) {
-    // if property changed, use its context
-    G.$called =  G.$caller = value = value.$context;
-  }
-  if (value.$after) {
-    var effects;
-    for (var next = value; next; next = next.$after) {
-      if (next.$cause == watcher && next.$caller == value)
-        (effects || (effects = [])).push(next)
-    }
-  }
-  var iteratee = watcher.$iteratee || null;
-  watcher.$iteratee = value;
-
-  watcher(value, old);
-  watcher.$iteratee = iteratee
-  if (effects) {
-    for (var i = 0; i < effects.length; i++) {
-      for (var next = value; next; next = next.$after)
-        if (next === effects[i])
-          break;
-        else if (next === G.$called) {
-          next = undefined;
-          break;
-        }
-      if (!next)
-        G.uncall(effects[i])
-    }
-  }
-  G.$called = called;
-  G.$caller = caller;
-  G.$cause  = caused;
-
-  return value
-}
-
-G.callback.proxy = function(value, watcher) {
-  if (watcher.$source) { // merge observer
-    if (watcher.$method) {
-      return G[watcher.$method](watcher.$target, value.$key, value, watcher.$meta)
-    } else {
-      return G.set(watcher.$target, value.$key, value, watcher.$meta)
-    }
-  } else {
-    return G.set(watcher, value.$key, value)
-  }
-}
-
-G.callback.property = function(value, watcher) {
-  var computed = G.compute(watcher, value);                //    Invoke computation callback
-  var current = watcher.$context[watcher.$key];
-  if (computed == null) {                           //    Proceed if value was computed
-    if (current)
-      G.uncall(current, watcher.$meta)
-    return
-  } else {
-    if (computed.valueOf() == current)
-      return;
-    var result = G.extend(computed, watcher.$context, watcher.$key);
-    result.$meta = watcher.$meta;
-    return result.call('set')
-  }
-}
-
-G.callback.transformation = function() {
-
 }
 
 // Make a two-way connection between two operations in graph
@@ -309,38 +212,6 @@ G.compute = function(watcher, trigger) {
   return getter.call(watcher.$context);
 },
 
-// Parse function to see which properties it uses
-G.analyze = function(fn) {
-  if (!fn.$arguments) {
-    var string = String(fn)
-    var target = 'this'
-    if (fn.length) {                                  // check if first argument is something else than value
-      var args = string.match(/\(\s*([^\),\s]*)/)[1];
-      if (args && args != 'value') {
-        fn.$properties = []
-        target = args
-      }
-    }
-    if (string.indexOf('return') > -1)                // check if function returns any value
-      fn.$mutating = true;                            // todo: better check
-    fn.$arguments = [] 
-    var m = string.match(G.$findProperties);          // find all property accessors
-    for (var i = 0; i < m.length; i++) {     
-      if (m[i].substring(0, target.length) != target  // proceed if starts with `this.` or `arg.`
-       || m[i].charAt(target.length) != '.')
-        continue
-      var clean = m[i].substring(target.length + 1)   // skip prefix
-                      .replace(G.$cleanProperty, ''); // clean out tail method call
-      if (clean.length) {
-        if (target == 'this')
-          fn.$arguments.push(clean.split('.'))
-        else
-          fn.$properties.push(clean.split('.'))
-      }
-    }
-  }
-  return fn;
-},
 
 // Helper to create transaction operation
 G.transact = function(value) {

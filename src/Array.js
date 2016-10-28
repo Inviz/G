@@ -99,7 +99,10 @@ G.Array.iterate = function(array, iterators) {
       array.$iterators.push(callback);
     }
 
-    G.affect(array, undefined, iterators)
+    G.affect.push(array)
+    G.callback.iterator(array, iterators[i])
+    G.affect.pop()
+
     if (callback.$properties) {
       console.info(callback.$properties)
       callback.$iteratee = array;

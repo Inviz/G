@@ -272,15 +272,15 @@ describe('G.watch', function() {
     defaults.set('pet', 'cat')
     expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
 
-    authorship.uncall()
+    authorship.uncall() // does NOT remove `pet`
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
-    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat']));
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
     
     author.set('name', 'Borya', 123)
     expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Borya']));
     authorship.call('defaults')
     expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Borya', 'Vasya']));
-    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['bull', 'cat']));
+    expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
 
     //post.author.set('author.name', 'Anonymous')
 
