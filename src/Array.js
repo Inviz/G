@@ -13,51 +13,58 @@ G.Array.prototype.recall = function() {
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
 G.Array.prototype.call = function() {
+  
   for (var to = this; to.$last;)
     to = to.$last;
+
+
+  if (!this.$parent) {
+    var first = this.$context ? this.$context[this.$key] : self;
+    while (first.$previous)
+      first = first.$previous;
+  } else {
+    var first = this.$parent.$first
+  }
+
   // if element had parent before, attempt to hook it in place
-  var last = this.$parent ? this.$parent.$last : this.$context[this.$key];
-  // for each node in the remembered parent
-  for (var item = last; item; item = item.$previous) {
+    // for each node in the remembered parent
+  for (var item = first; item; item = item.$next) {
     // check if it matches anything before op
     for (var before = this; before = before.$leading;) {
       if (before == this.$parent)
         break;
       if (before == item) {
-        if (before.$next) {
-          G.Array.register(this, before.$next, this.$parent)
-          G.Array.link(this, before.$next)
-
-        }
-
-        G.Array.register(before, this, this.$parent)
-        G.Array.link(before, this)
-        if (before == last)
+        if (before.$next == this)
           return this;
-        else
-          return last;
+        G.Array.link(to, before.$next || before.$following)
+        var last = before;
+        while (last.$last)
+          last = last.$last;
+        G.Array.link(last, this)
+        if (before.$next) 
+          G.Array.register(this, before.$next, this.$parent)
+        G.Array.register(before, this, this.$parent)
+
+        return this
       }
     } 
-  } 
-  for (var item = last; item; item = item.$previous) {
-    // attempt to fix anchor after
-    for (var after = this; after = after.$following;) {
+    // attempt to finx anchor after
+    /*for (var after = this; after = after.$following;) {
       if (after == item) {
         if (after.$previous) {
           G.Array.register(after.$previous, this, this.$parent)
-          G.Array.link(after.$previous, this)
         }
         G.Array.register(this, after, this.$parent)
-        G.Array.link(this, after)
         
         return this
       }
-      if (after == last)
+      if (after == this.$parent.$last)
         break;
-    }
-  }
+    }*/
+  } 
   return this;
 };
+
 
 // Iterate children
 G.prototype.children = function(callback, argument) {
@@ -152,7 +159,11 @@ G.Array.register = function(left, right, parent) {
     G.Array.iterate(left, right.$iterators)
   }
   
-  
+  if (!left.$multiple)
+    left.$multiple = true;
+  else if (!right.$multiple)
+    right.$multiple = true;
+
   if (parent) {
     if (parent.$last == left)
       parent.$last = right;
@@ -168,7 +179,6 @@ G.Array.unregister = function(op) {
   if (op.$previous) {
     if (op.$previous.$next == op)
       op.$previous.$next = op.$next
-    op.$previous = undefined
   }
 
   if (op.$iterators)
@@ -176,7 +186,6 @@ G.Array.unregister = function(op) {
   if (op.$next) {
     if (op.$next.$previous == op)
       op.$next.$previous = op.$previous
-    op.$next = undefined;
   }
   if (op.$parent) {
     if (op.$parent.$last == op)
@@ -184,6 +193,8 @@ G.Array.unregister = function(op) {
     if (op.$parent.$first == op)
       op.$parent.$first = op.$next
   }
+    op.$previous = undefined
+    op.$next = undefined;
 }
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {

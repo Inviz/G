@@ -83,40 +83,40 @@ G.prototype.call = function(verb) {
   var key     = this.$key;
   var old     = context[key];
   var value   = G.format(this, old);                    // Transform value 
+  var result  = value;
 
   if (value.$source && (!old || !verb || !verb.reifying)) {
-    var result = G.reify(value, this);                // Create a G object from shallow reference
-    value = G.reify.reuse(result, value)              // Use it instead of value, if possible
-  } else if (value.$multiple) {
-    var result = G.Array.call(value, old)
-  } else {
-    var result = value;
-  }
-  if (verb && old != null && old.$key) {              // If there was another value by that key
-    if (verb.multiple)                                // If verb allows multiple values by same meta
-      value.$multiple = true                          //   Set flag on the value
-    else                                              // If verb only allows one value,
-      var other = G.match(value.$meta, old)           //   Attempt to find value with given meta in history 
-    
-    if (other) {                                      // If history holds a value with same meta
-      if (G.equals(other, result))                    //   If it's equal to given value
-        return G.record.rewrite(other);               //     Rebase that value into record
-      result = G.update(result, old, other);          //   then replace it in stack
-    } else {      
-      result = verb(result, old);                     // invoke stack-manipulation method
-      if (result === false)                           // No side effect will be observed
-        return G.record.continue(value, old);
+    result = G.reify(value, this);                      // Create a G object from shallow reference
+    value = G.reify.reuse(result, value)                // Use it instead of value, if possible
+  } else if (value.$multiple) {  
+    result = G.Array.call(value, old)  
+  }  
+  if (verb && old != null && old.$key) {                // If there was another value by that key
+    if (verb.multiple) {                                // If verb allows multiple values by same meta
+      value.$multiple = true                            //   Set flag on the value
+    } else {                                            // If verb only allows one value,
+      var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
+    }  
+    if (other) {                                        // If history holds a value with same meta
+      if (G.equals(other, result))                      //   If it's equal to given value
+        return G.record.rewrite(other);                 //     Rebase that value into record
+      result = G.update(result, old, other);            //   then replace it in stack
+    } else {        
+      result = verb(result, old);                       // invoke stack-manipulation method
+      if (result === false)                             // No side effect will be observed
+        return G.record.continue(value, old);  
     }
+  }  
+  if (old !== result) {  
+    context[key] = result;                              // Actually change value 
+    G.record.causation(value);                          // Reference to caller and invoking callback
+    G.record.sequence(value, old);                      // Place operation into dependency graph 
+    G.record.push(result, old);                         // Put operation onto the caller stack
+    G.affect(result, old);                              // Apply side effects and invoke observers 
+    G.record.pop();                                     // Remove operation from the caller stack
   }
-  if (old !== result) {
-    context[key] = result;                            // Actually change value 
-    G.record.causation(value);                        // Reference to caller and invoking callback
-    G.record.sequence(value, old);                    // Place operation into dependency graph 
-  }
-  G.record.push(result, old);                         // Put operation onto the caller stack
   G.notify(context, key, result, old)                 // Notify 
-  G.affect(result, old);                              // Apply side effects and invoke observers 
-  G.record.pop();                                     // Remove operation from the caller stack
+    
   return value;
 };
 
