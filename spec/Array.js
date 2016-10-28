@@ -14,7 +14,7 @@
       expect(Number(trex.test)).to.eql(123)
       expect(Number(doll.test)).to.eql(123)
 
-      doll.recall()
+      doll.uncall()
       expect(doll.test).to.eql(undefined)
 
       G.call(doll)

@@ -1,16 +1,21 @@
-
-// Dispatch callback with given values, public method
+// Invoke watcher whatever type it is
 G.callback = function(value, watcher, old) {
-  if (watcher.$getter) {
-    return G.callback.getter(value, watcher, old);
-  } else if (typeof watcher == 'object') {
-    return G.callback.proxy(value, watcher, old)
-  } else if (watcher.$properties) {
-    return G.callback.iterator(value, watcher, old);
-  } else {
-    return G.callback.property(value, watcher, old)
-  }
+  var method = G.callback.dispatch(watcher)
+  return method(value, watcher, old);
 };
+
+// Find a callback function for given watcher
+G.callback.dispatch = function(watcher) {
+  if (watcher.$getter) {
+    return G.callback.getter
+  } else if (typeof watcher == 'object') {
+    return G.callback.proxy
+  } else if (watcher.$properties) {
+    return G.callback.iterator
+  } else {
+    return G.callback.property
+  }
+}
 
 
 G.callback.property = function(value, watcher, old) {
@@ -150,4 +155,25 @@ G.analyze = function(fn) {
     }
   }
   return fn;
+}
+
+// Run computed property callback if all properties it uses are set
+G.compute = function(watcher, trigger) {
+  var getter = watcher.$getter;
+  var args = getter.$arguments;
+  if (!args)
+    args = G.analyze(getter).$arguments;
+  for (var i = 0; i < args.length; i++) {
+    var context = watcher.$context;
+    var bits = args[i]
+    for (var j = 0; j < bits.length; j++) {       
+      if (trigger && trigger.$key == bits[j]     
+        && trigger instanceof G) {               // When observer returned object
+        trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
+      }
+      if (!(context = context[bits[j]]))         // Proceed if argument has value
+        return;
+    }
+  }
+  return getter.call(watcher.$context);
 }

@@ -77,11 +77,12 @@ G.create = function(context, key, value) {
 G.extend = G.call
 G.prototype.call = function(verb) {
   if (!this) return;
-  var old = this.$context[this.$key];
-  var value = G.format(this, old);                  // Transform value 
-  
   if (typeof verb == 'string')
     verb = G.verbs[verb];
+  var context = this.$context
+  var key     = this.$key;
+  var old     = context[key];
+  var value   = G.format(this, old);                    // Transform value 
 
   if (value.$source && (!old || !verb || !verb.reifying)) {
     var result = G.reify(value, this);                // Create a G object from shallow reference
@@ -92,33 +93,30 @@ G.prototype.call = function(verb) {
     var result = value;
   }
   if (verb && old != null && old.$key) {              // If there was another value by that key
-    if (!verb.multiple)                             // If it's not collection of sort
-      var other = G.match(value.$meta, old)         // Attempt to find value with the same meta 
-    if (other) {
-      if (G.equals(other, result))
-        return G.record.rewrite(other)                                 
-      result = G.update(result, old, other);        //   then replace it in stack
-    } else {    
-      result = verb(result, old);                   // invoke stack-manipulation method
+    if (verb.multiple)                                // If verb allows multiple values by same meta
+      value.$multiple = true                          //   Set flag on the value
+    else                                              // If verb only allows one value,
+      var other = G.match(value.$meta, old)           //   Attempt to find value with given meta in history 
+    
+    if (other) {                                      // If history holds a value with same meta
+      if (G.equals(other, result))                    //   If it's equal to given value
+        return G.record.rewrite(other);               //     Rebase that value into record
+      result = G.update(result, old, other);          //   then replace it in stack
+    } else {      
+      result = verb(result, old);                     // invoke stack-manipulation method
+      if (result === false)                           // No side effect will be observed
+        return G.record.continue(value, old);
     }
-    if (result === false) {                         // No side effect will be observed
-      G.record(value, old);
-      G.$called = G.$caller && G.$caller.$context && value;
-      return value
-    }
-    if (result == null)
-      result = old;
-    if (verb.multiple)
-      result.$multiple = true
-
   }
-  if (old !== result)
-    this.$context[this.$key] = result;                // Actually change value 
-  G.record(value, old);                               // Place operation into dependency graph 
-  G.notify(this.$context, this.$key, result, old)     // Notify 
-  G.affect.push(result, old);                         
+  if (old !== result) {
+    context[key] = result;                            // Actually change value 
+    G.record.causation(value);                        // Reference to caller and invoking callback
+    G.record.sequence(value, old);                    // Place operation into dependency graph 
+  }
+  G.record.push(result, old);                         // Put operation onto the caller stack
+  G.notify(context, key, result, old)                 // Notify 
   G.affect(result, old);                              // Apply side effects and invoke observers 
-  G.affect.pop()
+  G.record.pop();                                     // Remove operation from the caller stack
   return value;
 };
 

@@ -36,8 +36,6 @@ G.prototype.has = function(key) {
    && key.charAt(0) != '$')
 }
 
-
-
 // Serialize to json
 G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))

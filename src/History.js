@@ -134,7 +134,7 @@ G.verbs = {
       if (last == old)
         return value
       else
-        return;
+        return old;
     } else {
       for (var first = old; first.$preceeding;)
         first = first.$preceeding;
@@ -156,8 +156,7 @@ G.verbs = {
       value.$preceeding = old;
       value.$succeeding = old.$succeeding;
       old.$succeeding = value;
-    return value;
-
+      return value;
     }
   },
 
@@ -169,6 +168,7 @@ G.verbs = {
     } else {
       old.merge(value)
     }
+    return old;
   },
 
   // merge object underneath another
@@ -179,6 +179,7 @@ G.verbs = {
     } else {
       old.defaults(value)
     }
+    return old;
   }
 
 };

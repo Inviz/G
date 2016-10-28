@@ -33,16 +33,17 @@ G.prototype.watch = function(key, watcher, pure) {
     while (value.$transform)        
       value = value.$before;
     if (!value.$context) {                          // 1. Value was not unboxed yet
-      return G.set(this, key, value);            //    Apply primitive value 
+      return G.set(this, key, value);               //    Apply primitive value 
     } else if (pure) {                              // 2. New formatter is added 
       return G.call(value, 'set');                  //    Re-apply value 
     } else {                                        // 3. New value observer       
       var after = value.$after;                     // Get pointer to next operation
-      G.affect.push(value)
-      G.callback.property(value, watcher);
-      G.affect.pop(value)
+      G.record.push(value)
+      var method = G.callback.dispatch(watcher)
+      method(value, watcher);
+      G.record.pop(value)
       if (after)
-        G.link(G.head(value), after)           // Patch graph
+        G.link(G.head(value), after)                // Patch graph
     }
   }
 }
@@ -65,11 +66,9 @@ G.prototype.unwatch = function(key, watcher, pure) {
     if (pure) {                                     // 1. Removing a value formatter
       return G.call(value, 'set');                  //    Reapply value
     } else {                                        // 2. Removing an observer
-      G.affect.push(value)
-      
-      debugger
+      G.record.push(value)
       G.callback.revoke(value, watcher);                       //    Update side effects
-      G.affect.pop(value)
+      G.record.pop(value)
       return value;
     }
   }
@@ -186,9 +185,9 @@ G.prototype.observe = function(source, preset) {
   var keys = Object.keys(source);
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
-      G.affect.push(source[key])
+      G.record.push(source[key])
       G.callback.proxy(source[key], target);
-      G.affect.pop()
+      G.record.pop()
     }
   return this;
 };
@@ -210,8 +209,8 @@ G.prototype.unobserve = function(source) {
   var keys = Object.keys(source);
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
-      G.affect.push(source[key]);
+      G.record.push(source[key]);
       G.callback.revoke(source[key], target)
-      G.affect.pop()
+      G.record.pop()
     }
 }

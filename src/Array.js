@@ -99,9 +99,9 @@ G.Array.iterate = function(array, iterators) {
       array.$iterators.push(callback);
     }
 
-    G.affect.push(array)
+    G.record.push(array)
     G.callback.iterator(array, iterators[i])
-    G.affect.pop()
+    G.record.pop()
 
     if (callback.$properties) {
       console.info(callback.$properties)
@@ -151,6 +151,8 @@ G.Array.register = function(left, right, parent) {
   else if (right.$iterators) {
     G.Array.iterate(left, right.$iterators)
   }
+  
+  
   if (parent) {
     if (parent.$last == left)
       parent.$last = right;
@@ -219,7 +221,7 @@ G.Array.verbs = {
     for (var other = old; other; other = other.$previous) {
       if (other.valueOf() == value.valueOf()) {
         G.verbs.preset(value, old);
-        return;
+        return old;
       }
     }
     G.Array.link(old, value)
@@ -233,6 +235,7 @@ G.Array.verbs = {
       first = first.$previous;
     G.Array.link(value, first);
     G.Array.register(value, first, old.$parent)
+    return old;
   },
 
   // Replace element in a list 
@@ -246,6 +249,7 @@ G.Array.verbs = {
       G.Array.register(value, old.$next, old.$parent)
     }
     old.$next = old.$previous = undefined;
+    return old;
   },
 
   // Nest value into another
@@ -260,6 +264,7 @@ G.Array.verbs = {
       old.$last = old.$first = value;
       value.$parent = old
     }
+    return old;
   },
 
   // Add element on top
@@ -272,6 +277,7 @@ G.Array.verbs = {
       old.$last = old.$first = value;
       value.$parent = old
     }
+    return old;
   }
 };
 

@@ -92,62 +92,70 @@ G.affect = function(value, old, observers) {
 
 G.$callers = [];
 
-G.affect.push = function(value) {
+
+// register operation in graph
+G.record = function(value, old) {
+  
+}
+
+G.record.sequence = function(value, old) {
+  if (old && old.$after && old.$after !== value)      // 1. Updating effect graph:
+    if (!old.$multiple && !value.$multiple)
+      value.$after = old.$after;                      //    Remember old value's next op (1-way)
+  if (old && G.$caller && old.$caller == G.$caller) {       //    If new value has the same caller as old
+    G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
+  } else if (G.$called) {                             // 2. Tracking side effects:  
+    G.link(G.$called, G.unformatted(value))           //    Continue writing at parent's point
+  } else if (G.$caller){
+    G.link(G.head(G.$caller), G.unformatted(value))
+  }
+  return value;
+}
+
+G.record.push = function(value) {
   G.$callers.push(G.$caller);
-  G.$caller  = G.$called = value                    // Reassign call stack pointers 
+  return G.$caller  = G.$called = value                    // Reassign call stack pointers 
 };
 
-G.affect.pop = function() {
+G.record.pop = function() {
    
   if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
     G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
     
-  if (G.$caller.$caller != G.$callers[G.$callers.length - 1])
-    debugger
   G.$caller = G.$callers.pop();                               // Revert global pointers to previous values 
   if (!G.$caller || !G.$caller.$context)
     G.$called = null;
 };
 
-// register operation in graph
-G.record = function(value, old) {
-  var caller = G.$caller;                         
-  if (caller) {
-    var called = G.record.causation(value)        // Store pointer to caller operation
-              || G.head(caller);                  // Rewind transaction to last operation
-  }
-  if (old && old.$after && old.$after !== value)  // 1. Updating effect graph:
-    if (!old.$multiple && !value.$multiple)
-      value.$after = old.$after;                    //    Remember old value's next op (1-way)
-  if (old && caller && old.$caller == caller) {   //    If new value has the same caller as old
-    G.link(G.unformatted(old).$before, value);    //    Connect new value to old's previous ops
-  } else if (called) {                            // 2. Tracking side effects:  
-    G.link(called, G.unformatted(value))          //    Continue writing at parent's point
-  }
-  return value;
-}
-
-
 // Record transformed value as a local effect
 G.record.transformation = function(value, old, last, transform) {
-  value.$transform = transform;                   //    Store transformation function
-  G.link(last, value)                             //    Keep reference to input value 
+  value.$transform = transform;                       //    Store transformation function
+  G.link(last, value)                                 //    Keep reference to input value 
   return value
 }
 
 // Write pointers to parent stack frame and to a triggering callback
 G.record.causation = function(value) {
-  if (G.$caller && G.$caller.$key == 'price')
-    debugger
-  value.$caller = G.$caller; 
+  if (G.$caller)
+    value.$caller = G.$caller; 
   if (G.$cause)
     value.$cause = G.$cause;
-  return G.$called
 }
 
 G.record.rewrite = function(value) {
-  G.link(G.$called, value)
+  G.record.sequence(value);
+  return G.record.write(value);  
+}
+
+G.record.continue = function(value, old) {
+  G.record.causation(value);
+  G.record.sequence(value, old);
+  return G.record.write(value);
+}
+
+G.record.write = function(value) {
   G.$called = G.$caller && G.$caller.$context && value;
+  return value;
 }
 
 G.reify = function(value, target) {
@@ -190,28 +198,6 @@ G.unlink = function(from, to, hard) {
   if (hard)                                     // A top-level recall() needs to
     to.$after = undefined                       // clean last op's reference to next operations
 },
-
-// Run computed property callback if all properties it uses are set
-G.compute = function(watcher, trigger) {
-  var getter = watcher.$getter;
-  var args = getter.$arguments;
-  if (!args)
-    args = G.analyze(getter).$arguments;
-  for (var i = 0; i < args.length; i++) {
-    var context = watcher.$context;
-    var bits = args[i]
-    for (var j = 0; j < bits.length; j++) {       
-      if (trigger && trigger.$key == bits[j]     
-        && trigger instanceof G) {               // When observer returned object
-        trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
-      }
-      if (!(context = context[bits[j]]))         // Proceed if argument has value
-        return;
-    }
-  }
-  return getter.call(watcher.$context);
-},
-
 
 // Helper to create transaction operation
 G.transact = function(value) {

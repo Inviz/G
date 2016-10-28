@@ -515,7 +515,7 @@ describe ('G.set', function() {
       
       A.set('key', 'test2');
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2']));
-      G.commit(transaction)
+      
       G.$caller = null  
       return;
     })
@@ -594,7 +594,6 @@ describe ('G.set', function() {
                                                                                     'test2', 'test2', 'test2', 'test2', 'test2',
                                                                                     'test2', 'test2', 'test2', 'test2', 'test2']));
       G.$debug(transaction, 'put everything back');
-      G.commit(transaction)
       G.$caller = null  
       return;
     })
