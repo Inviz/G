@@ -84,8 +84,11 @@ G.affect = function(value, old, observers) {
   return value;
 }
 
+// Stack of callers (they do not always reference each other)
 G.$callers = [];
 
+// References current operation 
+G.$caller = G.$called = null;
 
 // register operation in graph
 G.record = function(value, old) {
@@ -96,10 +99,10 @@ G.record.sequence = function(value, old) {
   if (old && old.$after && old.$after !== value)      // 1. Updating effect graph:
     if (!old.$multiple && !value.$multiple)
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
-  if (old && G.$caller && old.$caller == G.$caller) {       //    If new value has the same caller as old
+  if (old && G.$caller && old.$caller == G.$caller) { //    If new value has the same caller as old
     G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
-    G.link(G.$called, G.unformatted(value))           //    Continue writing at parent's point
+    G.link(G.$called, G.unformatted(value), true)     //    Continue writing at parent's point
   } else if (G.$caller){
     G.link(G.head(G.$caller), G.unformatted(value))
   }
@@ -108,17 +111,16 @@ G.record.sequence = function(value, old) {
 
 G.record.push = function(value) {
   G.$callers.push(G.$caller);
-  return G.$caller  = G.$called = value                    // Reassign call stack pointers 
+  return G.$caller = G.$called = value               // Reassign call stack pointers 
 };
 
 G.record.pop = function() {
-   
-  if (G.$called && G.$called.$after)                // When updating side effects, link to next ops is 1-way 
-    G.link(G.$called, G.$called.$after)             // Foreign pointer is set here
-    
-  G.$caller = G.$callers.pop();                               // Revert global pointers to previous values 
-  if (!G.$caller || !G.$caller.$context)
+  G.$caller = G.$callers.pop();                       // Revert global pointers to previous values 
+  if (!G.$caller || !G.$caller.$context) {            // Reset $called pointer on top level
+    if (G.$called && G.$called.$after)                // Patch up graph to point to next ops
+      G.link(G.$called, G.$called.$after)             
     G.$called = null;
+  }
 };
 
 // Record transformed value as a local effect
@@ -136,9 +138,18 @@ G.record.causation = function(value) {
     value.$cause = G.$cause;
 }
 
-G.record.rewrite = function(value) {
-  G.record.sequence(value);
-  return G.record.write(value);  
+// Reuse state change and it's effects, set new caller. 
+// Rewind to the end
+G.record.reuse = function(value) {
+  console.error('rewrite')
+  var last = G.last(value); 
+  if (value.$caller != G.$caller) {
+    G.link(value.$before, last.$after);               // detach effect from old graph
+    G.record.causation(value);                        // set new caller
+    last.$after = undefined
+  }
+  G.record.sequence(value);                           // rewrite left side
+  return G.record.write(last);                        // rewind to last effect
 }
 
 G.record.continue = function(value, old) {
@@ -152,33 +163,11 @@ G.record.write = function(value) {
   return value;
 }
 
-G.reify = function(value, target) {
-  if (!target) target = value;
-  if (value.$source.$context == target.$context     // If origin matches context and key
-    && value.$source.$key == target.$key) {                
-    return value.$source;                           // Use origin object instead of reference
-  } else {
-    var result = new G(value);                     
-    result.$key = target.$key;
-    result.$context = target.$context;
-    result.$meta = value.$meta;
-    return result;
-  }
-}
-
-G.reify.reuse = function(target, source) {          // If plain JS object was referenced
-  if (!source.$source.observe) {                    // Use G object as value
-    target.$meta = source.$meta;
-    return target;
-  } else {
-    return source
-  }
-}
-
 // Make a two-way connection between two operations in graph
-G.link = function(old, value) {
-  if ((old.$after = value))
+G.link = function(old, value, doubly) {
+  if ((old.$after = value)){
     old.$after.$before = old;
+  }
 }
 
 // Remove all operations from the graph in span between `from` and `to`
@@ -245,6 +234,17 @@ G.effects = function(value, callback, argument) {
       var last = callback(after, argument) || after;
   return last;
 }
+
+G.last = function(value) {
+  var last = value;
+  for (var after = value; after = after.$after;)
+    if (after.$caller === value)
+      last = after;
+  if (last !== value)
+    return G.last(last)
+  else
+    return last;
+} 
 
 // find used properties in callbacks like this.author.name
 G.$findProperties = /[a-zA-Z0-9_]+\s*\.\s*(?:[_a-zA-Z-0-9.\s]+)\s*(?:\()?/g

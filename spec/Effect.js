@@ -1,4 +1,5 @@
-describe ('G.set', function() {
+describe ('Effects', function() {
+  describe('Tracking', function() {
     it('should track side effects in callbacks', function() {
       var context, op, op2, subject;
       context = {
@@ -88,7 +89,8 @@ describe ('G.set', function() {
         mutated: 'value123'
       }));
     });
-    it('should handle transformations and side effects togethez', function() {
+
+    it('should track transformations and side effects togethez', function() {
 
       // Two different objects 
       var context, op, op2, subject;
@@ -199,7 +201,7 @@ describe ('G.set', function() {
       return 1;
     });
 
-    it('should handle transformations and side effects together x 50000', function() {
+    it('should track transformations and side effects together x 50000', function() {
 
       // Two different objects 
       var context, op, op2, subject;
@@ -309,7 +311,7 @@ describe ('G.set', function() {
       }
       return 1;
     });
-    it('should handle side effects with transformations', function() {
+    it('should track side effects with transformations', function() {
       var before, callback, context, subject;
       context = {
         'context': 'context',
@@ -365,7 +367,7 @@ describe ('G.set', function() {
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol666']));
       return expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
     });
-    it('should handle revoke effect from context with transform', function() {
+    it('should track revoke effect from context with transform', function() {
       var before, callback, context, subject, watcher;
       context = {
         'context': 'context',
@@ -423,76 +425,8 @@ describe ('G.set', function() {
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol666', 'lol']));
       return expect(context.asis.valueOf()).to.eql('lol');
     });
-    it('should write to transaction', function() {
-      var context = {
-        'context': 'context',
-        key: 'lol'
-      };
-      var subject = {
-        'subject': 'subject'
-      };
-
-      // Watcher causes two side effects 
-      watcher = function(value) {
-        G.set(subject, 'mutated', value + 123);
-        G.set(context, 'asis', value);
-      };
-
-      G.watch(context, 'key', watcher);
-      G.watch(context, 'title', watcher);
-
-      
-      var transaction = G.transact() // same as `G.$caller = new G`
-
-
-      G.set(context, 'key', 'test')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test123', 'test']));
-
-      G.set(context, 'key', 'protest')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest']));
-
-      G.set(context, 'zozo', 'kiki')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
-
-      G.set(context, 'key', 'grotesque')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
-
-      G.set(context, 'xaxa', 'kek')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
-
-      G.set(context, 'zozo', 'buba')
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
-
-      var zozo = context.zozo
-      G.recall(context.zozo)
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek']));
-
-      G.call(zozo)
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek', 'buba']));
-      
-      var key = context.key
-      G.recall(context.key)
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba']));
-      
-      G.call(key)
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
-      
-
-      G.abort(transaction)
-      expect(context.xaxa).to.eql(undefined)
-      expect(context.zozo).to.eql(undefined)
-      expect(context.key).to.eql(undefined)
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
-      
-      G.$debug(transaction);
-
-      G.commit(transaction)
-      expect(context.xaxa).to.eql(transaction.$after)
-      expect(context.zozo).to.eql(transaction.$after.$after)
-      expect(context.key).to.eql(G.formatted(transaction.$after.$after.$after))
-      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
-
-    })
+  })
+  describe('Updating', function() {
 
 
     it('should propagate value through callbacks and rebuild the tree', function() {
@@ -593,13 +527,245 @@ describe ('G.set', function() {
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test2', 'test2', 'test2', 'test2', 'test2',
                                                                                     'test2', 'test2', 'test2', 'test2', 'test2',
                                                                                     'test2', 'test2', 'test2', 'test2', 'test2']));
-      G.$debug(transaction, 'put everything back');
+      G.$debug(transaction, 'Reassembled tree');
       G.$caller = null  
       return;
     })
+  })
 
 
+  describe ('Reusing', function() {
+    it('should reuse effect', function() {
+      var context = new G;
+      var subject = new G;
 
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'shared', true);
+        G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true, 'hola123']));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+
+      G.uncall(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', 'hola123']));
+    })
+    it('should reuse effect before conditional value', function() {
+      var context = new G;
+      var subject = new G;
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'shared', true);
+        if (value == 'test')
+          G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      debugger
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true]));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+
+      G.uncall(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', 'hola123']));
+    })
+    it('should reuse nested equal effect', function() {
+      var context = new G;
+      var subject = new G;
+
+      subject.watch('shared', function(value) {
+        G.set(subject, 'sharedeffect', !value)
+      })
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'shared', true);
+        G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, false, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true, false, 'hola123']));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+    })
+    it('should reuse nested equal effect after distinct effect', function() {
+      var context = new G;
+      var subject = new G;
+
+      subject.watch('shared', function(value) {
+        G.set(subject, 'sharedeffect', !value)
+      })
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'mutated', value + 123);
+        G.set(subject, 'shared', true);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123', true, false]));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', 'hola123', true, false]));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+    })
+    it('should reuse nested equal effect before distinct effect', function() {
+      var context = new G;
+      var subject = new G;
+
+      subject.watch('shared', function(value) {
+        G.set(subject, 'sharedeffect', !value)
+      })
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'shared', true);
+        G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, false, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true, false, 'hola123']));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+    })
+  })
+
+  describe('Transacting', function() {
+    it('should write and update log of top-level operations', function() {
+      var context = {
+        'context': 'context',
+        key: 'lol'
+      };
+      var subject = {
+        'subject': 'subject'
+      };
+
+      // Watcher causes two side effects 
+      watcher = function(value) {
+        G.set(subject, 'mutated', value + 123);
+        G.set(context, 'asis', value);
+      };
+
+      G.watch(context, 'key', watcher);
+      G.watch(context, 'title', watcher);
+
+      
+      var transaction = G.transact() // same as `G.$caller = new G`
+
+
+      G.set(context, 'key', 'test')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test123', 'test']));
+
+      G.set(context, 'key', 'protest')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest']));
+
+      G.set(context, 'zozo', 'kiki')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'protest', 'protest123', 'protest', 'kiki']));
+
+      G.set(context, 'key', 'grotesque')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki']));
+
+      G.set(context, 'xaxa', 'kek')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kiki', 'kek']));
+
+      G.set(context, 'zozo', 'buba')
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'buba', 'kek']));
+
+      var zozo = context.zozo
+      G.recall(context.zozo)
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek']));
+
+      G.call(zozo)
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'grotesque', 'grotesque123', 'grotesque', 'kek', 'buba']));
+      
+      var key = context.key
+      G.recall(context.key)
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba']));
+      
+      G.call(key)
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      
+
+      G.abort(transaction)
+      expect(context.xaxa).to.eql(undefined)
+      expect(context.zozo).to.eql(undefined)
+      expect(context.key).to.eql(undefined)
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+      
+      G.$debug(transaction);
+
+      G.commit(transaction)
+      expect(context.xaxa).to.eql(transaction.$after)
+      expect(context.zozo).to.eql(transaction.$after.$after)
+      expect(context.key).to.eql(G.formatted(transaction.$after.$after.$after))
+      expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
+
+    })
+  });
 
 
 

@@ -105,7 +105,7 @@ G.prototype.call = function(verb) {
     }  
     if (other) {                                        // If history holds a value with same meta
       if (G.equals(other, result))                      //   If it's equal to given value
-        return G.record.rewrite(other);                 //     Rebase that value into record
+        return G.record.reuse(other);                   //     Rebase that value into record
       result = G.update(result, old, other);            //   then replace it in stack
     } else {        
       result = verb(result, old);                       // invoke stack-manipulation method
@@ -124,11 +124,13 @@ G.prototype.call = function(verb) {
     G.record.pop();                                     // Remove operation from the caller stack
   }
 
-  if (value.$multiple && old && old.$iterators) {
-    G.record.push(value);                               // Put operation onto the caller stack
-    G.Array.iterate(value, old.$iterators)
-    G.record.pop()
-    result = value;
+  if (value.$multiple) {                                // If array had iterators applied
+    if (old && old.$iterators) {
+      G.record.push(value);                             // Put operation onto the caller stack
+      G.Array.iterate(value, old.$iterators)            // Invoke iterator with the given value
+      G.record.pop()                                    // Remove value from stack
+    }
+    result = value;                                     // Use value instead of array head for callbacks
   }
 
   if (result !== old)
@@ -178,6 +180,7 @@ G.prototype.uncall = function() {
     if (value == current)                           // And value is current
       if (!value.$succeeding)                       // And it's on top of history
         G.call(value.$preceeding);                  // Apply previous version of a value
+    var to = G.last(value)                          // Find deepest last within value
   } else {
     if (value.$multiple) {                          // 3. Removing value from group 
       if (value == current) {
@@ -193,12 +196,12 @@ G.prototype.uncall = function() {
     }
     var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
-    var to = G.effects(value, G.revoke)             // Recurse to recall side effects, returns last one
+    var to = G.effects(value, G.revoke) || value    // Recurse to recall side effects, remember last
     if (!recalling) G.$recaller = null;             // Reset recursion pointer
   }
   if (!recalling) 
-    G.unlink(from, to || value, true)               // Patch graph and detach the tree at top
-  return to || value;
+    G.unlink(from, to, true)                        // Patch graph and detach the tree at top
+  return value;
 }
 
 // Recall and remove from history
@@ -222,6 +225,3 @@ G.equals = function(value, old) {
 //         value.$caller == old.$caller && 
          G._compareMeta(value.$meta, old.$meta);
 }
-
-// References current operation 
-G.$caller = G.$called = null;
