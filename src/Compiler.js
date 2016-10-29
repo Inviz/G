@@ -113,10 +113,14 @@ G.compile.method = function(fn, scope) {
   var digit
   body = body.replace(/this/g, scope) //fixme better regexp
 
-      // decrement argument counter if any
+      // increment argument counter if any
       .replace(/(Array.prototype.slice.call\(arguments,)\s*(\d+)/, function(match, prefix, d, i) {
         digit = d
         index = i
+        return prefix + (parseInt(d) + 1);
+      })
+      // increment argument counter if any
+      .replace(/(arity\s*=\s*)(\d+)/, function(match, prefix, d) {
         return prefix + (parseInt(d) + 1);
       })
 

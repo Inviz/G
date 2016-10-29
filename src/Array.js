@@ -153,11 +153,6 @@ G.Array.rebase = function(old, value) {
 G.Array.register = function(left, right, parent) {
   left.$next = right;
   right.$previous = left;
-  if (left.$iterators)
-    G.Array.iterate(right, left.$iterators)
-  else if (right.$iterators) {
-    G.Array.iterate(left, right.$iterators)
-  }
   
   if (!left.$multiple)
     left.$multiple = true;

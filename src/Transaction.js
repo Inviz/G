@@ -42,7 +42,9 @@ G.format = function(value, old) {
   }
 },
 
-// Process side effects 
+// Process all side effects for the value. 
+// When value is applied initially, it invokes all observers
+// When value is re-applied, it attempts to reuse effects
 G.affect = function(value, old, observers) {
   if (observers == null) {                          // migrate automatically
     var watchers = value.$context.$watchers;        // Watchers configuration for whole context
@@ -50,7 +52,6 @@ G.affect = function(value, old, observers) {
       var group = watchers[value.$key]
 
     var observers = value.$context.$observers;
-    var iterators = value.$context[value.$key].$iterators;
     var present, removed
 
     // Reapply 
@@ -58,7 +59,6 @@ G.affect = function(value, old, observers) {
       if (after.$caller !== value) continue;
       var cause = after.$cause;
       if (observers && observers.indexOf(cause) > -1
-      ||  iterators && iterators.indexOf(cause) > -1
       ||  group     &&     group.indexOf(cause) > -1) {
         after.call('restore');
         (present || (present = [])).push(cause)
@@ -81,12 +81,6 @@ G.affect = function(value, old, observers) {
     for (var i = 0; i < observers.length; i++)
       if (!present || present.indexOf(observers[i]) == -1)
         G.callback(value, observers[i], old, true);
-  if (iterators)
-    for (var i = 0; i < iterators.length; i++)
-      if (!present || present.indexOf(iterators[i]) == -1)
-        if (!value.$iterators || value.$iterators.indexOf(iterators[i]) == -1)
-          G.callback(value, iterators[i], old, true);
-
   return value;
 }
 
@@ -190,8 +184,8 @@ G.link = function(old, value) {
 // Remove all operations from the graph in span between `from` and `to`
 G.unlink = function(from, to, hard) {
   if (from.$before) {                           // If there're operation before
-    //if (from.$before.$after == to)
-    G.link(from.$before, to.$after);            //   Connect previous & next operations
+    if (from.$before.$after == from)
+      G.link(from.$before, to.$after);            //   Connect previous & next operations
   } else if (to.$after) {                       // Or if it was first,
     to.$after.$before = undefined               //   Shift history 
   }    

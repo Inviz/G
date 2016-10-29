@@ -21,16 +21,19 @@ var G = function(context, key, value) {
   if (key != null) {
     this.$key = key;                                  // Store key
     if (context != null)         
-      this.$context = context;                       // Store context, object that holds operations
-    if (value)                                       // If value is given to constructor, it's object
+      this.$context = context;                        // Store context, object that holds operations
+    if (value)                                        // If value is given to constructor, it's object
       this.$source = value;                           // Keep reference to original object to reify later
   } else if (context && this instanceof G) {
     G.observe(this, context);
   }
 
-  if (arguments.length > 3)                           // Use/merge extra arguments as meta
-    G._setMeta(this, Array.prototype.slice.call(arguments, 3));
-  if (!(this instanceof G)) {                           // Enrich unboxed primitive with call/recall methods
+  if (arguments.length > 3) {                         // Use/merge extra arguments as meta
+    for (var args = [], i = 0; i < arguments.length - 3; i++)
+      args[i] = arguments[i + 3];
+    G._setMeta(this, args);
+  }
+  if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
     this.call = G.prototype.call
     this.recall = G.prototype.recall
   }
@@ -65,8 +68,12 @@ G.create = function(context, key, value) {
   default:
     var result = G.extend(value, context, key)        // 4. Operation from primitive
   }
-  if (arguments.length > 3)                           // Use/merge extra arguments as meta
-    G._setMeta(result, Array.prototype.slice.call(arguments, 3));
+  
+  if (arguments.length > 3) {                         // Use/merge extra arguments as meta
+    for (var args = [], i = 0; i < arguments.length - 3; i++)
+      args[i] = arguments[i + 3];
+    G._setMeta(result, args);
+  }
   return result
 }
 
@@ -79,9 +86,7 @@ G.prototype.call = function(verb) {
   if (!this) return;
   if (typeof verb == 'string')
     verb = G.verbs[verb];
-  var context = this.$context
-  var key     = this.$key;
-  var old     = context[key];
+  var old     = this.$context[this.$key];
   var value   = G.format(this, old);                    // Transform value 
   var result  = value;
 
@@ -90,7 +95,8 @@ G.prototype.call = function(verb) {
     value = G.reify.reuse(result, value)                // Use it instead of value, if possible
   } else if (value.$multiple) {  
     result = G.Array.call(value, old)  
-  }  
+  }
+
   if (verb && old != null && old.$key) {                // If there was another value by that key
     if (verb.multiple) {                                // If verb allows multiple values by same meta
       value.$multiple = true                            //   Set flag on the value
@@ -106,26 +112,39 @@ G.prototype.call = function(verb) {
       if (result === false)                             // No side effect will be observed
         return G.record.continue(value, old);  
     }
-  }  
-  if (old !== result) {  
-    context[key] = result;                              // Actually change value 
-    G.record.causation(value);                          // Reference to caller and invoking callback
-    G.record.sequence(value, old);                      // Place operation into dependency graph 
+  }
+
+  G.record.causation(value);                            // Reference to caller and invoking callback
+  G.record.sequence(value, old);                        // Place operation into dependency graph 
+    
+  if (result !== old) {                                 // If value is the new head
+    this.$context[this.$key] = result;                  // Save value in its context
     G.record.push(result, old);                         // Put operation onto the caller stack
     G.affect(result, old);                              // Apply side effects and invoke observers 
     G.record.pop();                                     // Remove operation from the caller stack
   }
-  G.notify(context, key, result, old)                 // Notify 
+
+  if (value.$multiple && old && old.$iterators) {
+    G.record.push(value);                               // Put operation onto the caller stack
+    G.Array.iterate(value, old.$iterators)
+    G.record.pop()
+    result = value;
+  }
+
+  if (result !== old)
+    G.notify(this.$context, this.$key, result, old)     // Trigger user callbacks 
     
   return value;
 };
 
 G.prototype.recall = function() {
-  if (!this) return;
   var current = this.$context[this.$key]
   if (!current) return;
-  if (arguments.length > 0)
-    var meta = Array.prototype.slice.call(arguments, 0);
+  if (!this) return;
+  var arity = 0;
+  if (arguments.length > arity)                         // Use/merge extra arguments as meta
+    for (var meta = [], i = 0; i < arguments.length - arity; i++)
+      meta[i] = arguments[i + arity];
 
   for (var old = current; old = G.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;

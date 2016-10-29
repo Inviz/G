@@ -16,7 +16,6 @@ describe('G.watch', function() {
     expect(context.key.valueOf()).to.eql('test');
     expect(ValueStack(context.key)).to.eql([context.key]);
 
-
     return expect(StateGraph(context.key)).to.eql([context.key]);
   });
   it('should retransform value on redo', function() {
