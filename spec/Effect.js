@@ -572,9 +572,9 @@ describe ('Effects', function() {
 
       // Callback causes two side effects 
       context.watch('key', function(value) {
-        G.set(subject, 'shared', true);
+        subject.set('shared', true);
         if (value == 'test')
-          G.set(subject, 'mutated', value + 123);
+          subject.set('mutated', value + 123);
       });
 
       var xixi = context.set('key', 'test', 'xixi')
@@ -586,7 +586,6 @@ describe ('Effects', function() {
       var shared = subject.shared;
       var mutated = subject.mutated;
 
-      debugger
       var zozo = context.set('key', 'hola', 'zozo');
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true]));
 
@@ -597,9 +596,49 @@ describe ('Effects', function() {
 
       G.uncall(zozo)
       expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
-      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', 'hola123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola']));
+
+      G.call(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true]));
     })
-    it('should reuse nested equal effect', function() {
+    it('should reuse effect after conditional value', function() {
+      var context = new G;
+      var subject = new G;
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        if (value == 'test')
+          subject.set('mutated', value + 123);
+        subject.set('shared', true);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123', true]));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true]));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+
+      expect(subject.shared).to.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+
+      G.uncall(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123', true]));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola']));
+
+      G.call(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true]));
+    })
+    it('should reuse nested effect', function() {
       var context = new G;
       var subject = new G;
 
@@ -630,7 +669,7 @@ describe ('Effects', function() {
       expect(subject.shared).to.eql(shared)
       expect(subject.mutated).to.not.eql(mutated)
     })
-    it('should reuse nested equal effect after distinct effect', function() {
+    it('should reuse nested effect after distinct effect', function() {
       var context = new G;
       var subject = new G;
 
@@ -661,7 +700,7 @@ describe ('Effects', function() {
       expect(subject.shared).to.eql(shared)
       expect(subject.mutated).to.not.eql(mutated)
     })
-    it('should reuse nested equal effect before distinct effect', function() {
+    it('should reuse nested effect before distinct effect', function() {
       var context = new G;
       var subject = new G;
 

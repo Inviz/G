@@ -28,9 +28,9 @@ G.Array.prototype.call = function() {
 
   // if element had parent before, attempt to hook it in place
     // for each node in the remembered parent
-  for (var item = first; item; item = item.$next) {
     // check if it matches anything before op
-    for (var before = this; before = before.$leading;) {
+  for (var before = this; before = before.$leading;) {
+    for (var item = first; item; item = item.$next) {
       if (before == this.$parent)
         break;
       if (before == item) {
@@ -212,11 +212,32 @@ G.Array.unlink = function(op, to) {
   return to;
 }
 
+G.Array.findIterated = function(old) {
+  if (G.$cause == old.$cause && G.$cause && G.$caller.$multiple) {
+    var prev = G.$caller.$previous;
+    for (var after = prev; after = after.$after;) {
+      if (after.$cause == G.$cause && after.$caller == prev) {
+        return after;
+      }
+    }
+  }
+}
 G.Array.multiple = true
 G.Array.verbs = {
 
   // Add value on top of the stack 
   push: function(value, old) {
+    // if push() was inside iterator
+    var after = G.Array.findIterated(old);
+    if (after) {
+      G.Array.link(value, after.$next)
+      G.Array.link(after, value)
+      G.Array.register(after, value, after.$parent)
+      if (after == old)
+        return value
+      else
+        return old;
+    }
     G.Array.link(old, value)
     G.Array.register(old, value, old.$parent)
     return value;
@@ -237,6 +258,19 @@ G.Array.verbs = {
 
   // Add value to the bottom of the stack 
   unshift: function(value, old) {
+    var after = G.Array.findIterated(old);
+    if (after) {
+      if (after.$previous)
+        G.Array.link(after.$previous, value)
+
+      G.Array.link(value, after)
+      G.Array.register(value, after, after.$parent)
+      if (after == old)
+        return old
+      else
+        return value;
+    }
+
     for (var first = old; first.$previous;)
       first = first.$previous;
     G.Array.link(value, first);

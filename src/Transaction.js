@@ -45,26 +45,25 @@ G.format = function(value, old) {
 // Process all side effects for the value. 
 // When value is applied initially, it invokes all observers
 // When value is re-applied, it attempts to reuse effects
-G.affect = function(value, old, observers) {
-  if (observers == null) {                          // migrate automatically
-    var watchers = value.$context.$watchers;        // Watchers configuration for whole context
-    if (watchers)                                   // is stored in sub-object
-      var group = watchers[value.$key]
+G.affect = function(value, old) {
+  var watchers = value.$context.$watchers;        // Watchers configuration for whole context
+  if (watchers)                                   // is stored in sub-object
+    var group = watchers[value.$key]
 
-    var observers = value.$context.$observers;
-    var present, removed
+  var observers = value.$context.$observers;
+  var iterators = value.$iterators;
+  var present, removed
 
-    // Reapply 
-    for (var after = value; after = after.$after;) {
-      if (after.$caller !== value) continue;
-      var cause = after.$cause;
-      if (observers && observers.indexOf(cause) > -1
-      ||  group     &&     group.indexOf(cause) > -1) {
-        after.call('restore');
-        (present || (present = [])).push(cause)
-      } else {
-        (removed || (removed = [])).push(after)
-      }
+  // Reapply 
+  for (var after = value; after = after.$after;) {
+    if (after.$caller !== value) continue;
+    var cause = after.$cause;
+    if (observers && observers.indexOf(cause) > -1
+    ||  group     &&     group.indexOf(cause) > -1) {
+      after.call('restore');
+      (present || (present = [])).push(cause)
+    } else if (!iterators || iterators.indexOf(after) == -1) {
+      (removed || (removed = [])).push(after)
     }
   }
   if (removed)
@@ -99,10 +98,13 @@ G.record.sequence = function(value, old) {
   if (old && old.$after && old.$after !== value)      // 1. Updating effect graph:
     if (!old.$multiple && !value.$multiple)
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
-  if (old && G.$caller && old.$caller == G.$caller) { //    If new value has the same caller as old
+  if (old && old.$caller === G.$caller && !value.$multiple) { //    If new value has the same caller as old
+    if (old.$multiple)
+      debugger
     G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
     G.link(G.$called, G.unformatted(value), true)     //    Continue writing at parent's point
+    G.$called = value;
   } else if (G.$caller){
     G.link(G.head(G.$caller), G.unformatted(value))
   }
@@ -233,6 +235,15 @@ G.effects = function(value, callback, argument) {
     if (after.$caller === value)
       var last = callback(after, argument) || after;
   return last;
+}
+
+G.effects.caused = function(value, watcher) {
+  var effects
+  for (var next = value; next; next = next.$after) {
+    if (next.$cause == watcher && next.$caller == value)
+      (effects || (effects = [])).push(next)
+  }
+  return effects
 }
 
 G.last = function(value) {

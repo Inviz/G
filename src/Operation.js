@@ -162,7 +162,7 @@ G.prototype.recall = function() {
 };
 
 // Undo operation. Reverts value and its effects to previous versions. 
-G.prototype.uncall = function() {
+G.prototype.uncall = function(soft) {
   if (this.$target) {                               // 1. Unmerging object
     this.$target.unobserve(this)
     if (this.$target.$chain.length == 0)            // todo check no extra keys
@@ -199,7 +199,7 @@ G.prototype.uncall = function() {
     var to = G.effects(value, G.revoke) || value    // Recurse to recall side effects, remember last
     if (!recalling) G.$recaller = null;             // Reset recursion pointer
   }
-  if (!recalling) 
+  if (!recalling && !soft) 
     G.unlink(from, to, true)                        // Patch graph and detach the tree at top
   return value;
 }

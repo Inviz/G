@@ -14,8 +14,13 @@ G.prototype.clean = function() {
   var result = {}
   var keys = Object.keys(this);
   for (var i = 0, key; key = keys[i++];)
-    if (key.charAt(0) != '$')
-      result[key] = this[key]
+    if (key.charAt(0) != '$') {
+      if (this[key] && this[key] instanceof G) {
+        result[key] = this[key].clean()
+      } else {
+        result[key] = this[key]
+      }
+    }
   return result
 };
 

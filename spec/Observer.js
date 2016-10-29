@@ -373,32 +373,45 @@ describe('Observers', function() {
       })
       expect(Number(context.test)).to.eql(123)
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Doll']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
 
       doll.uncall()
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex']))
-      expect(Number(context.test)).to.eql(123) // accidently correct behavior
+      expect(context.test).to.eql() // bad behavior
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
 
       G.call(doll)
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Doll']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
 
       doll.set('name', 'Roll')
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Roll']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll', 123]))
 
       var ship = context.push('toys', {name: 'Starship'})
 
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll']))
+      expect(G.stringify(StateGraph(ship))).to.eql(G.stringify([{name: 'Starship'}, 'Starship', 123]))
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Roll', 'Starship']))
       
       doll.set('name', 'Ball')
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Ball', 'Starship']))
       
       ship.uncall();
-
+      expect(ValueGroup(context.toys)).to.eql([trex, doll])
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Ball']))
 
       ship.set('name', 'Boat')
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Ball']))
 
       ship.call()
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Ball', 'Boat']))
 
       doll.set('name', 'Mall')
@@ -408,6 +421,67 @@ describe('Observers', function() {
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Mall', 'Boaty McBoatFace']))
 
     })
+
+
+    it('should track global array changes with unshift', function() {
+      var context = new G;
+      var trex = context.push('toys', {name: 'T-Rex', price: 195.99});
+      var doll = context.push('toys', {name: 'Doll'});
+      var loop = context.toys.forEach(function(toy) {
+        context.unshift('names', toy.name, toy) // values will stack because of unique toy meta
+        context.set('test', 123)            // values will overwrite each other (todo: counter)
+      })
+      expect(Number(context.test)).to.eql(123)
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Doll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
+
+      doll.uncall()
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex']))
+      expect(context.test).to.eql(undefined) // bad behavior
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
+
+      G.call(doll)
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Doll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 123]))
+
+      doll.set('name', 'Roll')
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Roll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll', 123]))
+
+      var ship = context.push('toys', {name: 'Starship'})
+
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll']))
+      expect(G.stringify(StateGraph(ship))).to.eql(G.stringify([{name: 'Starship'}, 'Starship', 123]))
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Starship', 'Roll', 'T-Rex']))
+      
+      doll.set('name', 'Ball')
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Starship', 'Ball', 'T-Rex']))
+      
+      ship.uncall();
+      expect(ValueGroup(context.toys)).to.eql([trex, doll])
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Ball', 'T-Rex']))
+
+      ship.set('name', 'Boat')
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Ball', 'T-Rex']))
+
+      ship.call()
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Boat', 'Ball', 'T-Rex']))
+
+      doll.set('name', 'Mall')
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Boat', 'Mall', 'T-Rex']))
+
+      ship.set('name', 'Boaty McBoatFace')
+      expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Boaty McBoatFace', 'Mall', 'T-Rex']))
+
+    })
+
     it('should track condition after property change', function() {
       var context = new G;
       var trex = context.push('toys', {name: 'T-Rex', price: 195.99});

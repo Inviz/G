@@ -41,8 +41,6 @@ G.$debug.prototype.concat = function(target, source, shift, separator, width) {
       target[i + shift] = new Array(width + 1).join(' ') + separator + source[i]
     else
       target[i + shift] += separator + source[i]
-
-    console.log(source.join('\n').replace(/<[^>]+>/g, ''))
   return target[shift].replace(/<[^>]+>/g, '').length + separator.length;
 }
 
