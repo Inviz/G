@@ -23,11 +23,10 @@ G.callback.property = function(value, watcher, old) {
   G.$cause = watcher;
   var transformed = watcher(value, old);
   if (old)
-    for (var after = old; after = after.$after;)
-      if (after.$caller == old && after.$cause == watcher)
-        if (!G.isUndone(after)){
-          debugger
-                  G.uncall(after, true)}
+    for (var after = old; after = after.$after;)                   // undo all conditional stuff
+      if (after.$caller == old && after.$cause == watcher)         // that did not fire this time
+        if (after.$multiple || !G.isUndone(after))
+          G.uncall(after, true)
     
   G.$cause = caused;
   if (transformed == null)
@@ -41,9 +40,9 @@ G.callback.property = function(value, watcher, old) {
 G.isUndone = function(value) {
   if (value.$context[value.$key] === value)
     return false;
-  if (value.$succeeding && value.$succeeding.$preceeding == value)
+  if (value.$succeeding && value.$succeeding.$preceeding === value)
     return false;
-  if (value.$preceeding && value.$preceeding.$succeeding == value)
+  if (value.$preceeding && value.$preceeding.$succeeding === value)
     return false;
   return true;
 }

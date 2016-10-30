@@ -114,9 +114,11 @@ G.prototype.call = function(verb) {
     }
   }
 
-  G.record.causation(value);                            // Reference to caller and invoking callback
-  G.record.sequence(value, old);                        // Place operation into dependency graph 
-    
+  if (verb !== false) { 
+    G.record.causation(value);                          // Reference to caller and invoking callback
+    G.record.sequence(value, old);                      // Place operation into dependency graph 
+  }
+
   if (result !== old) {                                 // If value is the new head
     this.$context[this.$key] = result;                  // Save value in its context
     G.record.push(result, old);                         // Put operation onto the caller stack
@@ -177,9 +179,8 @@ G.prototype.uncall = function(soft) {
 
   var prec = value.$preceeding;
   if (prec && prec.$succeeding == value) {          // If stack holds values before given
-    if (value == current)                           // And value is current
-      if (!value.$succeeding)                       // And it's on top of history
-        G.call(value.$preceeding);                  // Apply previous version of a value
+    if (value == current && !value.$succeeding)     // And value is current and on top of history
+      G.call(value.$preceeding, soft ? false : null)// Apply previous version of a value
     var to = G.last(value)                          // Find deepest last within value
   } else {
     if (value.$multiple) {                          // 3. Removing value from group 

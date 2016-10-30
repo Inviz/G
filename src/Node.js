@@ -32,13 +32,11 @@ G.Node = function(tag, attributes) {
           var self = new G.Node(tag, attributes)
         break
       case 'object':
-        if (tag.tagName) {
+        if (tag.nodeType) {
           if (tag.$operation) {
             var self = tag.$operation
           } else {
-            var self = new G.Node(tag.tagName);    
-            tag.$operation = self;
-            self.$node = tag;
+            var self = G.Node.fromElement(tag)
           }
         }
     }
@@ -55,28 +53,93 @@ G.Node = function(tag, attributes) {
 
   return self
 }
+
+G.Node.fromElement = function(element, mapping) {
+  if (arguments.length == 1)
+    mapping = G.Node.mapping;
+  switch (element.nodeType) {
+    case 1:
+      var tag = element.tagName && element.tagName.toLowerCase();
+      var self = G.Node(mapping[tag] || tag);
+      break;
+    case 3:
+      var self = new G.Node;
+      self.text = element.textContent;
+      break;
+    case 8:
+      break;
+    case 11:
+      var self = new G.Node;
+  }
+  self.$node = element;
+
+  element.$operation = self;
+  for (var i = 0; i < element.childNodes.length; i++) {
+    var child = element.childNodes[i];
+    // If found a comment in children
+    if (child.nodeType == 8) {
+      var tag = child.nodeValue.trim().split(' ')[0];
+      for (var j = i; j < element.childNodes.length; j++) {
+        if (element.childNodes[j].nodeType == 8) {
+          // If found closing comment
+          if (element.childNodes[j].nodeValue.trim().substring(0, tag.length + 1) == '/' + tag) {
+            var rule = G.Node(tag)
+            G.Node.append(self, rule)
+            while (++i < j)
+              G.Node.append(rule, G.Node.fromElement(element.childNodes[i], mapping))
+          }
+        }
+      }
+    } else {
+      var node = G.Node.fromElement(child, mapping);
+      G.Node.append(self, node)
+    }
+  }
+  return self;
+}
 G.Node.prototype = new G.Array;
 
 G.Node.extend           = G.Node.call;
-G.Node.prototype.call   = G.Array.prototype.call;
+G.Node.prototype.call   = function() {
+  G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+  G.Node.schedule(this, this.$parent, '$attached', '$attaching')
+  var called = G.Array.call(this);
+  var transaction = G.Node.$transaction
+  if (transaction) {
+    (transaction.$nodes || (transaction.$nodes = [])).push(this)
+  } else {
+    if (this.$node)
+      G.Node.place(this)
+    else
+      G.children(this, G.Node.place)
+  }
+  return called
+}
 G.Node.prototype.recall = function() {
-  if (this.$node)
-    G.Node.detach(this)
-  else
-    G.children(this, G.Node.detach)
+  G.Node.detach(this)
   return G.Array.recall(this)
 };
 
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
-  if (!this.$node)
+  if (!this.$node || !(value || old).$context)
     return;
+
   var transaction = G.Node.$transaction
-  if (transaction) {
-    (transaction.$mutations || (transaction.$mutations = [])).push(value || old)
+  if (transaction && arguments.length > 2) {
+    if (value) {
+      G.Node.schedule(value, this, '$mutated', '$mutating')
+      if (old)
+        G.Node.unschedule(old, this, '$mutated', '$mutating')
+    } else {
+      G.Node.schedule(old, this, '$mutated', '$mutating')
+    }
     return
   } else {
     this.updateAttribute(value || old)
+    if (transaction && transaction.$mutations) {
+      var index = transaction.$mutations.indexOf(op)
+    }
   }
 }
 
@@ -184,19 +247,45 @@ G.Node.prototype.updateAttribute = function(value) {
 }
 
 G.Node.prototype.render = function(deep) {
+  if (G.Node.isScheduled(this, this.$parent, '$detached'))
+    return G.Node.detach(this, true)
+  if (this.$attached) {
+    for (var i = 0; i < this.$attached.length; i++)
+      G.Node.place(this.$attached[i], true)
+    this.$attached = undefined;
+  }
+  if (this.$detached) {
+    for (var i = 0; i < this.$detached.length; i++)
+      G.Node.detach(this.$detached[i], true)
+    this.$detached = undefined;
+  }
+  
   if (!this.$node) {
     if (this.tag) {
       this.$node = document.createElement(this.tag);
       this.$node.$operation = this;
-      this.each(this.onChange);
+      this.each(this.onChange, true);
     } else if (this.text) {
       this.$node = document.createTextNode(this.text);
       this.$node.$operation = this;
     }
+  } else if (this.rule) { // detach node used to initialize rule
+    G.Node.detach(this);
+    this.$node = undefined;
   }
+
+  if (this.$mutated) {
+    var mutations = G.Node.$transaction.$mutations;
+    for (var i = this.$mutated.length; i--;) {
+      var value = this.$mutated[i];
+      this.updateAttribute(value);
+      G.Node.unschedule(value, this, '$mutated', '$mutating')
+    }
+  }
+
   if (deep !== false) {
     G.Node.descend(this);
-    this.commit(true)
+    //this.commit(true)
   }
   return this.$node
 }
@@ -219,6 +308,21 @@ G.Node.prototype.commit = function(soft) {
             attribute.$context.updateAttribute(attribute);
         }
       }
+      if (transaction.$detaching) {
+        for (var i = 0; transaction.$detaching[i]; i++) {
+          var node = transaction.$detaching[i];
+          G.Node.detach(node, true)
+        }
+      }
+      if (transaction.$attaching) {
+        for (var i = 0; transaction.$attaching[i]; i++) {
+          var node = transaction.$attaching[i];
+          node.render()
+        }
+      }
+      transaction.$detaching = 
+      transaction.$mutations = 
+      transaction.$attaching = undefined
       // pop the stack
       if (!soft)
         G.Node.$transaction = transaction.$transaction;
@@ -251,6 +355,11 @@ G.Node.descend = function(node) {
 // Place DOM node in relation to its G siblings
 // This method applies changes in G node to DOM 
 G.Node.place = function(node) {
+  G.Node.unschedule(node, node.$parent, '$detached', '$detaching')
+  G.Node.unschedule(node, node.$parent, '$attached', '$attaching')
+
+  if (!node.$node) return;
+  
   for (var parent = node; parent = parent.$parent;)      // find closest parent that is in dom
     if (parent.$node)
       break;
@@ -259,24 +368,75 @@ G.Node.place = function(node) {
       var anchor = parent.$node.firstChild;
       parent.$node.insertBefore(node.$node, anchor)
       return
-    } else if (prev == node 
-           ||  prev.$node && prev.$parent == parent
-           ||  prev.$parent == parent) {
-      if (node.$node.previousSibling != prev.$node 
-      ||  node.$node.parentNode != parent.$node) {
-        var anchor = prev.$node && prev.$node.nextSibling;
-        parent.$node.insertBefore(node.$node, anchor);
+    } else if (prev.$node) {
+      if (prev.$node.parentNode == parent.$node) {
+        if (node.$node.previousSibling != prev.$node) {
+          var anchor = prev.$node.nextSibling;
+          // avoid extra dom mutations when splicing children in transction
+          while (anchor && 
+              G.Node.isScheduled(anchor, anchor.$parent, '$detached')) {
+            anchor = anchor.nextSibling
+          }
+          parent.$node.insertBefore(node.$node, anchor);
+        }
+        return
       }
-      return
     }
   }
 }
 
 // Remove DOM node from its parent
-G.Node.detach = function(node) {
-  if (node.$node)
+G.Node.detach = function(node, force) {
+  var transaction = G.Node.$transaction
+  if (transaction && !force) {
+    G.Node.unschedule(node, node.$parent, '$attached', '$attaching')
+    G.Node.schedule(node, node.$parent, '$detached', '$detaching')
+    return;
+  }
+  if (force)
+    G.Node.unschedule(node, node.$parent, '$detached', '$detaching')
+  if (node.$node) {
     node.$node.parentNode.removeChild(node.$node)
+  } else 
+    G.children(node, G.Node.detach, force)
 }
+
+G.Node.isScheduled = function(node, target, local) {
+  var array = target && target[local];
+  if (array && array.indexOf(node) > -1)
+    return true
+}
+G.Node.schedule = function(node, target, local, global) {
+  var array = target[local];
+  if (!array)
+    array = target[local] = [];
+  if (array.indexOf(node) == -1) {
+    array.push(node)
+    var transaction = G.Node.$transaction
+    if (transaction) {
+      var mutations = transaction[global];
+      if (!mutations)
+        mutations = transaction[global] = [];
+      mutations.push(node)
+    }
+  }
+}
+G.Node.unschedule = function(node, target, local, global) {
+  var array = target && target[local];
+  if (array) {
+    var index = array.indexOf(node);
+    if (index > -1) {
+      array.splice(index, 1)
+      var transaction = G.Node.$transaction
+      if (transaction && transaction[global]) {
+        var index = transaction[global].indexOf(node);
+        if (index > -1)
+          transaction[global].splice(index, 1)
+      }
+    }
+  }
+}
+
 
 G.Directive = function(attributes) {
   G.Node.extend(this, null, attributes);
@@ -296,3 +456,8 @@ G.Else = function(attributes) {
   G.Directive.apply(this, arguments);
 }
 G.Else.prototype = new G.Directive 
+
+G.Node.mapping = {
+  'if': G.If,
+  'else': G.Else
+}

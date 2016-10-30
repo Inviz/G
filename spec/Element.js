@@ -332,5 +332,133 @@ describe('G.Node', function() {
     '<p>Test</p></div>')
   })
 
-  it ('shoul')
+  it ('should initialize tree from DOM node', function() {
+    var html = "<div><h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- /if --> <h2>For real</h2></div>"
+    var fragment = document.createRange().createContextualFragment(html);
+
+    var tree = G.Node(fragment);
+
+    expect(G.stringify(TagTree(tree))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['h1', {}, 
+          ' Hello guys'],
+        ['if', {}, 
+          'This ', 
+          ['p', {},
+            'is'],
+          ' wonderful'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+  })
+
+
+  it ('should unwrap tree from DOM node', function() {
+    var html = "<div><h1> Hello guys</h1><if a=b>This <p>is</p> wonderful!!</if> <if b=c>It <p>aint</p> cool</if> <h2>For real</h2></div>"
+    var fragment = document.createRange().createContextualFragment(html);
+
+    var tree = G.Node(fragment);
+
+    expect(G.stringify(TagTree(tree))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['h1', {}, 
+          ' Hello guys'],
+        ['if', {}, 
+          'This ', 
+          ['p', {},
+            'is'],
+          ' wonderful!!'],
+        ' ',
+        ['if', {}, 
+          'It ', 
+          ['p', {},
+            'aint'],
+          ' cool'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+
+    tree.render()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    var IF = tree.$first.$first.$next;
+    G.Node.recall(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.call(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+
+    tree.transact()   // dont update dom
+
+    G.Node.recall(IF) // dom not updated
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    tree.render()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.call(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    tree.render()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.recall(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    IF.render()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.call(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    IF.render()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.recall(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    tree.commit(true);
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.call(IF)
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
+
+    tree.commit(true);
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
+
+    G.Node.recall(IF)
+    G.Node.call(IF)
+
+    expect(tree.$attaching).to.eql([IF])
+    expect(tree.$detaching).to.eql([])
+
+    G.Node.call(IF)
+    expect(tree.$attaching).to.eql([IF])
+    expect(tree.$detaching).to.eql([])
+
+    G.Node.recall(IF)
+    expect(tree.$attaching).to.eql([])
+    expect(tree.$detaching).to.eql([IF])
+    
+    G.Node.recall(IF)
+    expect(tree.$attaching).to.eql([])
+    expect(tree.$detaching).to.eql([IF])
+
+  })
 })
+
+TagTree = function(node) {
+    var attrs = node.clean();
+    delete attrs.tag;
+    delete attrs.rule;
+    var result = [node.tag || node.rule, attrs]
+
+    for (var child = node.$first; child; child = child.$next)
+
+        result.push(child.tag || child.rule ? TagTree(child) : child.text)
+    return result 
+
+}

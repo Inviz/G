@@ -427,8 +427,6 @@ describe ('Effects', function() {
     });
   })
   describe('Updating', function() {
-
-
     it('should propagate value through callbacks and rebuild the tree', function() {
       var A = new G;
 
@@ -532,7 +530,7 @@ describe ('Effects', function() {
       return;
     })
   })
-
+  
 
   describe ('Reusing', function() {
     it('should reuse effect', function() {
@@ -566,6 +564,123 @@ describe ('Effects', function() {
       expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
       expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', 'hola123']));
     })
+
+    it('should not reuse stacked effect', function() {
+      var context = new G;
+      var subject = new G;
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.set(subject, 'shared', true, value.$meta);
+        G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true, 'hola123']));
+
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+
+      G.uncall(zozo)
+      expect(subject.shared.$meta).to.eql(['xixi'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+
+      G.call(zozo)
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      
+      // remove from history, no observable changes
+      G.revoke(xixi)
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+
+      // but undoing zozo now has nothing to go back to
+      G.uncall(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(subject.shared).to.eql(undefined)
+      expect(subject.mutated).to.eql(undefined)
+    })
+
+
+    it('should not reuse stacked array effect', function() {
+      var context = new G;
+      var subject = new G;
+
+      // Callback causes two side effects 
+      context.watch('key', function(value) {
+        G.push(subject, 'shared', true, value.$meta);
+        G.set(subject, 'mutated', value + 123);
+      });
+
+      var xixi = context.set('key', 'test', 'xixi')
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', true, 'test123']));
+      
+      expect(Boolean(subject.shared)).to.eql(true)
+      expect(String(subject.mutated)).to.eql('test123')
+
+      var shared = subject.shared;
+      var mutated = subject.mutated;
+
+      var zozo = context.set('key', 'hola', 'zozo');
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(ValueGroup(subject.shared))).to.eql(G.stringify([true]));
+
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+
+      G.uncall(zozo)
+      expect(subject.shared.$meta).to.eql(['xixi'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(G.stringify(ValueGroup(subject.shared))).to.eql(G.stringify([true]));
+
+      G.call(zozo)
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(G.stringify(ValueGroup(subject.shared))).to.eql(G.stringify([true]));
+      
+      // remove from history, no observable changes
+      G.revoke(xixi)
+      expect(subject.shared).to.not.eql(shared)
+      expect(subject.mutated).to.not.eql(mutated)
+      expect(subject.shared.$meta).to.eql(['zozo'])
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(G.stringify(ValueGroup(subject.shared))).to.eql(G.stringify([true]));
+
+      // but undoing zozo now has nothing to go back to
+      G.uncall(zozo)
+      expect(G.stringify(StateGraph(xixi))).to.eql(G.stringify(['test', true, 'test123']));
+      expect(G.stringify(StateGraph(zozo))).to.eql(G.stringify(['hola', true, 'hola123']));
+      expect(subject.shared).to.eql(undefined)
+      expect(subject.mutated).to.eql(undefined)
+    })
+
     it('should reuse effect before conditional value', function() {
       var context = new G;
       var subject = new G;
