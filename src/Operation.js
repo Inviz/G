@@ -45,11 +45,8 @@ G.create = function(context, key, value) {
   switch (typeof value) {
   case 'object':
     if (value.$getter) {                              // 1. Computed property value
-      if (value.$future) {
-        (value.$applications || (value.$applications = []))
-          .push(context, key)
-        return G.callback.future.use(context, key, value)
-      }
+      if (value.$future)
+        return G.Future.subscribe(context, key, value)
 
       var computed = G.compute(value);                //    Invoke computation callback
       if (computed == null)                           //    Proceed if value was computed
@@ -58,7 +55,7 @@ G.create = function(context, key, value) {
       var result = G.extend(computed, context, key);  //    Enrich primitive value
       result.$cause = value
       result.$meta = value.$meta                      //    Pick up watcher meta
-    } else if (!value.$key || value instanceof G) {   // 2. Wrapping plain object
+    } else if (!value.recall || value instanceof G) {   // 2. Wrapping plain object
       var result = new G(context, key, value)         //    Create new G wrapper
     } else {                                          // 3. Applying operation as value
       var primitive = value.valueOf()                 //    Get its primitive value
@@ -102,6 +99,8 @@ G.prototype.call = function(verb) {
     value = G.reify.reuse(result, value)                // Use it instead of value, if possible
   } else if (value.$multiple) {  
     result = G.Array.call(value, old)  
+  } else if (value.$future) {
+    
   }
 
   if (verb && old != null && old.$key) {                // If there was another value by that key
@@ -176,10 +175,13 @@ G.prototype.uncall = function(soft) {
     if (this.$target.$chain.length == 0)            // todo check no extra keys
       return G.uncall(this.$target); 
     return this;
+  } else if (this.$future) {
+    return G.Future.uncall(this)
   }
 
   var context = this.$context;
-  var current = context[this.$key]
+  if (context)
+    var current = context[this.$key]
   var value = G.formatted(this);                    // 2. Return to previous version
   var from = G.unformatted(value)                   // Get initial value before formatting
 
@@ -205,6 +207,13 @@ G.prototype.uncall = function(soft) {
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
     var to = G.effects(value, G.revoke) || value    // Recurse to recall side effects, remember last
     if (!recalling) G.$recaller = null;             // Reset recursion pointer
+  }
+  if (this.$computed) {
+    for (var i = 0; i < this.$computed.length; i++) {
+      if (this.$computed[i].$current)
+        G.uncall(this.$computed[i].$current);
+    }
+    this.$computed = undefined;
   }
   if (!recalling && !soft) 
     G.unlink(from, to, true)                        // Patch graph and detach the tree at top

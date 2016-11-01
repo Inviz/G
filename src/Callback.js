@@ -104,9 +104,10 @@ G.callback.proxy = function(value, watcher) {
 }
 
 G.callback.getter = function(value, watcher) {
-  var current = watcher.$context[watcher.$key];
   watcher.$computing = true;
-  var computed = G.compute(watcher, value, current);                //    Invoke computation callback
+  var current = watcher.$context[watcher.$key];
+  if (G.Future.prepare(watcher, value))
+    var computed = G.Future.compute(watcher);                //    Invoke computation callback
   watcher.$computing = undefined;
 
   if (computed == null) {                           //    Proceed if value was computed
@@ -125,11 +126,10 @@ G.callback.getter = function(value, watcher) {
 }
 
 G.callback.future = function(value, watcher) {
-  if (value === undefined) {
-
-  }
-  var current = watcher.$context[watcher.$key];
-  var computed = G.compute(watcher, value, current); //    Invoke computation callback
+  watcher.$computing = true;
+  if (G.Future.prepare(watcher, value))
+    var computed = G.Future.compute(watcher);                //    Invoke computation callback
+  watcher.$computing = undefined;
   if (computed == null) {                            //    Proceed if value was computed
     watcher.$current = undefined
     return
@@ -158,17 +158,6 @@ G.callback.future = function(value, watcher) {
     return result;
   }
 }
-
-// Apply future to context
-G.callback.future.use = function(context, key, watcher) {
-  if (watcher.$current) {
-    G.record.push(watcher.$current)
-    G.$called = G.last(watcher.$current);
-    context.set(key, watcher.$current)
-    G.record.pop()
-  }
-}
-
 
 G.callback.transformation = function() {
 
@@ -217,31 +206,6 @@ G.analyze = function(fn) {
   return fn;
 }
 
-// Run computed property callback if all properties it uses are set
-G.compute = function(watcher, trigger, current) {
-  var getter = watcher.$getter;
-  var args = getter.$arguments;
-  if (!args)
-    args = G.analyze(getter).$arguments;
-  if (current === undefined)
-    current = watcher.$context[watcher.$key];
-
-  for (var i = 0; i < args.length; i++) {
-    var context = watcher.$context;
-    var bits = args[i]
-    for (var j = 0; j < bits.length; j++) {       
-      if (trigger && trigger.$key == bits[j]     
-        && trigger instanceof G) {               // When observer returned object
-        trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
-      }
-      if (!(context = context[bits[j]]))         // Proceed if argument has value
-        return;
-    }
-  }
-
-  if (!getter.$returns || current || !watcher.$getter.length)
-    return getter.call(watcher.$context, current);
-}
 
 G.callback.pass = function(value) {
   return value;

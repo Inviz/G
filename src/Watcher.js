@@ -88,6 +88,10 @@ G.prototype.unwatch.object = function(context, key, value) {
 
 // Add computed property
 G.prototype.define = function(key, callback) {
+  if (callback == null) {
+    callback = key;
+    key = undefined
+  }
   G.analyze(callback);
   if (!callback.$arguments.length) {                  // 1. Adding value formatter
     G._addWatcher(this, key, callback, '$formatters' );
@@ -99,7 +103,14 @@ G.prototype.define = function(key, callback) {
         return G.call(value, 'set');                  // Re-apply value 
       }
   } else {                                            
-    var observer = new G(this, key)                   // 2. Adding computed property
+    var observer = new G.Future                      // 2. Adding computed property
+    observer.$context = this;
+    if (key) {
+      observer.$key = key
+    } else {
+      observer.$future = true;
+      observer.valueOf = G._getFutureValue
+    }
     observer.$getter = callback
     if (arguments.length > 2)
       observer.$meta = Array.prototype.slice.call(arguments, 2);
@@ -112,6 +123,10 @@ G.prototype.define = function(key, callback) {
 
 // Remove computed property
 G.prototype.undefine = function(key, callback) {
+  if (callback == null) {
+    callback = key;
+    key = undefined
+  }
   if (!callback.$arguments.length) {
     G._removeWatcher(this, key, callback, '$formatters');
     if (this[key])

@@ -176,6 +176,12 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('super ural')
       expect(String(context.effect)).to.eql('super ural')
       expect(String(context.bouquet)).to.eql('super ural')
+
+      G.uncall(future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
     it ('should create a future value with transform', function() {
       var context = new G;
@@ -190,7 +196,6 @@ describe('Observers', function() {
 
       expect(future.valueOf()).to.eql('some value enriched')
       
-      debugger
       context.set('key', null)
 
       expect(future.valueOf()).to.eql(undefined)
@@ -233,6 +238,132 @@ describe('Observers', function() {
       expect(String(context.effect)).to.eql('super ural enriched')
       expect(String(context.bouquet)).to.eql('super ural enriched')
     })
+
+
+    it ('should create a future with computed value', function() {
+      var context = new G;
+      var future = context.define(function() {
+        return this.key + ' enriched'
+      })
+      
+      expect(future.valueOf()).to.eql(undefined)
+
+
+      context.set('key', 'some value')
+
+      expect(future.valueOf()).to.eql('some value enriched')
+      
+      context.set('key', null)
+
+      expect(future.valueOf()).to.eql(undefined)
+
+      context.set('effect', future);
+
+      expect(context.effect).to.eql(undefined)
+
+      
+      context.set('key', 'mega value')
+
+      expect(String(context.effect)).to.eql('mega value enriched')
+
+      context.set('key', 'mega drive')
+
+      expect(future.valueOf()).to.eql('mega drive enriched')
+      expect(String(context.effect)).to.eql('mega drive enriched')
+
+      context.set('key', null)
+      
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+
+      context.set('key', 'mega zeal')
+      expect(future.valueOf()).to.eql('mega zeal enriched')
+      expect(String(context.effect)).to.eql('mega zeal enriched')
+
+      context.set('bouquet', future);
+      expect(future.valueOf()).to.eql('mega zeal enriched')
+      expect(String(context.effect)).to.eql('mega zeal enriched')
+      expect(String(context.bouquet)).to.eql('mega zeal enriched')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'super ural')
+      expect(future.valueOf()).to.eql('super ural enriched')
+      expect(String(context.effect)).to.eql('super ural enriched')
+      expect(String(context.bouquet)).to.eql('super ural enriched')
+    })
+
+
+    it ('should create a future with composite value', function() {
+      var context = new G;
+      var future = context.define(function() {
+        return this.key + ' ' + this.suffix;
+      })
+      
+      expect(future.valueOf()).to.eql(undefined)
+
+
+      context.set('key', 'some value')
+      expect(future.valueOf()).to.eql(undefined)
+      context.set('suffix', 'enriched')
+
+      expect(future.valueOf()).to.eql('some value enriched')
+      
+      context.set('key', null)
+
+      expect(future.valueOf()).to.eql(undefined)
+
+      context.set('effect', future);
+
+      expect(context.effect).to.eql(undefined)
+
+      
+      context.set('key', 'mega value')
+
+      expect(String(context.effect)).to.eql('mega value enriched')
+
+      context.set('key', 'mega drive')
+
+      expect(future.valueOf()).to.eql('mega drive enriched')
+      expect(String(context.effect)).to.eql('mega drive enriched')
+
+      context.set('key', null)
+      
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+
+      context.set('suffix', 'everliving')
+
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+
+      context.set('key', 'mega zeal')
+      expect(future.valueOf()).to.eql('mega zeal everliving')
+      expect(String(context.effect)).to.eql('mega zeal everliving')
+
+      context.set('bouquet', future);
+      expect(future.valueOf()).to.eql('mega zeal everliving')
+      expect(String(context.effect)).to.eql('mega zeal everliving')
+      expect(String(context.bouquet)).to.eql('mega zeal everliving')
+
+      context.set('suffix', 'gizoogled')
+      expect(future.valueOf()).to.eql('mega zeal gizoogled')
+      expect(String(context.effect)).to.eql('mega zeal gizoogled')
+      expect(String(context.bouquet)).to.eql('mega zeal gizoogled')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'super ural')
+      expect(future.valueOf()).to.eql('super ural gizoogled')
+      expect(String(context.effect)).to.eql('super ural gizoogled')
+      expect(String(context.bouquet)).to.eql('super ural gizoogled')
+    })
   })
 
   describe('Computing', function() {
@@ -250,6 +381,7 @@ describe('Observers', function() {
 
       context.set('firstName', 'John')
       expect(context.fullName).to.eql(undefined)
+
       
       var lastName = context.set('lastName', 'Doe')
       expect(context.fullName.valueOf()).to.eql('John Doe')
