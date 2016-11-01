@@ -104,59 +104,16 @@ G.callback.proxy = function(value, watcher) {
 }
 
 G.callback.getter = function(value, watcher) {
-  watcher.$computing = true;
-  var current = watcher.$context[watcher.$key];
-  if (G.Future.prepare(watcher, value))
-    var computed = G.Future.compute(watcher);                //    Invoke computation callback
-  watcher.$computing = undefined;
-
-  if (computed == null) {                           //    Proceed if value was computed
-    if (current)
-      G.uncall(current, watcher.$meta)
-    return
-  } else {
-    if (current && computed.valueOf() == current.valueOf()) {
-      return
-    }
-    var result = G.extend(computed, watcher.$context, watcher.$key);
-    result.$cause = watcher
-    result.$meta = watcher.$meta;
+  var result = G.Future.invoke(watcher, value);
+  if (result)
     return result.call('set')
-  }
 }
 
 G.callback.future = function(value, watcher) {
-  watcher.$computing = true;
-  if (G.Future.prepare(watcher, value))
-    var computed = G.Future.compute(watcher);                //    Invoke computation callback
-  watcher.$computing = undefined;
-  if (computed == null) {                            //    Proceed if value was computed
-    watcher.$current = undefined
-    return
-  } else {
-    computed = computed.valueOf();
-
-    var result = G.extend(computed, watcher.$context, watcher.$key);
-    result.$cause = watcher
-    result.$meta = watcher.$meta;
-
-    G.record.sequence(result)
-    G.record.causation(result)
-    G.record.push(result)
-    G.$called = result;
-    var current = watcher.$current;
-    watcher.$current = result;
-    if (!current || result.valueOf() != current.valueOf()) {
-      var appl = watcher.$applications;
-      if (appl)
-        for (var i = 0; i < appl.length; i+=2) {
-          appl[i].set(appl[i + 1], result)
-        }
-    }
-    G.record.pop(result)
-    result.ondetach = G._unsetFutureValue;
-    return result;
-  }
+  var result = G.Future.invoke(watcher, value);
+  if (result)
+    G.Future.notify(watcher, result)
+  return result;
 }
 
 G.callback.transformation = function() {

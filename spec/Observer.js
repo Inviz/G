@@ -182,6 +182,18 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
       expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(context.$watchers.key).to.not.eql(undefined)
+      expect(future.valueOf()).to.eql('super ural')
+      expect(String(context.effect)).to.eql('super ural')
+      expect(String(context.bouquet)).to.eql('super ural')
+
+      G.uncall(future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
     it ('should create a future value with transform', function() {
       var context = new G;
@@ -237,6 +249,31 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('super ural enriched')
       expect(String(context.effect)).to.eql('super ural enriched')
       expect(String(context.bouquet)).to.eql('super ural enriched')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('super ural enriched')
+      expect(String(context.effect)).to.eql('super ural enriched')
+      expect(String(context.bouquet)).to.eql('super ural enriched')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'uber zurab');
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(String(context.effect)).to.eql('uber zurab enriched')
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
     })
 
 
@@ -294,6 +331,36 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('super ural enriched')
       expect(String(context.effect)).to.eql('super ural enriched')
       expect(String(context.bouquet)).to.eql('super ural enriched')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('super ural enriched')
+      expect(String(context.effect)).to.eql('super ural enriched')
+      expect(String(context.bouquet)).to.eql('super ural enriched')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'uber zurab');
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(String(context.effect)).to.eql('uber zurab enriched')
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      G.uncall(context.key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
 
 
@@ -363,6 +430,41 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('super ural gizoogled')
       expect(String(context.effect)).to.eql('super ural gizoogled')
       expect(String(context.bouquet)).to.eql('super ural gizoogled')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('super ural gizoogled')
+      expect(String(context.effect)).to.eql('super ural gizoogled')
+      expect(String(context.bouquet)).to.eql('super ural gizoogled')
+
+      G.uncall(future)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'uber zurab');
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(future.valueOf()).to.eql('uber zurab gizoogled')
+      expect(String(context.effect)).to.eql('uber zurab gizoogled')
+      expect(String(context.bouquet)).to.eql('uber zurab gizoogled')
+
+      context.set('suffix', 'marooned');
+      expect(future.valueOf()).to.eql('uber zurab marooned')
+      expect(String(context.effect)).to.eql('uber zurab marooned')
+      expect(String(context.bouquet)).to.eql('uber zurab marooned')
+
+      G.uncall(context.key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
   })
 

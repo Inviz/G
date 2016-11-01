@@ -113,8 +113,6 @@ G.record.sequence = function(value, old) {
 
 G.record.push = function(value) {
   G.$callers.push(G.$caller);
-  if (value.valueOf() == 'Story by LN TOLSTOY')
-    debugger
   return G.$caller = G.$called = value               // Reassign call stack pointers 
 };
 

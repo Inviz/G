@@ -31,6 +31,45 @@ G.Future.prepare = function(watcher, trigger) {
   return true
 }
 
+G.Future.invoke = function(watcher, value) {
+  watcher.$computing = true;
+
+  var current = watcher.$context[watcher.$key];
+  if (G.Future.prepare(watcher, value))
+    var computed = G.Future.compute(watcher);                //    Invoke computation callback
+  watcher.$computing = undefined;
+  if (computed == null) {                            //    Proceed if value was computed
+    if (current)
+      G.uncall(current, watcher.$meta)
+    watcher.$current = undefined
+    return
+  } else {
+    computed = computed.valueOf();
+    var result = G.extend(computed, watcher.$context, watcher.$key);
+    result.$cause = watcher
+    result.$meta = watcher.$meta;
+    result.$context = watcher.$context;
+    result.ondetach = G._unsetFutureValue;
+    return result;
+  }
+}
+
+G.Future.notify = function(watcher, result) {
+  G.record.sequence(result)
+  G.record.causation(result)
+  G.record.push(result)
+  var current = watcher.$current;
+  watcher.$current = result;
+  if (!current || result.valueOf() != current.valueOf()) {
+    var appl = watcher.$applications;
+    if (appl)
+      for (var i = 0; i < appl.length; i+=2) {
+        appl[i].set(appl[i + 1], result)
+      }
+  }
+  G.record.pop(result)
+}
+
 // Run computed property callback if all properties it uses are set
 G.Future.compute = function(watcher, trigger, current) {
   if (current === undefined)
@@ -39,6 +78,24 @@ G.Future.compute = function(watcher, trigger, current) {
   var getter = watcher.$getter;
   if (!getter.$returns || current || !watcher.$getter.length)
     return getter.call(watcher.$context, current);
+}
+
+G.Future.call = function(watcher) {
+  if (watcher.$key) {
+    G._addWatcher(watcher.$context, watcher.$key, watcher, '$watchers');
+    var value = watcher.$context[watcher.$key]
+  }
+
+  if (G.Future.prepare(watcher, value))
+    var computed = G.Future.invoke(watcher);                //    Invoke computation callback
+  if (watcher.$getter.$arguments.length){
+    for (var i = 0; i < watcher.$getter.$arguments.length; i++)
+      G.watch(watcher.$context, watcher.$getter.$arguments[i][0], watcher, false)
+  } else{
+    if (computed) 
+      G.Future.notify(watcher, computed)
+  }
+  return watcher.$current
 }
 
 G.Future.uncall = function(watcher) {

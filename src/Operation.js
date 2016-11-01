@@ -100,7 +100,7 @@ G.prototype.call = function(verb) {
   } else if (value.$multiple) {  
     result = G.Array.call(value, old)  
   } else if (value.$future) {
-    
+    return G.Future.call(value, old) 
   }
 
   if (verb && old != null && old.$key) {                // If there was another value by that key
