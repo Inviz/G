@@ -112,9 +112,9 @@ describe ('Effects', function() {
       });
 
       // The object also has a formatting accessor 
-      G.watch(context, 'key', function(value) {
+      G.define(context, 'key', function(value) {
         return value + 666;
-      }, true);
+      });
 
       // First operation tagged with ['meta1', 'scope'] 
       op = G.set(context, 'key', 'value', 'meta1', 'scope');
@@ -224,9 +224,9 @@ describe ('Effects', function() {
       });
 
       // The object also has a formatting accessor 
-      G.watch(context, 'key', function(value) {
+      G.define(context, 'key', function(value) {
         return value + 666;
-      }, true);
+      });
 
       // First operation tagged with ['meta1', 'scope'] 
       op = G.set(context, 'key', 'value', 'meta1', 'scope');
@@ -336,14 +336,14 @@ describe ('Effects', function() {
       callback = function(value) {
         return value + 666;
       };
-      G.watch(context, 'key', callback, true);
+      G.define(context, 'key', callback);
       expect(context.asis.valueOf()).to.eql('lol666');
       expect(subject.mutated.valueOf()).to.eql('lol666123');
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol666']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol666', 'lol666123', 'lol666']));
 
       // Remove that transformation, recompute effects again 
-      G.unwatch(context, 'key', callback, true);
+      G.undefine(context, 'key', callback);
       expect(context.asis.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol123');
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['lol']));
@@ -356,7 +356,7 @@ describe ('Effects', function() {
       expect(subject.mutated).to.eql(void 0);
 
       // Add transformation again, does nothing 
-      G.watch(context, 'key', callback, true);
+      G.define(context, 'key', callback);
       expect(context.asis).to.eql(void 0);
       expect(subject.mutated).to.eql(void 0);
 
@@ -390,7 +390,7 @@ describe ('Effects', function() {
       callback = function(value) {
         return value + 666;
       };
-      G.watch(subject, 'mutated', callback, true);
+      G.define(subject, 'mutated', callback);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated.valueOf()).to.eql('lol666');
       expect(context.asis.valueOf()).to.eql('lol');
@@ -400,7 +400,7 @@ describe ('Effects', function() {
       expect(context.key).to.eql(void 0);
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
-      G.unwatch(subject, 'mutated', callback, true);
+      G.undefine(subject, 'mutated', callback);
       expect(context.key).to.eql(void 0);
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
@@ -414,7 +414,7 @@ describe ('Effects', function() {
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol']));
-      G.watch(subject, 'mutated', callback, true);
+      G.define(subject, 'mutated', callback);
       expect(context.key.valueOf()).to.eql('lol');
       expect(subject.mutated).to.eql(void 0);
       expect(context.asis).to.eql(void 0);

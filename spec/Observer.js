@@ -9,11 +9,11 @@ describe('Observers', function() {
       callback = function(value) {
         return value + 123;
       };
-      G.watch(context, 'key', callback, true);
+      G.define(context, 'key', callback);
       expect(ValueStack(context.key)).to.eql([context.key]);
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123']));
       expect(context.key.valueOf()).to.eql('test123');
-      G.unwatch(context, 'key', callback, true);
+      G.undefine(context, 'key', callback);
       expect(context.key.valueOf()).to.eql('test');
       expect(ValueStack(context.key)).to.eql([context.key]);
 
@@ -29,7 +29,7 @@ describe('Observers', function() {
       callback = function(value) {
         return value + 123;
       };
-      G.watch(context, 'key', callback, true);
+      G.define(context, 'key', callback);
       expect(context.key.valueOf()).to.eql('pest123');
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test', 'pest123']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['pest', 'pest123']));
@@ -38,7 +38,7 @@ describe('Observers', function() {
       expect(context.key.valueOf()).to.eql('test123');
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test123', 'pest123']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123']));
-      G.unwatch(context, 'key', callback, true);
+      G.undefine(context, 'key', callback);
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test', 'pest123']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test']));
       before.call()
@@ -55,11 +55,11 @@ describe('Observers', function() {
       callback = function(value) {
         return value + 123;
       };
-      G.watch(context, 'key', callback, true);
+      G.define(context, 'key', callback);
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test123']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test', 'test123']));
       expect(context.key.valueOf()).to.eql('test123');
-      G.unwatch(context, 'key', callback, true);
+      G.undefine(context, 'key', callback);
       expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['test']));
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['test']));
       return expect(context.key.valueOf()).to.eql('test');
@@ -69,9 +69,9 @@ describe('Observers', function() {
       context = {
         context: true
       };
-      G.watch(context, 'key', function(value) {
+      G.define(context, 'key', function(value) {
         return value + 123;
-      }, true);
+      });
       op = G.set(context, 'key', 'value', 'meta1', 'scope');
       expect(context.key).to.eql(op);
       expect(context.key.valueOf()).to.eql('value123');
@@ -121,6 +121,118 @@ describe('Observers', function() {
         key: 'value123'
       }));
     });
+  })
+
+  describe('Promising', function() {
+    it ('should create a future value', function() {
+      var context = new G;
+      var future = context.watch('key')
+      
+      expect(future.valueOf()).to.eql(undefined)
+
+
+      context.set('key', 'some value')
+
+      expect(future.valueOf()).to.eql('some value')
+      
+      context.set('key', null)
+
+      expect(future.valueOf()).to.eql(undefined)
+
+      context.set('effect', future);
+
+      expect(context.effect).to.eql(undefined)
+
+      
+      context.set('key', 'mega value')
+
+      expect(String(context.effect)).to.eql('mega value')
+
+      context.set('key', 'mega drive')
+
+      expect(future.valueOf()).to.eql('mega drive')
+      expect(String(context.effect)).to.eql('mega drive')
+
+      context.set('key', null)
+      
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+
+      context.set('key', 'mega zeal')
+      expect(future.valueOf()).to.eql('mega zeal')
+      expect(String(context.effect)).to.eql('mega zeal')
+
+      context.set('bouquet', future);
+      expect(future.valueOf()).to.eql('mega zeal')
+      expect(String(context.effect)).to.eql('mega zeal')
+      expect(String(context.bouquet)).to.eql('mega zeal')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'super ural')
+      expect(future.valueOf()).to.eql('super ural')
+      expect(String(context.effect)).to.eql('super ural')
+      expect(String(context.bouquet)).to.eql('super ural')
+    })
+    it ('should create a future value with transform', function() {
+      var context = new G;
+      var future = context.watch('key', function(value) {
+        return value + ' enriched'
+      })
+      
+      expect(future.valueOf()).to.eql(undefined)
+
+
+      context.set('key', 'some value')
+
+      expect(future.valueOf()).to.eql('some value enriched')
+      
+      debugger
+      context.set('key', null)
+
+      expect(future.valueOf()).to.eql(undefined)
+
+      context.set('effect', future);
+
+      expect(context.effect).to.eql(undefined)
+
+      
+      context.set('key', 'mega value')
+
+      expect(String(context.effect)).to.eql('mega value enriched')
+
+      context.set('key', 'mega drive')
+
+      expect(future.valueOf()).to.eql('mega drive enriched')
+      expect(String(context.effect)).to.eql('mega drive enriched')
+
+      context.set('key', null)
+      
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+
+      context.set('key', 'mega zeal')
+      expect(future.valueOf()).to.eql('mega zeal enriched')
+      expect(String(context.effect)).to.eql('mega zeal enriched')
+
+      context.set('bouquet', future);
+      expect(future.valueOf()).to.eql('mega zeal enriched')
+      expect(String(context.effect)).to.eql('mega zeal enriched')
+      expect(String(context.bouquet)).to.eql('mega zeal enriched')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      context.set('key', 'super ural')
+      expect(future.valueOf()).to.eql('super ural enriched')
+      expect(String(context.effect)).to.eql('super ural enriched')
+      expect(String(context.bouquet)).to.eql('super ural enriched')
+    })
   })
 
   describe('Computing', function() {
@@ -479,6 +591,64 @@ describe('Observers', function() {
 
       ship.set('name', 'Boaty McBoatFace')
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['Boaty McBoatFace', 'Mall', 'T-Rex']))
+
+    })
+
+
+    it('should track global array changes with return', function() {
+      var context = new G;
+      var trex = context.push('toys', {name: 'T-Rex', price: 195.99});
+      var doll = context.push('toys', {name: 'Doll'});
+      var names = context.toys.forEach(function(toy) {
+        return toy.name // values will stack because of unique toy meta
+      })
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Doll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll']))
+
+      doll.uncall()
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['T-Rex']))
+      expect(context.test).to.eql(undefined) // bad behavior
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll']))
+
+      G.call(doll)
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Doll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll']))
+
+      doll.set('name', 'Roll')
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Roll', 'T-Rex']))
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll']))
+
+      var ship = context.push('toys', {name: 'Starship'})
+
+      expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex']))
+      expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Roll'}, 'Roll']))
+      expect(G.stringify(StateGraph(ship))).to.eql(G.stringify([{name: 'Starship'}, 'Starship']))
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Starship', 'Roll', 'T-Rex']))
+      
+      doll.set('name', 'Ball')
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Starship', 'Ball', 'T-Rex']))
+      
+      ship.uncall();
+      expect(ValueGroup(context.toys)).to.eql([trex, doll])
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Ball', 'T-Rex']))
+
+      ship.set('name', 'Boat')
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Ball', 'T-Rex']))
+
+      ship.call()
+      expect(ValueGroup(context.toys)).to.eql([trex, doll, ship])
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Boat', 'Ball', 'T-Rex']))
+
+      doll.set('name', 'Mall')
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Boat', 'Mall', 'T-Rex']))
+
+      ship.set('name', 'Boaty McBoatFace')
+      expect(G.stringify(ValueGroup(names))).to.eql(G.stringify(['Boaty McBoatFace', 'Mall', 'T-Rex']))
 
     })
 

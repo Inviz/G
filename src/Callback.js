@@ -6,7 +6,9 @@ G.callback = function(value, watcher, old) {
 
 // Find a callback function for given watcher
 G.callback.dispatch = function(watcher) {
-  if (watcher.$getter) {
+  if (watcher.$future) {
+    return G.callback.future;
+  } else if (watcher.$getter) {
     return G.callback.getter
   } else if (typeof watcher == 'object') {
     return G.callback.proxy
@@ -102,19 +104,68 @@ G.callback.proxy = function(value, watcher) {
 }
 
 G.callback.getter = function(value, watcher) {
-  var computed = G.compute(watcher, value);                //    Invoke computation callback
   var current = watcher.$context[watcher.$key];
+  watcher.$computing = true;
+  var computed = G.compute(watcher, value, current);                //    Invoke computation callback
+  watcher.$computing = undefined;
+
   if (computed == null) {                           //    Proceed if value was computed
     if (current)
       G.uncall(current, watcher.$meta)
     return
   } else {
-    if (computed.valueOf() == current)
-      return;
+    if (current && computed.valueOf() == current.valueOf()) {
+      return
+    }
     var result = G.extend(computed, watcher.$context, watcher.$key);
     result.$cause = watcher
     result.$meta = watcher.$meta;
     return result.call('set')
+  }
+}
+
+G.callback.future = function(value, watcher) {
+  if (value === undefined) {
+
+  }
+  var current = watcher.$context[watcher.$key];
+  var computed = G.compute(watcher, value, current); //    Invoke computation callback
+  if (computed == null) {                            //    Proceed if value was computed
+    watcher.$current = undefined
+    return
+  } else {
+    computed = computed.valueOf();
+
+    var result = G.extend(computed, watcher.$context, watcher.$key);
+    result.$cause = watcher
+    result.$meta = watcher.$meta;
+
+    G.record.sequence(result)
+    G.record.causation(result)
+    G.record.push(result)
+    G.$called = result;
+    var current = watcher.$current;
+    watcher.$current = result;
+    if (!current || result.valueOf() != current.valueOf()) {
+      var appl = watcher.$applications;
+      if (appl)
+        for (var i = 0; i < appl.length; i+=2) {
+          appl[i].set(appl[i + 1], result)
+        }
+    }
+    G.record.pop(result)
+    result.ondetach = G._unsetFutureValue;
+    return result;
+  }
+}
+
+// Apply future to context
+G.callback.future.use = function(context, key, watcher) {
+  if (watcher.$current) {
+    G.record.push(watcher.$current)
+    G.$called = G.last(watcher.$current);
+    context.set(key, watcher.$current)
+    G.record.pop()
   }
 }
 
@@ -145,30 +196,36 @@ G.analyze = function(fn) {
   }
   if (string.match(/if\s*\(/))
     fn.$conditional = true;
+  if (string.match(/return/))
+    fn.$returns = true;
   fn.$arguments = [] 
   var m = string.match(G.$findProperties);          // find all property accessors
-  for (var i = 0; i < m.length; i++) {     
-    if (m[i].substring(0, target.length) != target  // proceed if starts with `this.` or `arg.`
-     || m[i].charAt(target.length) != '.')
-      continue
-    var clean = m[i].substring(target.length + 1)   // skip prefix
-                    .replace(G.$cleanProperty, ''); // clean out tail method call
-    if (clean.length) {
-      if (target == 'this')
-        fn.$arguments.push(clean.split('.'))
-      else
-        fn.$properties.push(clean.split('.'))
+  if (m)
+    for (var i = 0; i < m.length; i++) {     
+      if (m[i].substring(0, target.length) != target  // proceed if starts with `this.` or `arg.`
+       || m[i].charAt(target.length) != '.')
+        continue
+      var clean = m[i].substring(target.length + 1)   // skip prefix
+                      .replace(G.$cleanProperty, ''); // clean out tail method call
+      if (clean.length) {
+        if (target == 'this')
+          fn.$arguments.push(clean.split('.'))
+        else
+          fn.$properties.push(clean.split('.'))
+      }
     }
-  }
   return fn;
 }
 
 // Run computed property callback if all properties it uses are set
-G.compute = function(watcher, trigger) {
+G.compute = function(watcher, trigger, current) {
   var getter = watcher.$getter;
   var args = getter.$arguments;
   if (!args)
     args = G.analyze(getter).$arguments;
+  if (current === undefined)
+    current = watcher.$context[watcher.$key];
+
   for (var i = 0; i < args.length; i++) {
     var context = watcher.$context;
     var bits = args[i]
@@ -181,5 +238,11 @@ G.compute = function(watcher, trigger) {
         return;
     }
   }
-  return getter.call(watcher.$context);
+
+  if (!getter.$returns || current || !watcher.$getter.length)
+    return getter.call(watcher.$context, current);
+}
+
+G.callback.pass = function(value) {
+  return value;
 }

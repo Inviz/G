@@ -1,13 +1,12 @@
 /*
   Three kinds of lightweight observers:
   1) `watch/unwatch`:               Watch object key for changes
-    1.1) Value transformer          – Returns altered copy of value
-    1.2) Watcher with side effects  – Sets other valused in response to changes
   2) `observe/unobserve`:           Observe all object keys for changes
     2.1) Callback with side effects – Triggers a function when any of keys change
     2.2) Another object as callback – merges objects and propagates changes 
-  3) `define/undefine`:             Computed property 
-    Observes multiple keys, creates a single value updates when keys change. 
+  3) `define/undefine`:             Producing new values
+    3.1) Value transformer          – Returns altered copy of value
+    3.2) Compound value             – Observes multiple keys
 
   None of those method create a state change, so they should not be nested 
   into each other. Developer is responsible to call pair undoing method
@@ -15,28 +14,28 @@
 */
 
 // Add observer for key, call it if there's a value with that key
-G.prototype.watch = function(key, watcher, pure) {
-  if (pure) {
-    var watchers = this.$formatters
-    if (!watchers) watchers = this.$formatters = {}
-  } else {
-    var watchers = this.$watchers
-    if (!watchers) watchers = this.$watchers = {}
-  }
-  if (watchers[key]) {                              // Adding watcher creates new array
-    watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
-  } else {                                          // recompute stale values
-    watchers[key] = [watcher];
-  }
+G.prototype.watch = function(key, watcher) {
+  if (!watcher)
+    watcher = G.callback.pass;
+  if (!watcher.$arguments)
+    G.analyze(watcher);
   var value = this[key]
+  if (watcher.$returns) {
+    var callback = watcher;
+    watcher = new G(this, key, value)
+    watcher.$getter = callback
+    watcher.$future = true
+    watcher.valueOf = G._getFutureValue;
+  }
+  G._addWatcher(this, key, watcher, '$watchers');
+  if (watcher.$computing) return;
+      
   if (value) {
     while (value.$transform)        
       value = value.$before;
     if (!value.$context) {                          // 1. Value was not unboxed yet
       return G.set(this, key, value);               //    Apply primitive value 
-    } else if (pure) {                              // 2. New formatter is added 
-      return G.call(value, 'set');                  //    Re-apply value 
-    } else {                                        // 3. New value observer       
+    } else {                                        // 2. New value observer       
       var after = value.$after;                     // Get pointer to next operation
       G.record.push(value)
       var method = G.callback.dispatch(watcher)
@@ -46,33 +45,28 @@ G.prototype.watch = function(key, watcher, pure) {
         G.link(G.head(value), after)                // Patch graph
     }
   }
+  return watcher;
+};
+
+G._getFutureValue = function() {
+  return this.$current && this.$current.valueOf()
 }
+G._unsetFutureValue = function() {
+  this.$cause.$current = undefined;
+}
+
 
 // Remove key observer and undo its effects
 G.prototype.unwatch = function(key, watcher, pure) {
-  var watchers = pure ? this.$formatters 
-                      : this.$watchers;
-  if (watchers && watchers[key]) {                  
-    watchers[key] =                                 // Removing a watcher creates new array 
-      watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
-        return other !== watcher;                   // recompute stale values
-      });
-    if (!watchers[key].length)
-      watchers[key] = undefined
-  }
-
   var value = this[key];
+  G._removeWatcher(this, key, watcher, '$watchers');
   if (value) {      
-    if (pure) {                                     // 1. Removing a value formatter
-      return G.call(value, 'set');                  //    Reapply value
-    } else {                                        // 2. Removing an observer
-      G.record.push(value)
-      G.callback.revoke(value, watcher);                       //    Update side effects
-      G.record.pop(value)
-      return value;
-    }
+    G.record.push(value)
+    G.callback.revoke(value, watcher);              //    Update side effects
+    G.record.pop(value)
   }
 };
+
 
 G.prototype.unwatch.object = function(context, key, value) {    
   var parent = context.$watchers[key];              
@@ -95,16 +89,35 @@ G.prototype.unwatch.object = function(context, key, value) {
 // Add computed property
 G.prototype.define = function(key, callback) {
   G.analyze(callback);
-  var observer = new G(this, key)
-  observer.$getter = callback
-  if (arguments.length > 2)
-    observer.$meta = Array.prototype.slice.call(arguments, 2);
-  for (var i = 0; i < callback.$arguments.length; i++)
-    G.watch(this, callback.$arguments[i][0], observer, false)
+  if (!callback.$arguments.length) {                  // 1. Adding value formatter
+    G._addWatcher(this, key, callback, '$formatters' );
+    var value = this[key]
+    if (value != null)
+      if (!value.$context) {                          // If Value was not unboxed yet
+        return G.set(this, key, value);               //   Turn primitive value to G op 
+      } else {
+        return G.call(value, 'set');                  // Re-apply value 
+      }
+  } else {                                            
+    var observer = new G(this, key)                   // 2. Adding computed property
+    observer.$getter = callback
+    if (arguments.length > 2)
+      observer.$meta = Array.prototype.slice.call(arguments, 2);
+
+    for (var i = 0; i < callback.$arguments.length; i++)
+      G.watch(this, callback.$arguments[i][0], observer, false)
+    return observer;
+  }
 }
 
 // Remove computed property
 G.prototype.undefine = function(key, callback) {
+  if (!callback.$arguments.length) {
+    G._removeWatcher(this, key, callback, '$formatters');
+    if (this[key])
+      return G.call(this[key], 'set')
+    return
+  }
   for (var i = 0; i < callback.$arguments.length; i++) {
     var args = callback.$arguments[i]
     var argument = callback.$arguments[i];
@@ -214,3 +227,28 @@ G.prototype.unobserve = function(source) {
       G.record.pop()
     }
 }
+
+G._addWatcher = function(self, key, watcher, property) {
+  var watchers = self[property]
+  if (!watchers) watchers = self[property] = {}
+  if (watchers[key]) {                              // Adding watcher creates new array
+    watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
+  } else {                                          // recompute stale values
+    watchers[key] = [watcher];
+  }  
+}
+
+G._removeWatcher = function(self, key, watcher, property) {
+
+  var watchers = self[property];
+  if (watchers && watchers[key]) {                  
+    watchers[key] =                                 // Removing a watcher creates new array 
+      watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
+        return other !== watcher;                   // recompute stale values
+      });
+    if (!watchers[key].length)
+      watchers[key] = undefined
+  }
+
+}
+

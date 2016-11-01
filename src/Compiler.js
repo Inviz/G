@@ -50,13 +50,16 @@ G.compile.struct = function(struct) {
 G.compile.verb = function(verb) {
   return function(key, value) {
     if (value != null) {
+
       switch (arguments.length) {
         case 1:
-        case 2:  return G.create(this, key, value).call(verb);
-        case 3:  return G.create(this, key, value, arguments[2]).call(verb);
-        case 4:  return G.create(this, key, value, arguments[2], arguments[3]).call(verb);
-        default: return G.create(this, key, value, arguments[2], arguments[3], arguments[4]).call(verb);
+        case 2:  var op = G.create(this, key, value); break;
+        case 3:  var op = G.create(this, key, value, arguments[2]); break;
+        case 4:  var op = G.create(this, key, value, arguments[2], arguments[3]); break;
+        default: var op = G.create(this, key, value, arguments[2], arguments[3], arguments[4]); break;
       }
+      if (op)
+        return op.call(verb)
     } else {
       switch (arguments.length) {
         case 1:

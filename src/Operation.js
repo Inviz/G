@@ -14,7 +14,7 @@ as `G.extend('Hello world', context, key)`
 
 */
 /**
- * Makes a G
+ * Makes a G operation
  * @constructor
  */
 var G = function(context, key, value) {
@@ -45,9 +45,16 @@ G.create = function(context, key, value) {
   switch (typeof value) {
   case 'object':
     if (value.$getter) {                              // 1. Computed property value
+      if (value.$future) {
+        (value.$applications || (value.$applications = []))
+          .push(context, key)
+        return G.callback.future.use(context, key, value)
+      }
+
       var computed = G.compute(value);                //    Invoke computation callback
       if (computed == null)                           //    Proceed if value was computed
-        return 
+        return
+
       var result = G.extend(computed, context, key);  //    Enrich primitive value
       result.$cause = value
       result.$meta = value.$meta                      //    Pick up watcher meta
@@ -144,7 +151,6 @@ G.prototype.call = function(verb) {
 G.prototype.recall = function() {
   var current = this.$context[this.$key]
   if (!current) return;
-  if (!this) return;
   var arity = 0;
   if (arguments.length > arity)                         // Use/merge extra arguments as meta
     for (var meta = [], i = 0; i < arguments.length - arity; i++)

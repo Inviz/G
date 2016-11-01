@@ -113,6 +113,8 @@ G.record.sequence = function(value, old) {
 
 G.record.push = function(value) {
   G.$callers.push(G.$caller);
+  if (value.valueOf() == 'Story by LN TOLSTOY')
+    debugger
   return G.$caller = G.$called = value               // Reassign call stack pointers 
 };
 
@@ -166,7 +168,9 @@ G.record.write = function(value) {
 }
 
 // Make a two-way connection between two operations in graph
-G.link = function(old, value, doubly) {
+G.link = function(old, value) {
+  if (old == value)
+    debugger
   if ((old.$after = value)){
     old.$after.$before = old;
   }
@@ -179,7 +183,11 @@ G.unlink = function(from, to, hard) {
       G.link(from.$before, to.$after);            //   Connect previous & next operations
   } else if (to.$after) {                       // Or if it was first,
     to.$after.$before = undefined               //   Shift history 
-  }    
+  }
+  for (var c = from; c; c = c.$after) {
+    if (c.ondetach) c.ondetach();
+    if (c == to) break;
+  }
   if (hard)                                     // A top-level recall() needs to
     to.$after = undefined                       // clean last op's reference to next operations
 },
