@@ -2,8 +2,18 @@
 G.Future = function(context, key, watcher) {
   this.$context = context;
   this.$key = key;
-  this.$watcher = watcher
+  this.$cause = watcher
 }
+
+G.Future._getValue = function() {
+  return this.$current && this.$current.valueOf()
+
+}
+G.Future._unsetValue = function() {
+  this.$cause.$current = undefined;
+
+}
+
 
 G.Future.prototype.call = function() {
   if (this.$future) {
@@ -24,7 +34,7 @@ G.Future.prototype.call = function() {
 
     return this.$current
   } else {
-    G.Future.subscribe(this.$context, this.$key, this.$watcher)
+    G.Future.subscribe(this, null, this.$cause, this.$meta)
     return this;
   }
 }
@@ -34,11 +44,11 @@ G.Future.prototype.uncall = function() {
     var appl = this.$applications;
     if (appl)
       for (var i = 0; i < appl.length; i++)
-        G.Future.unsubscribe(appl[i].$context, appl[i].$key, this, true)
+        G.Future.unsubscribe(appl[i].$context, appl[i].$key, this, appl[i].$meta, true)
     G.Future.unwatch(this.$context, this.$key, this)
     this.$current = undefined
   } else {
-    G.Future.unsubscribe(this.$context, this.$key, this.$watcher)
+    G.Future.unsubscribe(this.$context, this.$key, this.$cause)
   }
 }
 
@@ -88,7 +98,7 @@ G.Future.invoke = function(watcher, value) {
     result.$cause = watcher
     result.$meta = watcher.$meta;
     result.$context = watcher.$context;
-    result.ondetach = G._unsetFutureValue;
+    result.ondetach = G.Future._unsetValue;
     return result;
   }
 }
@@ -143,7 +153,7 @@ G.Future.unwatch = function(context, key, watcher) {
   }
 }
 
-G.Future.unsubscribe = function(context, key, watcher, soft) {
+G.Future.unsubscribe = function(context, key, watcher, meta, soft) {
   if (!soft) {
     for (var i = 0; i < watcher.$applications.length; i++) {
       if (watcher.$applications[i].$context == context 
@@ -153,27 +163,51 @@ G.Future.unsubscribe = function(context, key, watcher, soft) {
       }
     }
   }
-  if (watcher.$current)
-    return context.unset(key, watcher.valueOf())
+  if (watcher.$current){
+    watcher.$unsubscribing = true;
+    var result = context.unset(key, watcher.valueOf(), meta)
+    watcher.$unsubscribing = false;
+    return result;
+  }
+}
+
+G.Future.unobserve = function(watcher, application) {
+  if (!watcher) return;
+  if (!watcher.$applications || watcher.$unsubscribing) return;
+  var index = watcher.$applications.indexOf(application);
+  if (index > -1) watcher.$applications.splice(index, 1)
 }
 
 
 G.Future.update = function(application, result) {
-  application.$context.set(application.$key, result)
+  var cause = G.$cause;
+  G.$cause = application;
+  application.$context.set(application.$key, result, application.$meta)
+  G.$cause = cause;
 }
 
 // Apply future to new context
-G.Future.subscribe = function(context, key, watcher) {
-  var application = new G.Future(context, key);
+G.Future.subscribe = function(context, key, watcher, meta) {
+  if (key) {
+    var application = new G.Future(context, key);
+  } else {
+    var application = context;
+    var context = application.$context;
+    var key = application.$key;
+  }
+    application.$meta = meta;
 
   (watcher.$applications || (watcher.$applications = []))
     .push(application)
     
   if (watcher.$current) {
+    var cause = G.$cause;
+    G.$cause = application;
     G.record.push(watcher.$current)
     G.$called = G.last(watcher.$current);
-    context.set(key, watcher.$current)
+    context.set(key, watcher.$current, meta)
     G.record.pop()
+    G.$cause = cause;
   }
 
   return application

@@ -45,17 +45,18 @@ G.create = function(context, key, value) {
   switch (typeof value) {
   case 'object':
     if (value.$getter) {                              // 1. Computed property value
-      if (value.$future)
-        return new G.Future(context, key, value)
+      if (value.$future) {
+        var result = new G.Future(context, key, value)
+      } else {
+        var computed = G.compute(value);              //    Invoke computation callback
+        if (computed == null)                         //    Proceed if value was computed
+          return
 
-      var computed = G.compute(value);                //    Invoke computation callback
-      if (computed == null)                           //    Proceed if value was computed
-        return
-
-      var result = G.extend(computed, context, key);  //    Enrich primitive value
-      result.$cause = value
-      result.$meta = value.$meta                      //    Pick up watcher meta
-    } else if (!value.recall || value instanceof G) {   // 2. Wrapping plain object
+        var result = G.extend(computed, context, key);//    Enrich primitive value
+        result.$cause = value
+        result.$meta = value.$meta                    //    Pick up watcher meta
+      }
+    } else if (!value.recall || value instanceof G) { // 2. Wrapping plain object
       var result = new G(context, key, value)         //    Create new G wrapper
     } else {                                          // 3. Applying operation as value
       var primitive = value.valueOf()                 //    Get its primitive value
@@ -203,8 +204,12 @@ G.prototype.uncall = function(soft) {
     }
     this.$computed = undefined;
   }
-  if (!recalling && !soft) 
+  if (!recalling && !soft) {
+    var cause = this.$cause;
+    if (this.$key && cause && cause.$cause && cause.$cause.$future)
+      G.Future.unobserve(cause.$cause, cause)
     G.unlink(from, to, true)                        // Patch graph and detach the tree at top
+  }
   return value;
 }
 

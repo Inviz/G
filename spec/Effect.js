@@ -202,7 +202,17 @@ describe ('Effects', function() {
     });
 
     it('should track transformations and side effects together x 50000', function() {
+      var cb1 = function(value) {
 
+        // One over different object 
+        G.set(subject, 'mutated', value + 123);
+
+        // And another changes key in the same object 
+        G.set(context, 'asis', value);
+      };
+      var cb2 = function(value) {
+        return value + 666;
+      }
       // Two different objects 
       var context, op, op2, subject;
       for (var i = 0; i < 50000; i++) {
@@ -214,19 +224,10 @@ describe ('Effects', function() {
       };
 
       // Callback causes two side effects 
-      G.watch(context, 'key', function(value) {
-
-        // One over different object 
-        G.set(subject, 'mutated', value + 123);
-
-        // And another changes key in the same object 
-        G.set(context, 'asis', value);
-      });
+      G.watch(context, 'key', cb1);
 
       // The object also has a formatting accessor 
-      G.define(context, 'key', function(value) {
-        return value + 666;
-      });
+      G.define(context, 'key', cb2);
 
       // First operation tagged with ['meta1', 'scope'] 
       op = G.set(context, 'key', 'value', 'meta1', 'scope');

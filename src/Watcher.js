@@ -15,17 +15,18 @@
 
 // Add observer for key, call it if there's a value with that key
 G.prototype.watch = function(key, watcher) {
-  if (!watcher)
+  if (!watcher || (typeof watcher != 'function' && !watcher.$context)) 
     watcher = G.callback.pass;
+  
   if (!watcher.$arguments)
     G.analyze(watcher);
-  var value = this[key]
+  var value = this[key], meta;
   if (watcher.$returns) {
-    var callback = watcher;
-    watcher = new G(this, key, value)
-    watcher.$getter = callback
+    var cb = watcher;
+    watcher = new G.Future(this, key)
+    watcher.$getter = cb
     watcher.$future = true
-    watcher.valueOf = G._getFutureValue;
+    watcher.valueOf = G.Future._getValue;
   }
   G._addWatcher(this, key, watcher, '$watchers');
   if (watcher.$computing) return;
@@ -47,13 +48,6 @@ G.prototype.watch = function(key, watcher) {
   }
   return watcher;
 };
-
-G._getFutureValue = function() {
-  return this.$current && this.$current.valueOf()
-}
-G._unsetFutureValue = function() {
-  this.$cause.$current = undefined;
-}
 
 
 // Remove key observer and undo its effects
@@ -103,13 +97,10 @@ G.prototype.define = function(key, callback) {
         return G.call(value, 'set');                  // Re-apply value 
       }
   } else {                                            
-    var observer = new G.Future                      // 2. Adding computed property
-    observer.$context = this;
-    if (key) {
-      observer.$key = key
-    } else {
+    var observer = new G.Future(this, key)                      // 2. Adding computed property
+    if (!key) {
       observer.$future = true;
-      observer.valueOf = G._getFutureValue
+      observer.valueOf = G.Future._getValue
     }
     observer.$getter = callback
     if (arguments.length > 2)

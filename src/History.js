@@ -16,7 +16,7 @@
 // Find operation in group or history that matches meta of a given operation 
 G.match = function(meta, old) {
   // Allow meta to be passed as array
-  if (meta && meta.length == 1 && meta[0] instanceof Array)
+  if (meta && meta.length == 1 && (!meta[0] || meta[0] instanceof Array))
     meta = meta[0];
 
   if (G._compareMeta(old.$meta, meta))            // 1. Current value matches
@@ -97,8 +97,8 @@ G._compareMeta = function(meta1, meta2) {
 
 G._setMeta = function(op, meta) {
   if (meta) {
-    if (meta.length == 1 && meta[0] instanceof Array)
-      op.$meta = meta[0]
+    if (meta.length == 1 && (meta[0] == null || meta[0] instanceof Array))
+      op.$meta = meta[0] || undefined
     else
       op.$meta = meta
   }

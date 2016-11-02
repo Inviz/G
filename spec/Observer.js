@@ -127,45 +127,58 @@ describe('Observers', function() {
     it ('should create a future value', function() {
       var context = new G;
       var future = context.watch('key')
-      
       expect(future.valueOf()).to.eql(undefined)
 
-
       context.set('key', 'some value')
-
       expect(future.valueOf()).to.eql('some value')
       
       context.set('key', null)
-
       expect(future.valueOf()).to.eql(undefined)
 
-      var application1 = context.set('effect', future);
-
+      var application1 = context.set('effect', future, 'blah blah');
+      expect(application1.$cause).to.eql(future)
       expect(context.effect).to.eql(undefined)
-
+      expect(application1.$meta).to.eql(['blah blah'])
       
       context.set('key', 'mega value')
-
+      expect(context.effect.$cause).to.eql(application1)
       expect(String(context.effect)).to.eql('mega value')
+      expect(context.effect.$meta).to.eql(['blah blah'])
 
       context.set('key', 'mega drive')
-
       expect(future.valueOf()).to.eql('mega drive')
       expect(String(context.effect)).to.eql('mega drive')
 
       context.set('key', null)
-      
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
 
       context.set('key', 'mega zeal')
       expect(future.valueOf()).to.eql('mega zeal')
       expect(String(context.effect)).to.eql('mega zeal')
+      expect(future.$applications.length).to.eql(1)
 
       var application2 = context.set('bouquet', future);
+      expect(application2.$cause).to.eql(future)
+      expect(context.bouquet.$cause).to.eql(application2)
+      expect(future.$applications).to.eql([application1, application2])
       expect(future.valueOf()).to.eql('mega zeal')
       expect(String(context.effect)).to.eql('mega zeal')
       expect(String(context.bouquet)).to.eql('mega zeal')
+
+      context.set('bouquet', null);
+      expect(future.$applications.length).to.eql(1)
+      expect(context.bouquet).to.eql(undefined)
+      
+      application2.call()
+      expect(future.$applications).to.eql([application1, application2])
+      expect(String(context.bouquet)).to.eql('mega zeal')
+
+      context.effect.recall('blah blah')
+      expect(future.$applications.length).to.eql(1)
+
+      application1.call()
+
 
       context.set('key', null)
       expect(future.valueOf()).to.eql(undefined)
@@ -226,12 +239,15 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('zug-zug')
       expect(String(context.effect)).to.eql('zug-zug')
       expect(String(context.bouquet)).to.eql('zug-zug')
+      expect(context.effect.$meta).to.eql(['blah blah'])
+      expect(context.bouquet.$meta).to.eql()
 
       context.set('key', null)
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
       expect(context.bouquet).to.eql(undefined)
     })
+
     it ('should create a future value with transform', function() {
       var context = new G;
       var future = context.watch('key', function(value) {
