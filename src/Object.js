@@ -41,6 +41,18 @@ G.prototype.has = function(key) {
    && key.charAt(0) != '$')
 }
 
+G.prototype.unset = function(key, value) {
+  if (value.$future) {
+    return G.Future.unsubscribe(this, key, value);
+  }
+  var arity = 2;
+  if (arguments.length > arity)                         // Use/merge extra arguments as meta
+    for (var meta = [], i = 0; i < arguments.length - arity; i++)
+      meta[i] = arguments[i + arity];
+
+  G.stack(this, key, value, meta, G.uncall);
+}
+
 // Serialize to json
 G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))

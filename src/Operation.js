@@ -46,7 +46,7 @@ G.create = function(context, key, value) {
   case 'object':
     if (value.$getter) {                              // 1. Computed property value
       if (value.$future)
-        return G.Future.subscribe(context, key, value)
+        return new G.Future(context, key, value)
 
       var computed = G.compute(value);                //    Invoke computation callback
       if (computed == null)                           //    Proceed if value was computed
@@ -148,23 +148,11 @@ G.prototype.call = function(verb) {
 };
 
 G.prototype.recall = function() {
-  var current = this.$context[this.$key]
-  if (!current) return;
   var arity = 0;
   if (arguments.length > arity)                         // Use/merge extra arguments as meta
     for (var meta = [], i = 0; i < arguments.length - arity; i++)
       meta[i] = arguments[i + arity];
-
-  for (var old = current; old = G.match(meta, old); old = next) {
-    var next = old.$previous || old.$preceeding;
-    for (var head = old; head != current && head.$next;)
-      head = head.$next;
-    if (head === current) {      
-      G.uncall(old)
-      current = this.$context[this.$key]
-    }
-    if (!current || !next) break;
-  }
+  G.stack(this.$context, this.$key, undefined, meta, G.uncall);
   return this;
 };
 
@@ -219,6 +207,7 @@ G.prototype.uncall = function(soft) {
     G.unlink(from, to, true)                        // Patch graph and detach the tree at top
   return value;
 }
+
 
 // Recall and remove from history
 G.prototype.revoke = function() {

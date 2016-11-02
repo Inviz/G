@@ -33,6 +33,25 @@ G.match = function(meta, old) {
   }
 };
 
+// Iterate all values in stack that match meta & value
+G.stack = function(context, key, value, meta, callback) {
+  var current = context[key]
+  if (!current) return;
+  
+  for (var old = current; old = G.match(meta, old); old = next) {
+    var next = old.$previous || old.$preceeding;
+    for (var head = old; head != current && head.$next;)
+      head = head.$next;
+    if (head === current
+    && (value === undefined || value === old.valueOf())) {      
+      callback(old)
+      current = context[key]
+    }
+    if (!current || !next) break;
+  }
+}
+
+
 // Replace one operation in history with another 
 // Removed value keeps its pointers
 // so it can be re-applied in place in future

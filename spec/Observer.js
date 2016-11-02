@@ -139,7 +139,7 @@ describe('Observers', function() {
 
       expect(future.valueOf()).to.eql(undefined)
 
-      context.set('effect', future);
+      var application1 = context.set('effect', future);
 
       expect(context.effect).to.eql(undefined)
 
@@ -162,7 +162,7 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('mega zeal')
       expect(String(context.effect)).to.eql('mega zeal')
 
-      context.set('bouquet', future);
+      var application2 = context.set('bouquet', future);
       expect(future.valueOf()).to.eql('mega zeal')
       expect(String(context.effect)).to.eql('mega zeal')
       expect(String(context.bouquet)).to.eql('mega zeal')
@@ -194,6 +194,43 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
       expect(context.bouquet).to.eql(undefined)
+
+      G.unset(context, 'effect', future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(context.$watchers.key).to.not.eql(undefined)
+      expect(future.valueOf()).to.eql('super ural')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('super ural')
+
+      application2.uncall()
+      expect(future.valueOf()).to.eql('super ural')
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      application2.call()
+      expect(future.valueOf()).to.eql('super ural')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('super ural')
+
+      application1.call()
+      expect(future.valueOf()).to.eql('super ural')
+      expect(String(context.effect)).to.eql('super ural')
+      expect(String(context.bouquet)).to.eql('super ural')
+
+      context.set('key', 'zug-zug')
+      expect(future.valueOf()).to.eql('zug-zug')
+      expect(String(context.effect)).to.eql('zug-zug')
+      expect(String(context.bouquet)).to.eql('zug-zug')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
     it ('should create a future value with transform', function() {
       var context = new G;
@@ -212,7 +249,7 @@ describe('Observers', function() {
 
       expect(future.valueOf()).to.eql(undefined)
 
-      context.set('effect', future);
+      var application1 = context.set('effect', future);
 
       expect(context.effect).to.eql(undefined)
 
@@ -235,7 +272,7 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('mega zeal enriched')
       expect(String(context.effect)).to.eql('mega zeal enriched')
 
-      context.set('bouquet', future);
+      var application2 = context.set('bouquet', future);
       expect(future.valueOf()).to.eql('mega zeal enriched')
       expect(String(context.effect)).to.eql('mega zeal enriched')
       expect(String(context.bouquet)).to.eql('mega zeal enriched')
@@ -274,6 +311,49 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('uber zurab enriched')
       expect(String(context.effect)).to.eql('uber zurab enriched')
       expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      G.uncall(future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.unset(context, 'effect', future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(context.$watchers.key).to.not.eql(undefined)
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      application2.uncall()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      application2.call()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      application1.call()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(String(context.effect)).to.eql('uber zurab enriched')
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      context.set('key', 'zug-zug')
+      expect(future.valueOf()).to.eql('zug-zug enriched')
+      expect(String(context.effect)).to.eql('zug-zug enriched')
+      expect(String(context.bouquet)).to.eql('zug-zug enriched')
+
+      context.set('key', null)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
     })
 
 
@@ -294,7 +374,7 @@ describe('Observers', function() {
 
       expect(future.valueOf()).to.eql(undefined)
 
-      context.set('effect', future);
+      var application1 = context.set('effect', future);
 
       expect(context.effect).to.eql(undefined)
 
@@ -317,7 +397,7 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('mega zeal enriched')
       expect(String(context.effect)).to.eql('mega zeal enriched')
 
-      context.set('bouquet', future);
+      var application2 = context.set('bouquet', future);
       expect(future.valueOf()).to.eql('mega zeal enriched')
       expect(String(context.effect)).to.eql('mega zeal enriched')
       expect(String(context.bouquet)).to.eql('mega zeal enriched')
@@ -357,7 +437,56 @@ describe('Observers', function() {
       expect(String(context.effect)).to.eql('uber zurab enriched')
       expect(String(context.bouquet)).to.eql('uber zurab enriched')
 
-      G.uncall(context.key)
+      var key = context.key;
+      G.uncall(key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.uncall(future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.unset(context, 'effect', future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(context.$watchers.key).to.not.eql(undefined)
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      application2.uncall()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      application2.call()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      application1.call()
+      expect(future.valueOf()).to.eql('uber zurab enriched')
+      expect(String(context.effect)).to.eql('uber zurab enriched')
+      expect(String(context.bouquet)).to.eql('uber zurab enriched')
+
+      context.set('key', 'zug-zug')
+      expect(future.valueOf()).to.eql('zug-zug enriched')
+      expect(String(context.effect)).to.eql('zug-zug enriched')
+      expect(String(context.bouquet)).to.eql('zug-zug enriched')
+
+      context.set('key', null)
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
       expect(context.bouquet).to.eql(undefined)
@@ -383,7 +512,7 @@ describe('Observers', function() {
 
       expect(future.valueOf()).to.eql(undefined)
 
-      context.set('effect', future);
+      var application1 = context.set('effect', future);
 
       expect(context.effect).to.eql(undefined)
 
@@ -411,7 +540,7 @@ describe('Observers', function() {
       expect(future.valueOf()).to.eql('mega zeal everliving')
       expect(String(context.effect)).to.eql('mega zeal everliving')
 
-      context.set('bouquet', future);
+      var application2 = context.set('bouquet', future);
       expect(future.valueOf()).to.eql('mega zeal everliving')
       expect(String(context.effect)).to.eql('mega zeal everliving')
       expect(String(context.bouquet)).to.eql('mega zeal everliving')
@@ -461,7 +590,57 @@ describe('Observers', function() {
       expect(String(context.effect)).to.eql('uber zurab marooned')
       expect(String(context.bouquet)).to.eql('uber zurab marooned')
 
-      G.uncall(context.key)
+
+      var key = context.key;
+      G.uncall(key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.uncall(future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.unset(context, 'effect', future)
+      expect(context.$watchers.key).to.eql(undefined)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(key)
+      expect(future.valueOf()).to.eql(undefined)
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      G.call(future)
+      expect(context.$watchers.key).to.not.eql(undefined)
+      expect(future.valueOf()).to.eql('uber zurab marooned')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab marooned')
+
+      application2.uncall()
+      expect(future.valueOf()).to.eql('uber zurab marooned')
+      expect(context.effect).to.eql(undefined)
+      expect(context.bouquet).to.eql(undefined)
+
+      application2.call()
+      expect(future.valueOf()).to.eql('uber zurab marooned')
+      expect(context.effect).to.eql(undefined)
+      expect(String(context.bouquet)).to.eql('uber zurab marooned')
+
+      application1.call()
+      expect(future.valueOf()).to.eql('uber zurab marooned')
+      expect(String(context.effect)).to.eql('uber zurab marooned')
+      expect(String(context.bouquet)).to.eql('uber zurab marooned')
+
+      context.set('key', 'zug-zug')
+      expect(future.valueOf()).to.eql('zug-zug marooned')
+      expect(String(context.effect)).to.eql('zug-zug marooned')
+      expect(String(context.bouquet)).to.eql('zug-zug marooned')
+
+      context.set('key', null)
       expect(future.valueOf()).to.eql(undefined)
       expect(context.effect).to.eql(undefined)
       expect(context.bouquet).to.eql(undefined)

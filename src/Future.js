@@ -1,6 +1,45 @@
 
-G.Future = function() {
+G.Future = function(context, key, watcher) {
+  this.$context = context;
+  this.$key = key;
+  this.$watcher = watcher
+}
 
+G.Future.prototype.call = function() {
+  if (this.$future) {
+    if (this.$key) {
+      G._addWatcher(this.$context, this.$key, this, '$watchers');
+      var value = this.$context[this.$key]
+    }
+
+    if (G.Future.prepare(this, value))
+      var computed = G.Future.invoke(this);                //    Invoke computation callback
+    if (this.$getter.$arguments.length){
+      for (var i = 0; i < this.$getter.$arguments.length; i++)
+        G.watch(this.$context, this.$getter.$arguments[i][0], this, false)
+    } else{
+      if (computed) 
+        G.Future.notify(this, computed)
+    }
+
+    return this.$current
+  } else {
+    G.Future.subscribe(this.$context, this.$key, this.$watcher)
+    return this;
+  }
+}
+G.Future.prototype.uncall = function() {
+  if (this.$future) {
+
+    var appl = this.$applications;
+    if (appl)
+      for (var i = 0; i < appl.length; i++)
+        G.Future.unsubscribe(appl[i].$context, appl[i].$key, this, true)
+    G.Future.unwatch(this.$context, this.$key, this)
+    this.$current = undefined
+  } else {
+    G.Future.unsubscribe(this.$context, this.$key, this.$watcher)
+  }
 }
 
 // make sure used arguments all have value
@@ -63,9 +102,8 @@ G.Future.notify = function(watcher, result) {
   if (!current || result.valueOf() != current.valueOf()) {
     var appl = watcher.$applications;
     if (appl)
-      for (var i = 0; i < appl.length; i+=2) {
-        appl[i].set(appl[i + 1], result)
-      }
+      for (var i = 0; i < appl.length; i++)
+        G.Future.update(appl[i], result);
   }
   G.record.pop(result)
 }
@@ -78,34 +116,6 @@ G.Future.compute = function(watcher, trigger, current) {
   var getter = watcher.$getter;
   if (!getter.$returns || current || !watcher.$getter.length)
     return getter.call(watcher.$context, current);
-}
-
-G.Future.call = function(watcher) {
-  if (watcher.$key) {
-    G._addWatcher(watcher.$context, watcher.$key, watcher, '$watchers');
-    var value = watcher.$context[watcher.$key]
-  }
-
-  if (G.Future.prepare(watcher, value))
-    var computed = G.Future.invoke(watcher);                //    Invoke computation callback
-  if (watcher.$getter.$arguments.length){
-    for (var i = 0; i < watcher.$getter.$arguments.length; i++)
-      G.watch(watcher.$context, watcher.$getter.$arguments[i][0], watcher, false)
-  } else{
-    if (computed) 
-      G.Future.notify(watcher, computed)
-  }
-  return watcher.$current
-}
-
-G.Future.uncall = function(watcher) {
-  var appl = watcher.$applications;
-  if (appl)
-    for (var i = 0; i < appl.length; i+=2)
-      G.Future.unsubscribe(appl[i], appl[i + 1], watcher)
-  if (watcher.$current)
-    G.Future.unwatch(watcher.$context, watcher.$key, watcher)
-  watcher.$current = undefined
 }
 
 G.Future.unwatch = function(context, key, watcher) {
@@ -133,15 +143,31 @@ G.Future.unwatch = function(context, key, watcher) {
   }
 }
 
-G.Future.unsubscribe = function(context, key, watcher) {
-  context.set(key, null);
+G.Future.unsubscribe = function(context, key, watcher, soft) {
+  if (!soft) {
+    for (var i = 0; i < watcher.$applications.length; i++) {
+      if (watcher.$applications[i].$context == context 
+      && watcher.$applications[i].$key == key) {
+        watcher.$applications.splice(i, 1);
+        break;
+      }
+    }
+  }
+  if (watcher.$current)
+    return context.unset(key, watcher.valueOf())
+}
+
+
+G.Future.update = function(application, result) {
+  application.$context.set(application.$key, result)
 }
 
 // Apply future to new context
 G.Future.subscribe = function(context, key, watcher) {
+  var application = new G.Future(context, key);
 
   (watcher.$applications || (watcher.$applications = []))
-    .push(context, key)
+    .push(application)
     
   if (watcher.$current) {
     G.record.push(watcher.$current)
@@ -149,6 +175,8 @@ G.Future.subscribe = function(context, key, watcher) {
     context.set(key, watcher.$current)
     G.record.pop()
   }
+
+  return application
 }
 
 
