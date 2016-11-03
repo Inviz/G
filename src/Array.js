@@ -93,6 +93,7 @@ G.prototype.forEach = function(callback) {
   var iterators = [callback]
   for(;first; first = first.$next)
     G.Array.iterate(first, iterators);
+
 }
 
 G.Array.iterate = function(array, iterators) {
@@ -109,14 +110,6 @@ G.Array.iterate = function(array, iterators) {
     G.record.push(array)
     G.callback.iterator(array, iterators[i])
     G.record.pop()
-
-    if (callback.$properties) {
-      console.info(callback.$properties)
-      callback.$iteratee = array;
-      for (var j = 0; j < callback.$properties.length; j++)
-        G.watch(array, callback.$properties[j][0], callback)
-      callback.$iteratee = null;
-    }
   }
 }
 
@@ -124,15 +117,7 @@ G.Array.uniterate = function(array, iterators) {
   if (!iterators)
     iterators = array.$iterators;
   for (var i = 0; i < iterators.length; i++) {
-    var callback = iterators[i];
-    
-    if (callback.$properties) {
-      console.info(callback.$properties)
-      callback.$iteratee = array;
-      for (var j = 0; j < callback.$properties.length; j++)
-        G.unwatch(array, callback.$properties[j][0], callback)
-      callback.$iteratee = null;
-    }
+    G._unobserveProperties(array, iterators[i]);
   }
   for (var i = iterators.length; --i > -1;) {
     var j = array.$iterators.indexOf(iterators[i]);
@@ -156,8 +141,10 @@ G.Array.register = function(left, right, parent) {
   
   if (!left.$multiple)
     left.$multiple = true;
-  else if (!right.$multiple)
+  if (!right.$multiple)
     right.$multiple = true;
+
+  debugger
 
   if (parent) {
     if (parent.$last == left)

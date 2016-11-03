@@ -10,8 +10,15 @@ G.Future._getValue = function() {
 
 }
 G.Future._unsetValue = function() {
-  this.$cause.$current = undefined;
-
+  var current = this.$cause.$current;
+  debugger
+  if (this.$multiple) {
+    if (this == current) {
+      this.$cause.$current = this.$leading || this.$following;
+    }
+  } else {
+    this.$cause.$current = undefined;
+  }
 }
 
 
@@ -22,14 +29,13 @@ G.Future.prototype.call = function() {
       var value = this.$context[this.$key]
     }
 
-    if (G.Future.prepare(this, value))
-      var computed = G.Future.invoke(this);                //    Invoke computation callback
+    var computed = G.Future.invoke(this);                //    Invoke computation callback
     if (this.$getter.$arguments.length){
       for (var i = 0; i < this.$getter.$arguments.length; i++)
         G.watch(this.$context, this.$getter.$arguments[i][0], this, false)
     } else{
       if (computed) 
-        G.Future.notify(this, computed)
+        G.Future.notify(this, value, computed)
     }
 
     return this.$current
@@ -85,7 +91,8 @@ G.Future.invoke = function(watcher, value) {
 
   var current = watcher.$context[watcher.$key];
   if (G.Future.prepare(watcher, value))
-    var computed = G.Future.compute(watcher);                //    Invoke computation callback
+    var computed = G.Future.compute(watcher, undefined, value);                //    Invoke computation callback
+  G._observeProperties(value, watcher);
   watcher.$computing = undefined;
   if (computed == null) {                            //    Proceed if value was computed
     if (current)
@@ -103,12 +110,29 @@ G.Future.invoke = function(watcher, value) {
   }
 }
 
-G.Future.notify = function(watcher, result) {
+G.Future.notify = function(watcher, value, result) {
   G.record.sequence(result)
   G.record.causation(result)
-  G.record.push(result)
+  var cause = G.$cause;
+  G.$cause = watcher;
   var current = watcher.$current;
-  watcher.$current = result;
+  if (!current || (!current.$multiple && !value.$multiple)) {
+    watcher.$current = result;
+  } else {
+    for (var n = watcher.$current; n; n = n.$previous) {
+      if (n.$caller === value) {
+        debugger
+        if (n === watcher.$current)
+          watcher.$current = n.$previous;
+        G.Array.recall(n)
+        G.link(n.$before, result)
+        G.link(result, n.$after)
+        break;
+      }
+    }
+    watcher.$current = G.verbs.push(result, watcher.$current)
+  }
+  G.record.push(result)
   if (!current || result.valueOf() != current.valueOf()) {
     var appl = watcher.$applications;
     if (appl)
@@ -116,6 +140,7 @@ G.Future.notify = function(watcher, result) {
         G.Future.update(appl[i], result);
   }
   G.record.pop(result)
+  G.$cause = cause;
 }
 
 // Run computed property callback if all properties it uses are set

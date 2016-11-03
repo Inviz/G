@@ -58,6 +58,7 @@ G.affect = function(value, old) {
   for (var after = value; after = after.$after;) {
     if (after.$caller !== value) continue;
     var cause = after.$cause;
+    if (!(cause.$getter || cause).$properties)
     if (observers && observers.indexOf(cause) > -1
     ||  group     &&     group.indexOf(cause) > -1) {
       after.call('restore');
@@ -76,6 +77,8 @@ G.affect = function(value, old) {
     for (var i = 0; i < group.length; i++)
       if (!present || present.indexOf(group[i]) == -1)
         G.callback(value, group[i], old, true);
+      else
+        G._observeProperties(value, group[i]);
   if (observers)
     for (var i = 0; i < observers.length; i++)
       if (!present || present.indexOf(observers[i]) == -1)

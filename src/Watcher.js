@@ -28,7 +28,8 @@ G.prototype.watch = function(key, watcher) {
     watcher.$future = true
     watcher.valueOf = G.Future._getValue;
   }
-  G._addWatcher(this, key, watcher, '$watchers');
+  if (!G._addWatcher(this, key, watcher, '$watchers'))
+    return
   if (watcher.$computing) return;
       
   if (value) {
@@ -36,14 +37,19 @@ G.prototype.watch = function(key, watcher) {
       value = value.$before;
     if (!value.$context) {                          // 1. Value was not unboxed yet
       return G.set(this, key, value);               //    Apply primitive value 
-    } else {                                        // 2. New value observer       
-      var after = value.$after;                     // Get pointer to next operation
-      G.record.push(value)
-      var method = G.callback.dispatch(watcher)
-      method(value, watcher);
-      G.record.pop(value)
-      if (after)
-        G.link(G.head(value), after)                // Patch graph
+    } else {                                        // 2. New value observer
+      var head = value;
+      while (head.$previous)
+        head = head.$previous;
+      for (; head; head = head.$next) {       
+        var after = head.$after;                     // Get pointer to next operation
+        G.record.push(head)
+        var method = G.callback.dispatch(watcher)
+        method(head, watcher);
+        G.record.pop(head)
+        if (after)
+          G.link(G.head(head), after)                // Patch graph
+      }
     }
   }
   return watcher;
@@ -54,6 +60,7 @@ G.prototype.watch = function(key, watcher) {
 G.prototype.unwatch = function(key, watcher, pure) {
   var value = this[key];
   G._removeWatcher(this, key, watcher, '$watchers');
+  //G._revokeEffect(value, watcher)
   if (value) {      
     G.record.push(value)
     G.callback.revoke(value, watcher);              //    Update side effects
@@ -234,14 +241,37 @@ G.prototype.unobserve = function(source) {
     }
 }
 
+G._observeProperties = function(array, callback) {
+  var properties = (callback.$getter || callback).$properties
+  if (properties) {
+    callback.$iteratee = array;
+    for (var j = 0; j < properties.length; j++)
+      G.watch(array, properties[j][0], callback)
+    callback.$iteratee = null;
+  }
+}
+
+G._unobserveProperties = function(array, callback) {
+  var properties = (callback.$getter || callback).$properties
+  if (properties) {
+    callback.$iteratee = array;
+    for (var j = 0; j < properties.length; j++)
+      G.unwatch(array, properties[j][0], callback)
+    callback.$iteratee = null;
+  }
+}
+
 G._addWatcher = function(self, key, watcher, property) {
   var watchers = self[property]
   if (!watchers) watchers = self[property] = {}
   if (watchers[key]) {                              // Adding watcher creates new array
+    if (watchers[key].indexOf(watcher) > -1)
+      return false
     watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
   } else {                                          // recompute stale values
     watchers[key] = [watcher];
   }  
+  return true
 }
 
 G._removeWatcher = function(self, key, watcher, property) {
@@ -256,5 +286,14 @@ G._removeWatcher = function(self, key, watcher, property) {
       watchers[key] = undefined
   }
 
+}
+
+G._revokeEffect = function(value, cause) {
+  var effects = G.effects.caused(value, cause);
+  if (effects) {
+    for (var i = 0; i < effects.length; i++) {
+      G.revoke(effects[i])
+    }
+  }
 }
 

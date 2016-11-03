@@ -59,18 +59,23 @@ G.callback.iterator = function(value, watcher) {
   var caused = G.$cause;
   G.$cause = watcher;
 
-  if (!value.$iterators || value.$iterators.indexOf(watcher) == -1) {
+  if (!value.$multiple) {
     // if property changed, use its context
     G.$called =  G.$caller = value = value.$context;
   }
+
   if (value.$after)
     var effects = G.effects.caused(value, watcher);
   var iteratee = watcher.$iteratee || null;
   watcher.$iteratee = value;
+  watcher.$computing = true;
+  G._observeProperties(value, watcher);
 
   watcher(value);
+  watcher.$computing = false;
   watcher.$iteratee = iteratee
-  G.effects
+
+
   if (effects) {
     for (var i = 0; i < effects.length; i++) {
       for (var next = value; next; next = next.$after)
@@ -110,9 +115,25 @@ G.callback.getter = function(value, watcher) {
 }
 
 G.callback.future = function(value, watcher) {
+  var props = (watcher.$getter || watcher).$properties
+
+
+  var called = G.$called;
+  var caller = G.$caller;
+  var caused = G.$cause;
+  G.$cause = watcher;
+
+  if (props && typeof value.valueOf() != 'object')
+    // if property changed, use its context
+    G.$called =  G.$caller = value = value.$context;
+
   var result = G.Future.invoke(watcher, value);
   if (result)
-    G.Future.notify(watcher, result)
+    G.Future.notify(watcher, value, result)
+  
+  G.$called = called;
+  G.$caller = caller;
+  G.$cause  = caused;
   return result;
 }
 

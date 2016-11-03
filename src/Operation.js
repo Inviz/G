@@ -121,18 +121,22 @@ G.prototype.call = function(verb) {
     }
   }
 
-  if (verb !== false) { 
+  if (verb !== false && (!value.$caller                 // If operation needs to be registered in the graph
+  || value.$before && value.$before.$after != value)) { // Or its being moved within graph
     G.record.causation(value);                          // Reference to caller and invoking callback
     G.record.sequence(value, old);                      // Place operation into dependency graph 
   }
 
   if (result !== old) {                                 // If value is the new head
     this.$context[this.$key] = result;                  // Save value in its context
-    G.record.push(result, old);                         // Put operation onto the caller stack
-    G.affect(result, old);                              // Apply side effects and invoke observers 
-    G.record.pop();                                     // Remove operation from the caller stack
   }
 
+  var origin = value.$multiple ? value : result;
+  if (origin !== old) {
+    G.record.push(origin, old);                         // Put operation onto the caller stack
+    G.affect(origin, old);                              // Apply side effects and invoke observers 
+    G.record.pop();                                     // Remove operation from the caller stack
+  }
   if (value.$multiple) {                                // If array had iterators applied
     if (old && old.$iterators) {
       G.record.push(value);                             // Put operation onto the caller stack
@@ -169,6 +173,8 @@ G.prototype.uncall = function(soft) {
   }
 
   var context = this.$context;
+  var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
+    
   if (context)
     var current = context[this.$key]
   var value = G.formatted(this);                    // 2. Return to previous version
@@ -192,7 +198,6 @@ G.prototype.uncall = function(soft) {
       delete context[this.$key];                    // 4. Removing key from context 
       G.notify(context, this.$key, current, value)  // Notify 
     }
-    var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
     if (!recalling) G.$recaller = this              //   set global flag to detect recursion
     var to = G.effects(value, G.revoke) || value    // Recurse to recall side effects, remember last
     if (!recalling) G.$recaller = null;             // Reset recursion pointer
@@ -203,6 +208,13 @@ G.prototype.uncall = function(soft) {
         G.uncall(this.$computed[i].$current);
     }
     this.$computed = undefined;
+  }
+  var watchers = context.$watchers && context.$watchers[this.$key];
+  if (watchers) {
+    for (var i = 0; i < watchers.length; i++) {
+      if ((watchers[i].$getter || watchers[i]).$properties)
+        G._unobserveProperties(value, watchers[i])
+    }
   }
   if (!recalling && !soft) {
     var cause = this.$cause;
