@@ -11,7 +11,6 @@ G.Future._getValue = function() {
 }
 G.Future._unsetValue = function() {
   var current = this.$cause.$current;
-  debugger
   if (this.$multiple) {
     if (this == current) {
       this.$cause.$current = this.$leading || this.$following;
@@ -121,12 +120,13 @@ G.Future.notify = function(watcher, value, result) {
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
       if (n.$caller === value) {
-        debugger
         if (n === watcher.$current)
           watcher.$current = n.$previous;
         G.Array.recall(n)
-        G.link(n.$before, result)
-        G.link(result, n.$after)
+        if (!G.$called) {
+          G.link(n.$before, result)
+          G.link(result, n.$after)
+        }
         break;
       }
     }

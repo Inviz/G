@@ -77,7 +77,7 @@ G.affect = function(value, old) {
     for (var i = 0; i < group.length; i++)
       if (!present || present.indexOf(group[i]) == -1)
         G.callback(value, group[i], old, true);
-      else
+      else if ((group[i].$getter || group[i]).$properties)
         G._observeProperties(value, group[i]);
   if (observers)
     for (var i = 0; i < observers.length; i++)
@@ -102,8 +102,6 @@ G.record.sequence = function(value, old) {
     if (!old.$multiple && !value.$multiple)
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
   if (old && old.$caller === G.$caller && !value.$multiple) { //    If new value has the same caller as old
-    if (old.$multiple)
-      debugger
     G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
     G.link(G.$called, G.unformatted(value), true)     //    Continue writing at parent's point
@@ -253,6 +251,20 @@ G.effects.caused = function(value, watcher) {
       (effects || (effects = [])).push(next)
   }
   return effects
+}
+
+G.effects.clean = function(value, effects) {
+  for (var i = 0; i < effects.length; i++) {
+    for (var next = value; next; next = next.$after)
+      if (next === effects[i])
+        break;
+      else if (next === G.$called) {
+        next = undefined;
+        break;
+      }
+    if (!next)
+      G.uncall(effects[i])
+  }  
 }
 
 G.last = function(value) {

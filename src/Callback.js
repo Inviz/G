@@ -51,9 +51,6 @@ G.isUndone = function(value) {
 
 G.callback.iterator = function(value, watcher) {
 
-  if (watcher.$iteratee) // iterator called itself recursively, abort
-    return
-
   var called = G.$called;
   var caller = G.$caller;
   var caused = G.$cause;
@@ -66,29 +63,15 @@ G.callback.iterator = function(value, watcher) {
 
   if (value.$after)
     var effects = G.effects.caused(value, watcher);
-  var iteratee = watcher.$iteratee || null;
-  watcher.$iteratee = value;
   watcher.$computing = true;
   G._observeProperties(value, watcher);
 
   watcher(value);
   watcher.$computing = false;
-  watcher.$iteratee = iteratee
 
+  if (effects)
+    G.effects.clean(value, effects);
 
-  if (effects) {
-    for (var i = 0; i < effects.length; i++) {
-      for (var next = value; next; next = next.$after)
-        if (next === effects[i])
-          break;
-        else if (next === G.$called) {
-          next = undefined;
-          break;
-        }
-      if (!next)
-        G.uncall(effects[i])
-    }
-  }
   G.$called = called;
   G.$caller = caller;
   G.$cause  = caused;
@@ -127,10 +110,16 @@ G.callback.future = function(value, watcher) {
     // if property changed, use its context
     G.$called =  G.$caller = value = value.$context;
 
+  if (value.$after)
+    var effects = G.effects.caused(value, watcher);
+  
   var result = G.Future.invoke(watcher, value);
   if (result)
     G.Future.notify(watcher, value, result)
   
+  if (effects)
+    G.effects.clean(value, effects);
+
   G.$called = called;
   G.$caller = caller;
   G.$cause  = caused;

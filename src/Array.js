@@ -144,8 +144,6 @@ G.Array.register = function(left, right, parent) {
   if (!right.$multiple)
     right.$multiple = true;
 
-  debugger
-
   if (parent) {
     if (parent.$last == left)
       parent.$last = right;
@@ -203,6 +201,8 @@ G.Array.findIterated = function(old) {
   if (G.$cause == old.$cause && G.$cause && G.$caller.$multiple) {
     var prev = G.$caller.$previous;
     for (var after = prev; after = after.$after;) {
+      if (after.$context == old.$context)
+        if (after.$key == old.$key)
       if (after.$cause == G.$cause && after.$caller == prev) {
         return after;
       }

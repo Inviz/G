@@ -244,20 +244,16 @@ G.prototype.unobserve = function(source) {
 G._observeProperties = function(array, callback) {
   var properties = (callback.$getter || callback).$properties
   if (properties) {
-    callback.$iteratee = array;
     for (var j = 0; j < properties.length; j++)
       G.watch(array, properties[j][0], callback)
-    callback.$iteratee = null;
   }
 }
 
 G._unobserveProperties = function(array, callback) {
   var properties = (callback.$getter || callback).$properties
   if (properties) {
-    callback.$iteratee = array;
     for (var j = 0; j < properties.length; j++)
       G.unwatch(array, properties[j][0], callback)
-    callback.$iteratee = null;
   }
 }
 
