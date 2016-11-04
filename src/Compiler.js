@@ -8,6 +8,9 @@ G.compile = function() {
     if (first == first.toUpperCase() && first != first.toLowerCase())
       verbs = G.compile.struct(G[name])
   }
+  for (var property in G.prototype)
+    if (!G.Future.prototype[property])
+      G.Future.prototype[property] = G.Future.catchAll(property)
 }
 G.compile.struct = function(struct) {
   // Convert G.watch to G.prototype.watch
@@ -43,6 +46,7 @@ G.compile.struct = function(struct) {
         G.prototype[verb] = struct.prototype['$' + verb];
     }
   }
+
 };
 
 

@@ -5,22 +5,6 @@ G.Future = function(context, key, watcher) {
   this.$cause = watcher
 }
 
-G.Future._getValue = function() {
-  return this.$current && this.$current.valueOf()
-
-}
-G.Future._unsetValue = function() {
-  var current = this.$cause.$current;
-  if (this.$multiple) {
-    if (this == current) {
-      this.$cause.$current = this.$leading || this.$following;
-    }
-  } else {
-    this.$cause.$current = undefined;
-  }
-}
-
-
 G.Future.prototype.call = function() {
   if (this.$future) {
     if (this.$key) {
@@ -99,8 +83,7 @@ G.Future.invoke = function(watcher, value) {
     watcher.$current = undefined
     return
   } else {
-    computed = computed.valueOf();
-    var result = G.extend(computed, watcher.$context, watcher.$key);
+    var result = G.create(watcher.$context, watcher.$key, computed.valueOf());
     result.$cause = watcher
     result.$meta = watcher.$meta;
     result.$context = watcher.$context;
@@ -115,23 +98,8 @@ G.Future.notify = function(watcher, value, result) {
   var cause = G.$cause;
   G.$cause = watcher;
   var current = watcher.$current;
-  if (!current || (!current.$multiple && !value.$multiple)) {
-    watcher.$current = result;
-  } else {
-    for (var n = watcher.$current; n; n = n.$previous) {
-      if (n.$caller === value) {
-        if (n === watcher.$current)
-          watcher.$current = n.$previous;
-        G.Array.recall(n)
-        if (!G.$called) {
-          G.link(n.$before, result)
-          G.link(result, n.$after)
-        }
-        break;
-      }
-    }
-    watcher.$current = G.verbs.push(result, watcher.$current)
-  }
+  debugger
+  G.Future.setValue(watcher, value, result);
   G.record.push(result)
   if (!current || result.valueOf() != current.valueOf()) {
     var appl = watcher.$applications;
@@ -177,6 +145,60 @@ G.Future.unwatch = function(context, key, watcher) {
     }
   }
 }
+G.Future.setValue = function(watcher, value, result) {
+  var current = watcher.$current;
+  if (!current || (!current.$multiple && !value.$multiple)) {
+    if (watcher.$current)
+      G.Future.revokeCalls(watcher.$current, watcher)
+    watcher.$current = result;
+  } else {
+    for (var n = watcher.$current; n; n = n.$previous) {
+      if (n.$caller === value) {
+        if (n === watcher.$current)
+          watcher.$current = n.$previous;
+        G.Array.recall(n)
+        if (!G.$called) {
+          G.link(n.$before, result)
+          G.link(result, n.$after)
+        }
+        break;
+      }
+    }
+    watcher.$current = G.verbs.push(result, watcher.$current)
+  }
+  if (watcher.$calls) {
+    var target = result.$source || result
+    for (var i = 0; i < watcher.$calls.length; i++) {
+      var cause = G.$cause;
+      G.record.push(target)
+      G.$cause = watcher;
+      target[watcher.$calls[i][0]].apply(target, watcher.$calls[i].slice(1))
+      G.$cause = cause;
+      G.record.pop()
+    }
+  }
+}
+
+G.Future.revokeCalls = function(value, watcher) {
+  var effects = G.effects.caused(value.$source || value, watcher)
+  if (effects)
+    for (var i = 0; i < effects.length; i++)
+      G.uncall(effects[i]);
+}
+G.Future._getValue = function() {
+  return this.$current && this.$current.valueOf()
+}
+G.Future._unsetValue = function() {
+  var current = this.$cause.$current;
+  G.Future.revokeCalls(this, this.$cause)
+  if (this.$multiple) {
+    if (this == current) {
+      this.$cause.$current = this.$leading || this.$following;
+    }
+  } else {
+    this.$cause.$current = undefined;
+  }
+}
 
 G.Future.unsubscribe = function(context, key, watcher, meta, soft) {
   if (!soft) {
@@ -220,7 +242,7 @@ G.Future.subscribe = function(context, key, watcher, meta) {
     var context = application.$context;
     var key = application.$key;
   }
-    application.$meta = meta;
+  application.$meta = meta;
 
   (watcher.$applications || (watcher.$applications = []))
     .push(application)
@@ -238,4 +260,13 @@ G.Future.subscribe = function(context, key, watcher, meta) {
   return application
 }
 
-
+G.Future.catchAll = function(property) {
+  return function() {
+    var result = [property];
+    for (var i = 0; i < arguments.length; i++)
+      result.push(arguments[i])
+    if (!this.$calls) this.$calls = []
+    this.$calls.push(result)
+    return this;
+  }
+}

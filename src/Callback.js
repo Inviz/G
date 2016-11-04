@@ -6,14 +6,12 @@ G.callback = function(value, watcher, old) {
 
 // Find a callback function for given watcher
 G.callback.dispatch = function(watcher) {
-  if (watcher.$future) {
+  if (watcher.$future || watcher.$properties) {
     return G.callback.future;
   } else if (watcher.$getter) {
     return G.callback.getter
   } else if (typeof watcher == 'object') {
     return G.callback.proxy
-  } else if (watcher.$properties) {
-    return G.callback.iterator
   } else {
     return G.callback.property
   }
@@ -49,36 +47,6 @@ G.isUndone = function(value) {
   return true;
 }
 
-G.callback.iterator = function(value, watcher) {
-
-  var called = G.$called;
-  var caller = G.$caller;
-  var caused = G.$cause;
-  G.$cause = watcher;
-
-  if (!value.$multiple) {
-    // if property changed, use its context
-    G.$called =  G.$caller = value = value.$context;
-  }
-
-  if (value.$after)
-    var effects = G.effects.caused(value, watcher);
-  watcher.$computing = true;
-  G._observeProperties(value, watcher);
-
-  watcher(value);
-  watcher.$computing = false;
-
-  if (effects)
-    G.effects.clean(value, effects);
-
-  G.$called = called;
-  G.$caller = caller;
-  G.$cause  = caused;
-
-  return value
-}
-
 G.callback.proxy = function(value, watcher) {
   if (watcher.$source) { // merge observer
     if (watcher.$method) {
@@ -99,8 +67,6 @@ G.callback.getter = function(value, watcher) {
 
 G.callback.future = function(value, watcher) {
   var props = (watcher.$getter || watcher).$properties
-
-
   var called = G.$called;
   var caller = G.$caller;
   var caused = G.$cause;
@@ -113,10 +79,16 @@ G.callback.future = function(value, watcher) {
   if (value.$after)
     var effects = G.effects.caused(value, watcher);
   
-  var result = G.Future.invoke(watcher, value);
-  if (result)
-    G.Future.notify(watcher, value, result)
-  
+  if (watcher.$future) {
+    var result = G.Future.invoke(watcher, value);
+    if (result)
+      G.Future.notify(watcher, value, result)
+  } else {
+    watcher.$computing = true;
+    G._observeProperties(value, watcher);
+    watcher(value);
+    watcher.$computing = false;
+  }
   if (effects)
     G.effects.clean(value, effects);
 

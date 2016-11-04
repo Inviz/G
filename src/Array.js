@@ -108,7 +108,7 @@ G.Array.iterate = function(array, iterators) {
     }
 
     G.record.push(array)
-    G.callback.iterator(array, iterators[i])
+    G.callback.future(array, iterators[i])
     G.record.pop()
   }
 }

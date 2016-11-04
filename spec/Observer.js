@@ -124,6 +124,38 @@ describe('Observers', function() {
   })
 
   describe('Promising', function() {
+    it ('should reference future object and proxy methods', function() {
+      var context = new G;
+      var ref = context.watch('person');
+      ref.set('title', 'Janitor');
+
+      var person = context.set('person', {name: 'John Doe'}, 'hola')
+
+      expect(String(person.name)).to.eql('John Doe');
+      expect(String(person.title)).to.eql('Janitor');
+
+      var nobody = context.set('person', {name: 'Nobody'}, 'test')
+      expect(String(nobody.name)).to.eql('Nobody');
+      expect(String(nobody.title)).to.eql('Janitor');
+      expect(String(person.name)).to.eql('John Doe');
+      expect(person.title).to.eql(undefined);
+
+      context.person.recall('test');
+
+      expect(context.person).to.eql(person)
+
+      expect(String(person.name)).to.eql('John Doe');
+      expect(String(person.title)).to.eql('Janitor');
+      expect(String(nobody.name)).to.eql('Nobody');
+      expect(nobody.title).to.eql(undefined);
+
+      nobody.call();
+      expect(String(nobody.name)).to.eql('Nobody');
+      expect(String(nobody.title)).to.eql('Janitor');
+      expect(String(person.name)).to.eql('John Doe');
+      expect(person.title).to.eql(undefined);
+
+    })
     it ('should create a future value', function() {
       var context = new G;
       var future = context.watch('key')

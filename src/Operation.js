@@ -113,11 +113,17 @@ G.prototype.call = function(verb) {
     if (other) {                                        // If history holds a value with same meta
       if (G.equals(other, result))                      //   If it's equal to given value
         return G.record.reuse(other);                   //     Rebase that value into record
+      if (value.$source) {
+        result = G.reify(value, this);                      // Create a G object from shallow reference
+        value = G.reify.reuse(result, value)                // Use it instead of value, if possible
+      }
       result = G.update(result, old, other);            //   then replace it in stack
     } else {        
       result = verb(result, old);                       // invoke stack-manipulation method
       if (result === false)                             // No side effect will be observed
-        return G.record.continue(value, old);  
+        return G.record.continue(value, old);
+      if (value.$source)
+        value = result  
     }
   }
 
