@@ -92,69 +92,55 @@ G.prototype.call = function(verb) {
   if (typeof verb == 'string')
     verb = G.verbs[verb];
   var old     = this.$context[this.$key];
-  var value   = G.format(this, old);                    // Transform value 
+  var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
-  if (value.$source && (!old || !verb || !verb.reifying)) {
-    result = G.reify(value, this);                      // Create a G object from shallow reference
-    value = G.reify.reuse(result, value)                // Use it instead of value, if possible
-  } else if (value.$multiple) {  
+  if (verb && !verb.multiple && old)
+    var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
+
+  if (value.$source)                                  // When value is a shallow reference to object
+    if (!old || !verb || !verb.reifying || other) {   
+      result = G.reify(value, this);                  // Create a G object subscribed to reference
+      value = G.reify.reuse(result, value)            // Use it instead of value, if possible
+    }
+
+  if (value.$multiple) {  
     result = G.Array.call(value, old)  
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
 
-  if (verb && old != null && old.$key) {                // If there was another value by that key
-    if (verb.multiple) {                                // If verb allows multiple values by same meta
-      value.$multiple = true                            //   Set flag on the value
-    } else {                                            // If verb only allows one value,
-      var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
-    }  
-    if (other) {                                        // If history holds a value with same meta
-      if (G.equals(other, result))                      //   If it's equal to given value
-        return G.record.reuse(other);                   //     Rebase that value into record
-      if (value.$source) {
-        result = G.reify(value, this);                      // Create a G object from shallow reference
-        value = G.reify.reuse(result, value)                // Use it instead of value, if possible
-      }
-      result = G.update(result, old, other);            //   then replace it in stack
+  if (verb && old != null && old.$key) {              // If there was another value by that key
+    if (verb.multiple)                                // If verb allows multiple values by same meta
+      value.$multiple = true                          //   Set flag on the value
+    if (other) {                                      // If history holds a value with same meta
+      if (G.equals(other, result))                    //   If it's equal to given value
+        return G.record.reuse(other);                 //     Rebase that value into record
+      result = G.update(result, old, other);          //   then replace it in stack
     } else {        
-      result = verb(result, old);                       // invoke stack-manipulation method
-      if (result === false)                             // No side effect will be observed
+      result = verb(result, old);                     // invoke stack-manipulation method
+      if (result === false)                           // No side effect will be observed
         return G.record.continue(value, old);
       if (value.$source)
         value = result  
     }
   }
 
-  if (verb !== false && (!value.$caller                 // If operation needs to be registered in the graph
-  || value.$before && value.$before.$after != value)) { // Or its being moved within graph
-    G.record.causation(value);                          // Reference to caller and invoking callback
-    G.record.sequence(value, old);                      // Place operation into dependency graph 
-  }
+  if (verb !== false && !G.isLinked(value))           // If operation position in graph needs update
+    G.record(value, old);                             // Register in graph and remember caller op/callback
 
-  if (result !== old) {                                 // If value is the new head
-    this.$context[this.$key] = result;                  // Save value in its context
-  }
+  if (result !== old)                                 // If value is the new head
+    this.$context[this.$key] = result;                // Save value in its context
 
   var origin = value.$multiple ? value : result;
   if (origin !== old) {
-    G.record.push(origin, old);                         // Put operation onto the caller stack
-    G.affect(origin, old);                              // Apply side effects and invoke observers 
-    G.record.pop();                                     // Remove operation from the caller stack
-  }
-  if (value.$multiple) {                                // If array had iterators applied
-    if (old && old.$iterators) {
-      G.record.push(value);                             // Put operation onto the caller stack
-      G.Array.iterate(value, old.$iterators)            // Invoke iterator with the given value
-      G.record.pop()                                    // Remove value from stack
-    }
-    result = value;                                     // Use value instead of array head for callbacks
-  }
-
-  if (result !== old)
-    G.notify(this.$context, this.$key, result, old)     // Trigger user callbacks 
-    
+    G.record.push(origin);                            // Put operation onto the caller stack
+    G.affect(origin, old);                            // Apply side effects and invoke observers 
+    if (old && old.$iterators)
+      G.Array.iterate(value, old.$iterators)          // Invoke array's active iterators
+    G.notify(this.$context, this.$key, origin, old)   // Trigger user callbacks 
+    G.record.pop();                                   // Remove operation from the caller stack
+  }  
   return value;
 };
 
@@ -169,44 +155,44 @@ G.prototype.recall = function() {
 
 // Undo operation. Reverts value and its effects to previous versions. 
 G.prototype.uncall = function(soft) {
-  if (this.$target) {                               // 1. Unmerging object
-    this.$target.unobserve(this)
-    if (this.$target.$chain.length == 0)            // todo check no extra keys
-      return G.uncall(this.$target); 
-    return this;
-  } else if (this.$future) {
-    return G.Future.uncall(this)
-  }
-
-  var context = this.$context;
-  var recalling = G.$recaller;                    // Top-level call will detach sub-tree,
-    
-  if (context)
-    var current = context[this.$key]
-  var value = G.formatted(this);                    // 2. Return to previous version
-  var from = G.unformatted(value)                   // Get initial value before formatting
-
-  var prec = value.$preceeding;
-  if (prec && prec.$succeeding == value) {          // If stack holds values before given
-    if (value == current && !value.$succeeding)     // And value is current and on top of history
-      G.call(value.$preceeding, soft ? false : null)// Apply previous version of a value
-    var to = G.last(value)                          // Find deepest last within value
-  } else {
-    if (value.$multiple) {                          // 3. Removing value from group 
-      if (value == current) {
-        current = value.$previous;
-        context[this.$key] = value.$previous;       // reset head pointer on 
-      }
-      G.Array.recall(value); 
-      G.notify(context, this.$key, current, value)  // Notify 
+  if (this.$target) {                                 // 1. Unmerging object
+    this.$target.unobserve(this)  
+    if (this.$target.$chain.length == 0)              // todo check no extra keys
+      return G.uncall(this.$target);   
+    return this;  
+  } else if (this.$future) {  
+    return G.Future.uncall(this)  
+  }  
+  
+  var context = this.$context;  
+  var recalling = G.$recaller;                        // Top-level call will detach sub-tree,
+      
+  if (context)  
+    var current = context[this.$key]  
+  var value = G.formatted(this);                      // 2. Return to previous version
+  var from = G.unformatted(value)                     // Get initial value before formatting
+  
+  var prec = value.$preceeding;  
+  if (prec && prec.$succeeding == value) {            // If stack holds values before given
+    if (value == current && !value.$succeeding)       // And value is current and on top of history
+      G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
+    var to = G.last(value)                            // Find deepest last within value
+  } else {  
+    if (value.$multiple) {                            // 3. Removing value from group 
+      if (value == current) {  
+        current = value.$previous;  
+        context[this.$key] = value.$previous;         // reset head pointer on 
+      }  
+      G.Array.recall(value);   
+      G.notify(context, this.$key, current, value)    // Notify 
     } else if (current === value) {
       current = undefined
-      delete context[this.$key];                    // 4. Removing key from context 
-      G.notify(context, this.$key, current, value)  // Notify 
-    }
-    if (!recalling) G.$recaller = this              //   set global flag to detect recursion
-    var to = G.effects(value, G.revoke) || value    // Recurse to recall side effects, remember last
-    if (!recalling) G.$recaller = null;             // Reset recursion pointer
+      delete context[this.$key];                      // 4. Removing key from context 
+      G.notify(context, this.$key, current, value)    // Notify 
+    }  
+    if (!recalling) G.$recaller = this                //   set global flag to detect recursion
+    var to = G.effects(value, G.revoke) || value      // Recurse to recall side effects, remember last
+    if (!recalling) G.$recaller = null;               // Reset recursion pointer
   }
   if (this.$computed) {
     for (var i = 0; i < this.$computed.length; i++) {

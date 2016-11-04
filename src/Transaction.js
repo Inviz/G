@@ -94,7 +94,8 @@ G.$caller = G.$called = null;
 
 // register operation in graph
 G.record = function(value, old) {
-  
+  G.record.causation(value, old);
+  G.record.sequence(value, old);
 }
 
 G.record.sequence = function(value, old) {
@@ -277,6 +278,10 @@ G.last = function(value) {
   else
     return last;
 } 
+
+G.isLinked = function(value) {
+  return value.$caller && (!value.$before || value.$before.$after == value);
+}
 
 // find used properties in callbacks like this.author.name
 G.$findProperties = /[a-zA-Z0-9_]+\s*\.\s*(?:[_a-zA-Z-0-9.\s]+)\s*(?:\()?/g

@@ -127,6 +127,7 @@ describe('Observers', function() {
     it ('should reference future object and proxy methods', function() {
       var context = new G;
       var ref = context.watch('person');
+      
       ref.set('title', 'Janitor');
 
       var person = context.set('person', {name: 'John Doe'}, 'hola')
