@@ -98,7 +98,7 @@ G.Future.notify = function(watcher, value, result) {
   var cause = G.$cause;
   G.$cause = watcher;
   var current = watcher.$current;
-  debugger
+
   G.Future.setValue(watcher, value, result);
   G.record.push(result)
   if (!current || result.valueOf() != current.valueOf()) {

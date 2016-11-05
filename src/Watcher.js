@@ -153,13 +153,17 @@ G.prototype.undefine = function(key, callback) {
 // Merge two objects
 G.prototype.merge = function(object) {
   if (typeof object != 'string') {
+    var meta;
+    for (var i = 0; i < arguments.length - 1; i++)
+      (meta || (meta = []))[i] = arguments[i];
+
     if (object.watch)
-      return G.verbs.merge(object, this);
+      return G.verbs.merge(object, this, meta);
 
     var keys = Object.keys(object);
     for (var i = 0, key; key = keys[i++];)
       if (key.charAt(0) != '$')
-        G.set(this, key, object[key]);
+        G.merge(this, key, object[key], meta);
     return this;
   }
   return G.prototype.$merge.apply(this, arguments);
@@ -168,29 +172,47 @@ G.prototype.merge = function(object) {
 // Merge object underneath (not shadowing original values)
 G.prototype.defaults = function(object) {
   if (typeof object != 'string') {
+    var meta
+    var arity = 1;
+    for (var i = 0; i < arguments.length - arity; i++)
+      (meta || (meta = []))[i] = arguments[i + arity];
     if (object.watch)
-      return G.verbs.defaults(object, this);
+      return G.verbs.defaults(object, this, meta);
 
     var keys = Object.keys(object);
     for (var i = 0, key; key = keys[i++];)
       if (key.charAt(0) != '$')
-        G.preset(this, key, object[key]);
+        G.defaults(this, key, object[key], meta);
     return this;
   }
   return G.prototype.$defaults.apply(this, arguments);
 }
 
 // Merge two G objects and subscribe for updates
-G.prototype.observe = function(source, preset) {
+G.prototype.observe = function(source, preset, meta, method) {
   if (!source.watch) {
-    return this.merge(source);
+    if (preset)
+      return this.defaults.apply(this, arguments)
+    else
+      return this.merge.apply(this, arguments);
   } else if (source.$source) {
-    var target = source;
-    target.$target = this;
+    if (!meta) meta = source.$meta;
     source = source.$source;
     if (!source.watch) {
-      return this.merge(source);
+      if (preset)
+        return this.defaults(source, meta)
+      else
+        return this.merge(source, meta);
     }
+    var target = source;
+    G._setMeta(target, meta);
+    target.$method = method;
+    target.$target = this;
+  } else if (meta != null) {
+    var target = new G.Future;
+    G._setMeta(target, meta);
+    target.$method = method;
+    target.$target = this;
   } else {
     var target = this;
   }
@@ -209,36 +231,52 @@ G.prototype.observe = function(source, preset) {
     source.$observers = [target]
   
   var keys = Object.keys(source);
+  var called = G.$called;
+  var cause = G.$cause;
+  G.$cause = this;
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
-      G.record.push(source[key])
+      G.record.push(source[key], true)
       G.callback.proxy(source[key], target);
       G.record.pop()
     }
+  G.$cause = cause;
+  G.$called = called;
   return this;
 };
 
 G.prototype.unobserve = function(source) {
   if (source.$source) {
-    var target = source;
+    var target = source.$target || source;
     source = source.$source;
   } else {
     var target = this;
   }
-  var index = this.$chain.indexOf(source);
-  if (index > -1)
-    this.$chain.splice(index, 1)
-  var index = source.$observers.indexOf(target);
-  if (index == -1)
+  var i = this.$chain.indexOf(source);
+  if (i > -1)
+    this.$chain.splice(i, 1)
+  for (var i = 0; i < source.$observers.length; i++) {
+    if (source.$observers[i] == target ||
+        source.$observers[i].$target == target)
+      break;
+
+  }
+  if (i == source.$observers.length)
     return this;
-  source.$observers.splice(index, 1);
+  source.$observers.splice(i, 1);
   var keys = Object.keys(source);
+  var called = G.$called;
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
       G.record.push(source[key]);
-      G.callback.revoke(source[key], target)
+      if (source[key] instanceof G && this[key] instanceof G && this[key] != source[key]) {
+        this[key].unobserve(source[key])
+      } else {
+        G.callback.revoke(source[key], target)
+      }
       G.record.pop()
     }
+  G.$called = called;
 }
 
 G._observeProperties = function(array, callback) {

@@ -77,6 +77,7 @@ G.reify = function(value, target) {
     result.$key = target.$key;
     result.$context = target.$context;
     result.$meta = value.$meta;
+    value.$target = result;
     return result;
   }
 }

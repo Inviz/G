@@ -127,7 +127,7 @@ describe('Observers', function() {
     it ('should reference future object and proxy methods', function() {
       var context = new G;
       var ref = context.watch('person');
-      
+
       ref.set('title', 'Janitor');
 
       var person = context.set('person', {name: 'John Doe'}, 'hola')
@@ -855,21 +855,152 @@ describe('Observers', function() {
       expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Vasya']));
       expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
       
-      author.set('name', 'Borya', 123)
+      author.set('name', 'Borya', 444)
       expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Borya']));
+
       authorship.call('defaults')
       expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Borya', 'Vasya']));
       expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));
 
-      //post.author.set('author.name', 'Anonymous')
-
-
-      //post['author.name'] = 'abc'
-
-
 
     })
+
+    it ('should merge deep objects', function() {
+      var post = new G({
+        title: 'Hello world',
+        text: 'Welcome to the blog',
+        author: {
+          name: 'George',
+        },
+        video: {
+          src: 'file.mp4'
+        }
+      });
+
+      var defaults = {
+        title: 'Untitled',
+        created_at: new Date,
+        author: {
+          title: 'Writer',
+          name: 'Anonymous'
+        },
+        video: {
+          width: 640,
+          height: 480
+        }
+      }
+
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(defaults.author.title)).to.eql('Writer')
+
+      post.defaults(defaults)
+
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(post.author.title)).to.eql('Writer')
+    })
+
+    it ('should merge deep observable objects', function() {
+      var post = new G({
+        title: 'Hello world',
+        text: 'Welcome to the blog',
+        author: {
+          name: 'George',
+        },
+        video: {
+          src: 'file.mp4'
+        }
+      }, 'test')
+      var defaults = new G({
+        title: 'Untitled',
+        created_at: new Date,
+        author: {
+          title: 'Writer',
+          name: 'Anonymous'
+        },
+        image: {
+          src: 'header.jpg'
+        },
+        video: {
+          width: 640,
+          height: 480
+        }
+      })
+
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(defaults.author.title)).to.eql('Writer')
+
+      post.defaults(defaults, 'blah blah')
+
+      expect(G.stringify(ValueStack(post.title))).to.eql(G.stringify(['Untitled', 'Hello world']))
+      expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Anonymous', 'George']))
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(post.author.title)).to.eql('Writer')
+
+      post.unobserve(defaults)
+      expect(String(post.author.name)).to.eql('George')
+      expect(post.author.title).to.eql(undefined)
+      expect(G.stringify(ValueStack(post.title))).to.eql(G.stringify(['Hello world']))
+      expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['George']))
+      
+      post.merge(defaults, 'blah blah');
+      expect(G.stringify(ValueStack(post.title))).to.eql(G.stringify(['Hello world', 'Untitled']))
+      expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['George', 'Anonymous']))
+
+      post.unobserve(defaults)
+      expect(post.author.title).to.eql(undefined)
+      expect(String(post.author.name)).to.eql('George')
+
+      expect(String(post.author.name)).to.eql('George')
+      expect(post.author.title).to.eql(undefined)
+    })
+
+    it ('should merge deep observable objects', function() {
+      var post = new G({
+        title: 'Hello world',
+        text: 'Welcome to the blog',
+        author: {
+          name: 'George',
+        },
+        video: {
+          src: 'file.mp4'
+        }
+      });
+
+      var defaults = new G({
+        title: 'Untitled',
+        created_at: new Date,
+        author: {
+          title: 'Writer',
+          name: 'Anonymous'
+        },
+        video: {
+          width: 640,
+          height: 480
+        }
+      })
+
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(defaults.author.title)).to.eql('Writer')
+
+      post.defaults(defaults, 'preset')
+
+      expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Anonymous', 'George']))
+      expect(String(post.author.name)).to.eql('George')
+      expect(String(post.author.title)).to.eql('Writer')
+
+      post.unobserve(defaults)
+      expect(String(post.author.name)).to.eql('George')
+      expect(post.author.title).to.eql(undefined)
+
+      post.merge(defaults, 'zug zug');
+      expect(String(post.author.name)).to.eql('Anonymous')
+      expect(String(post.author.title)).to.eql('Writer')
+      post.unobserve(defaults)
+      expect(String(post.author.name)).to.eql('George')
+      expect(post.author.title).to.eql(undefined)
+    })
   })
+
 
   describe('Iterating', function() {
     it ('should watch array values', function() {
@@ -1282,7 +1413,6 @@ describe('Observers', function() {
       var trex = context.push('toys', {name: 'T-Rex', price: 195.99});
       var doll = context.push('toys', {name: 'Doll'});
       var names = context.watch('toys', function(toy) {
-            debugger
         context.push('names', toy.name, toy) // values will stack because of unique toy meta
         return toy.name // creates array of values
       })
@@ -1305,7 +1435,6 @@ describe('Observers', function() {
       expect(G.stringify(StateGraph(trex))).to.eql(G.stringify([{name: 'T-Rex', price: 195.99}, 'T-Rex', 'T-Rex']))
       expect(G.stringify(StateGraph(doll))).to.eql(G.stringify([{name: 'Doll'}, 'Doll', 'Doll']))
 
-      debugger
       doll.set('name', 'Roll')
       expect(G.stringify(ValueGroup(names.$current))).to.eql(G.stringify(['T-Rex', 'Roll']))
       expect(G.stringify(ValueGroup(context.names))).to.eql(G.stringify(['T-Rex', 'Roll']))
@@ -1490,7 +1619,6 @@ describe('Observers', function() {
       })
       var transaction = G.transact()
       var loop = context.toys.forEach(function(toy) {
-        debugger
         toy.preset('price', product.price, 'deflt')
         toy.preset('description', product.description, 'deflt')
         if (toy.price > 100)

@@ -18,14 +18,14 @@ as `G.extend('Hello world', context, key)`
  * @constructor
  */
 var G = function(context, key, value) {
-  if (key != null) {
+  if (context && this instanceof G) {
+    this.observe.apply(this, arguments);
+  } else if (key != null) {
     this.$key = key;                                  // Store key
     if (context != null)         
       this.$context = context;                        // Store context, object that holds operations
     if (value)                                        // If value is given to constructor, it's object
       this.$source = value;                           // Keep reference to original object to reify later
-  } else if (context && this instanceof G) {
-    G.observe(this, context);
   }
 
   if (arguments.length > 3) {                         // Use/merge extra arguments as meta
@@ -56,10 +56,19 @@ G.create = function(context, key, value) {
         result.$cause = value
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
-    } else if (!value.recall || value instanceof G) { // 2. Wrapping plain object
-      var result = new G(context, key, value)         //    Create new G wrapper
+
+    } else if (value instanceof G || (!value.recall 
+    && Object.prototype.toString.call(value) == '[object Object]')) { // 2. Wrapping plain object
+      var result = new G()                            //    Create new G wrapper
+      result.$context = context;
+      result.$key = key;
+      if (value)
+        result.$source = value;
     } else {                                          // 3. Applying operation as value
-      var primitive = value.valueOf()                 //    Get its primitive value
+      if (value.recall)
+        var primitive = value.valueOf();
+      else
+        var primitive = value;                        //    Get its primitive value
       var result = G.extend(primitive, context, key)  //    Construct new operation
       if (result.$context == value.$context &&            
           result.$key     == value.$key)              //    If operation is from before
@@ -95,7 +104,7 @@ G.prototype.call = function(verb) {
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
-  if (verb && !verb.multiple && old)
+  if (verb && (!verb.multiple && !(this instanceof G) && ((verb.reifying && !(value instanceof G))) && old))
     var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
 
   if (value.$source)                                  // When value is a shallow reference to object
@@ -121,7 +130,7 @@ G.prototype.call = function(verb) {
       result = verb(result, old);                     // invoke stack-manipulation method
       if (result === false)                           // No side effect will be observed
         return G.record.continue(value, old);
-      if (value.$source)
+      if (value.$source && result !== old)
         value = result  
     }
   }

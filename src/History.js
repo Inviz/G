@@ -97,7 +97,7 @@ G._compareMeta = function(meta1, meta2) {
 
 G._setMeta = function(op, meta) {
   if (meta) {
-    if (meta.length == 1 && (meta[0] == null || meta[0] instanceof Array))
+    if (meta.length < 2 && (meta[0] == null || meta[0] instanceof Array))
       op.$meta = meta[0] || undefined
     else
       op.$meta = meta
@@ -181,30 +181,33 @@ G.verbs = {
 
 
   // merge two objects
-  merge: function(value, old) {
+  merge: function(value, old, meta) {
+    if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')
+      return G.verbs.set(value, old, meta || value.$meta);
     if (value.watch) {
-      old.observe(value)
+      old.observe(value, false, meta || value.$meta, 'merge')
     } else {
-      old.merge(value)
+      old.merge(value, meta)
     }
     return old;
   },
 
   // merge object underneath another
-  defaults: function(value, old) {
+  defaults: function(value, old, meta) {
+    if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')
+      return G.verbs.preset(value, old, meta || value.$meta);
     if (value.watch) {
-      value.$method = 'preset'
-      old.observe(value, true)
+      old.observe(value, true, meta || value.$meta, 'defaults')
     } else {
-      old.defaults(value)
+      old.defaults(value, meta)
     }
     return old;
   }
 
 };
 
-G.verbs.merge.multiple = 
-G.verbs.defaults.multiple = 
+G.verbs.merge.partial = 
+G.verbs.defaults.partial = 
 G.verbs.merge.reifying = 
 G.verbs.defaults.reifying = 
 G.verbs.set.reifying = 

@@ -145,7 +145,6 @@ G.record.causation = function(value) {
 // Reuse state change and it's effects, set new caller. 
 // Rewind to the end
 G.record.reuse = function(value) {
-  console.error('rewrite')
   var last = G.last(value); 
   if (value.$caller != G.$caller) {
     G.link(value.$before, last.$after);               // detach effect from old graph
@@ -170,7 +169,7 @@ G.record.write = function(value) {
 // Make a two-way connection between two operations in graph
 G.link = function(old, value) {
   if (old == value)
-    debugger
+    throw new Error('Cant link to itself')
   if ((old.$after = value)){
     old.$after.$before = old;
   }

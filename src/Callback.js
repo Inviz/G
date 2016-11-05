@@ -48,14 +48,12 @@ G.isUndone = function(value) {
 }
 
 G.callback.proxy = function(value, watcher) {
-  if (watcher.$source) { // merge observer
-    if (watcher.$method) {
-      return G[watcher.$method](watcher.$target, value.$key, value, watcher.$meta)
-    } else {
-      return G.set(watcher.$target, value.$key, value, watcher.$meta)
-    }
+  var target = watcher.$target || watcher;
+
+  if (watcher.$method) {
+    return G[watcher.$method](target, value.$key, value, watcher.$meta)
   } else {
-    return G.set(watcher, value.$key, value)
+    return G.set(target, value.$key, value, watcher.$meta)
   }
 }
 
