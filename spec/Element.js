@@ -448,9 +448,51 @@ describe('G.Node', function() {
     expect(tree.$detaching).to.eql([IF])
 
   })
+
+  it ('should build within iterator', function() {
+    var context = new G;
+    context.push('items', {title: 'Title #1'});
+    context.push('items', {title: 'Title #2'});
+
+    var fragment = context.watch('items', function(item) {
+      return G.Node('article', null, 
+        G.Node('h1', null, item.title),
+        G.Node('hr'),
+        G.Node('p', null, item.text))
+    })
+
+    var wrapper = G.Node('main', null, 
+      G.Node('header', null, 'Hello world'),
+      fragment,
+      G.Node('footer', null, 'Bye world'))
+
+
+    //debugger
+    //expect(wrapper.render().outerHTML).to.eql('123')
+
+    expect(G.stringify(TagTree(fragment.$current))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['h1', {}, 
+          ' Hello guys'],
+        ['if', {}, 
+          'This ', 
+          ['p', {},
+            'is'],
+          ' wonderful!!'],
+        ' ',
+        ['if', {}, 
+          'It ', 
+          ['p', {},
+            'aint'],
+          ' cool'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+  })
 })
 
-TagTree = function(node) {
+TagTree = function(node, recursive) {
     var attrs = node.clean();
     delete attrs.tag;
     delete attrs.rule;
@@ -458,7 +500,17 @@ TagTree = function(node) {
 
     for (var child = node.$first; child; child = child.$next)
 
-        result.push(child.tag || child.rule ? TagTree(child) : child.text)
-    return result 
+        result.push(child.tag || child.rule ? TagTree(child, true) : child.text)
+
+
+    if (!recursive && node.$previous) {
+      result = [result]
+      while (node.$previous) {
+        node = node.$previous;
+        result.unshift(TagTree(node, true))
+      }
+    }
+
+    return result;
 
 }

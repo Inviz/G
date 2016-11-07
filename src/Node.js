@@ -32,12 +32,14 @@ G.Node = function(tag, attributes) {
           var self = new G.Node(tag, attributes)
         break
       case 'object':
-        if (tag.nodeType) {
+        if (tag && tag.nodeType) {
           if (tag.$operation) {
             var self = tag.$operation
           } else {
             var self = G.Node.fromElement(tag)
           }
+        } else {
+          var self = new G.Node;
         }
     }
   } else {
@@ -53,6 +55,7 @@ G.Node = function(tag, attributes) {
 
   return self
 }
+
 
 G.Node.fromElement = function(element, mapping) {
   if (arguments.length == 1)
@@ -98,6 +101,8 @@ G.Node.fromElement = function(element, mapping) {
   return self;
 }
 G.Node.prototype = new G.Array;
+G.Node.prototype.$multiple = true;
+G.Node.prototype.$referenced = true;
 
 G.Node.extend           = G.Node.call;
 G.Node.prototype.call   = function() {
@@ -146,7 +151,8 @@ G.Node.prototype.onChange = function(key, value, old) {
 // Inject node into another
 // If child is a string, creates text node
 G.Node.append = function(context, child) {
-  if (typeof child == 'string') {
+  if (!child) return;
+  if (typeof child.valueOf() == 'string') {
     var text = child;
     child = new G.Node
     child.text = text
@@ -247,6 +253,8 @@ G.Node.prototype.updateAttribute = function(value) {
 }
 
 G.Node.prototype.render = function(deep) {
+  if (this.$future && this.$current)
+    return G.Node.render(this.$current, deep)
   if (G.Node.isScheduled(this, this.$parent, '$detached'))
     return G.Node.detach(this, true)
   if (this.$attached) {
@@ -268,6 +276,8 @@ G.Node.prototype.render = function(deep) {
     } else if (this.text) {
       this.$node = document.createTextNode(this.text);
       this.$node.$operation = this;
+    } else if (deep) {
+      this.$node = document.createDocumentFragment()
     }
   } else if (this.rule) { // detach node used to initialize rule
     G.Node.detach(this);
@@ -343,7 +353,7 @@ G.Node.descend = function(node) {
   for (var last = node; last.$last;)
     last = last.$last
   for (var after = node; after = after.$following;) {              // for each effect
-    var child = after.render(false)
+    var child = G.Node.render(after, false)
     if (child) G.Node.place(after);
     if (after == node.$last)
       node = after;

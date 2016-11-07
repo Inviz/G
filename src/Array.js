@@ -13,20 +13,18 @@ G.Array.prototype.recall = function() {
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
 G.Array.prototype.call = function() {
-  
-  for (var to = this; to.$last;)
-    to = to.$last;
-
 
   if (!this.$parent) {
-    var first = this.$context ? this.$context[this.$key] : self;
-    while (first.$previous)
-      first = first.$previous;
+    var last = this.$context[this.$key];
+    var first = this.$context ? last : self;
+    if (first)
+      while (first.$previous)
+        first = first.$previous;
   } else {
     var first = this.$parent.$first
+    var last = this.$parent.$last
   }
 
-  // if element had parent before, attempt to hook it in place
     // for each node in the remembered parent
     // check if it matches anything before op
   for (var before = this; before = before.$leading;) {
@@ -36,11 +34,8 @@ G.Array.prototype.call = function() {
       if (before == item) {
         if (before.$next == this)
           return this;
-        G.Array.link(to, before.$next || before.$following)
-        var last = before;
-        while (last.$last)
-          last = last.$last;
-        G.Array.link(last, this)
+        G.Array.link(this, before.$next || before.$following)
+        G.Array.link(before, this)
         if (before.$next) 
           G.Array.register(this, before.$next, this.$parent)
         G.Array.register(before, this, this.$parent)
@@ -48,20 +43,26 @@ G.Array.prototype.call = function() {
         return this
       }
     } 
-    // attempt to finx anchor after
-    /*for (var after = this; after = after.$following;) {
+  }
+  for (var after = this; after = after.$following;) {
+    for (var item = last; item; item = item.$previous) {
+      if (after == this.$parent)
+        break;
       if (after == item) {
+        //if (before.$next == this)
+        //  return this;
+        G.Array.link(this, after)
         if (after.$previous) {
+          G.Array.link(after.$previous, this)
           G.Array.register(after.$previous, this, this.$parent)
         }
         G.Array.register(this, after, this.$parent)
-        
-        return this
+
+        return last
       }
-      if (after == this.$parent.$last)
-        break;
-    }*/
+    } 
   } 
+  
   return this;
 };
 
@@ -178,8 +179,11 @@ G.Array.unregister = function(op) {
 }
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {
-  if ((left.$following = right))                          // fix $following/$leading refs
-    left.$following.$leading = left;
+  for (var last = left; last.$last;)
+    last = last.$last;
+  if ((last.$following = right)) {                          // fix $following/$leading refs
+    right.$leading = last;
+  }
 };
 
 // Remove span of nodes from the graph
@@ -197,17 +201,45 @@ G.Array.unlink = function(op, to) {
   return to;
 }
 
+// Find a good place to insert new value
 G.Array.findIterated = function(old) {
-  if (G.$cause == old.$cause && G.$cause && G.$caller.$multiple) {
+  if (!G.$cause) return;
+
+  // Push where it pushed last time
+  if (G.$cause == old.$cause && G.$caller.$multiple) {
     var prev = G.$caller.$previous;
-    for (var after = prev; after = after.$after;) {
-      if (after.$context == old.$context)
-        if (after.$key == old.$key)
-      if (after.$cause == G.$cause && after.$caller == prev) {
-        return after;
+    if (prev)
+      for (var after = prev; after = after.$after;)
+        if (after.$context == old.$context)
+          if (after.$key == old.$key)
+            if (after.$cause == G.$cause && after.$caller == prev)
+              return after;
+    var next = G.$caller.$next;
+    if (next)
+      for (var after = next; after = after.$after;)
+        if (after.$context == old.$context)
+          if (after.$key == old.$key)
+            if (after.$cause == G.$cause && after.$caller == next)
+              return after.$previous || false;
+  // Future binds to specific place in array
+  } else if (G.$cause.$leading !== undefined) {
+    for (var prev = old; prev; prev = prev.$previous) {
+      if (prev == G.$cause.$leading) {                              // find hook element remembered by future
+        for (var next = prev; next = next.$next;) 
+          if (next.$cause && next.$cause.$cause == G.$cause.$cause
+          && G.Array.isAfter(next.$caller, G.$caller)) // next element is added by same future
+            prev = next;
+          else
+            break
+        return prev;
       }
     }
   }
+}
+G.Array.isAfter = function(value, another) {
+  for (var prev = another; prev = prev.$leading;)
+    if (prev == value)
+      return true;
 }
 G.Array.multiple = true
 G.Array.verbs = {
@@ -216,7 +248,9 @@ G.Array.verbs = {
   push: function(value, old) {
     // if push() was inside iterator
     var after = G.Array.findIterated(old);
-    if (after) {
+    if (after) { // place after returned element
+      if (after.$next)
+        G.Array.register(value, after.$next, after.$parent)
       G.Array.link(value, after.$next)
       G.Array.link(after, value)
       G.Array.register(after, value, after.$parent)
@@ -224,9 +258,16 @@ G.Array.verbs = {
         return value
       else
         return old;
+    } else if (after === false) { // place as tail
+      for (var first = old; first.$previous;)
+        first = first.$previous;
+      G.Array.link(value, first);
+      G.Array.register(value, first, old.$parent)
+      return old;
+    } else {
+      G.Array.link(old, value)  // place as head
+      G.Array.register(old, value, old.$parent)
     }
-    G.Array.link(old, value)
-    G.Array.register(old, value, old.$parent)
     return value;
   },
 
@@ -247,9 +288,10 @@ G.Array.verbs = {
   unshift: function(value, old) {
     var after = G.Array.findIterated(old);
     if (after) {
-      if (after.$previous)
+      if (after.$previous) {
         G.Array.link(after.$previous, value)
-
+        G.Array.register(after.$previous, value, after.$parent)
+      }
       G.Array.link(value, after)
       G.Array.register(value, after, after.$parent)
       if (after == old)
@@ -282,9 +324,7 @@ G.Array.verbs = {
   // Nest value into another
   append: function(value, old) {
     if (old.$last) {
-      for (var last = old; last.$last;)
-        last = last.$last;
-      G.Array.link(last, value)
+      G.Array.link(old, value)
       G.Array.register(old.$last, value, old);
     } else {
       G.Array.link(old, value)

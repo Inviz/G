@@ -166,6 +166,8 @@ G.verbs = {
 
   // Attempt to place value optimistically where it once belonged
   restore: function(value, old) {
+    if (value.$multiple)
+      return value;
     if (value.$succeeding) {
       value.$succeeding = old;
       value.$preceeding = old.$preceeding;

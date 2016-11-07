@@ -61,8 +61,10 @@ G.affect = function(value, old) {
     if (!(cause.$getter || cause).$properties)
     if (observers && observers.indexOf(cause) > -1
     ||  group     &&     group.indexOf(cause) > -1) {
-      after.call('restore');
-      (present || (present = [])).push(cause)
+      if (!after.ondetach) {
+        after.call('restore');
+        (present || (present = [])).push(cause)
+      }
     } else if (!iterators || iterators.indexOf(after) == -1) {
       (removed || (removed = [])).push(after)
     }
@@ -244,7 +246,7 @@ G.effects = function(value, callback, argument) {
   return last;
 }
 
-G.effects.caused = function(value, watcher) {
+G.effects.caused = function(value, watcher, old) {
   var effects
   for (var next = value; next; next = next.$after) {
     if (next.$cause == watcher && next.$caller == value)

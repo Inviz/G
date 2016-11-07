@@ -34,8 +34,9 @@ var G = function(context, key, value) {
     G._setMeta(this, args);
   }
   if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
-    this.call = G.prototype.call
-    this.recall = G.prototype.recall
+    this.call = G.prototype.call;
+    this.uncall = G.prototype.uncall;
+    this.recall = G.prototype.recall;
   }
   return this;
 }
@@ -57,8 +58,7 @@ G.create = function(context, key, value) {
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
 
-    } else if (value instanceof G || (!value.recall 
-    && Object.prototype.toString.call(value) == '[object Object]')) { // 2. Wrapping plain object
+    } else if (G._isObject(value)) {                  // 2. Wrapping plain/observable object
       var result = new G()                            //    Create new G wrapper
       result.$context = context;
       result.$key = key;
@@ -104,7 +104,8 @@ G.prototype.call = function(verb) {
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
-  if (verb && (!verb.multiple && !(this instanceof G) && ((verb.reifying && !(value instanceof G))) && old))
+  if (verb && (!verb.multiple && !(this instanceof G) 
+  && ((verb.reifying && !(value instanceof G))) && old))
     var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
 
   if (value.$source)                                  // When value is a shallow reference to object
@@ -114,7 +115,11 @@ G.prototype.call = function(verb) {
     }
 
   if (value.$multiple) {  
-    result = G.Array.call(value, old)  
+    
+    debugger
+    G.Array.call(value, old)
+    while (result.$next)
+      result = result.$next;  
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
@@ -247,4 +252,13 @@ G.equals = function(value, old) {
   return value.valueOf() == old.valueOf() && 
 //         value.$caller == old.$caller && 
          G._compareMeta(value.$meta, old.$meta);
+}
+
+G._isPlain = function(value) {
+  return Object.prototype.toString.call(value) == '[object Object]';
+}
+
+G._isObject = function(value) {
+  return (value instanceof G && !(value instanceof G.Node)) || 
+         (!value.recall && G._isPlain(value))
 }

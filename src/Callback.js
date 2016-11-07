@@ -63,7 +63,7 @@ G.callback.getter = function(value, watcher) {
     return result.call('set')
 }
 
-G.callback.future = function(value, watcher) {
+G.callback.future = function(value, watcher, old) {
   var props = (watcher.$getter || watcher).$properties
   var called = G.$called;
   var caller = G.$caller;
@@ -77,6 +77,8 @@ G.callback.future = function(value, watcher) {
   if (value.$after)
     var effects = G.effects.caused(value, watcher);
   
+  if (value != old && old && !old.$multiple && !value.$multiple)
+    var effects = G.effects.caused(old, watcher);
   if (watcher.$future) {
     var result = G.Future.invoke(watcher, value);
     if (result)

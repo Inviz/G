@@ -5,7 +5,7 @@ G.Future = function(context, key, watcher) {
   this.$cause = watcher
 }
 
-G.Future.prototype.call = function() {
+G.Future.prototype.call = function(method) {
   if (this.$future) {
     if (this.$key) {
       G._addWatcher(this.$context, this.$key, this, '$watchers');
@@ -23,7 +23,7 @@ G.Future.prototype.call = function() {
 
     return this.$current
   } else {
-    G.Future.subscribe(this, null, this.$cause, this.$meta)
+    G.Future.subscribe(this, null, this.$cause, this.$meta, method)
     return this;
   }
 }
@@ -83,7 +83,10 @@ G.Future.invoke = function(watcher, value) {
     watcher.$current = undefined
     return
   } else {
-    var result = G.create(watcher.$context, watcher.$key, computed.valueOf());
+    if (computed.$referenced)
+      var result = computed;
+    else
+      var result = G.create(watcher.$context, watcher.$key, computed);
     result.$cause = watcher
     result.$meta = watcher.$meta;
     result.$context = watcher.$context;
@@ -148,8 +151,9 @@ G.Future.unwatch = function(context, key, watcher) {
 G.Future.setValue = function(watcher, value, result) {
   var current = watcher.$current;
   if (!current || (!current.$multiple && !value.$multiple)) {
-    if (watcher.$current)
-      G.Future.revokeCalls(watcher.$current, watcher)
+  
+    if (watcher.$current)                               // uncall state changes made on future directly
+      G.Future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
     watcher.$current = result;
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
@@ -186,18 +190,19 @@ G.Future.revokeCalls = function(value, watcher) {
       G.uncall(effects[i]);
 }
 G.Future._getValue = function() {
-  return this.$current && this.$current.valueOf()
+  if (this.$current && !this.$current.$multiple)
+    return this.$current.valueOf();
+  return this.$current
 }
 G.Future._unsetValue = function() {
   var current = this.$cause.$current;
   G.Future.revokeCalls(this, this.$cause)
-  if (this.$multiple) {
-    if (this == current) {
+  if (this == current)
+    if (this.$multiple) {
       this.$cause.$current = this.$leading || this.$following;
+    } else {
+      this.$cause.$current = undefined;
     }
-  } else {
-    this.$cause.$current = undefined;
-  }
 }
 
 G.Future.unsubscribe = function(context, key, watcher, meta, soft) {
@@ -226,15 +231,18 @@ G.Future.unobserve = function(watcher, application) {
 }
 
 
-G.Future.update = function(application, result) {
+G.Future.update = function(app, result) {
   var cause = G.$cause;
-  G.$cause = application;
-  application.$context.set(application.$key, result, application.$meta)
+  G.$cause = app;
+  if (app.$method)
+    app.$context[app.$method](app.$key, result, app.$meta)
+  else
+    app.$context.set(app.$key, result, app.$meta)
   G.$cause = cause;
 }
 
 // Apply future to new context
-G.Future.subscribe = function(context, key, watcher, meta) {
+G.Future.subscribe = function(context, key, watcher, meta, method) {
   if (key) {
     var application = new G.Future(context, key);
   } else {
@@ -243,6 +251,12 @@ G.Future.subscribe = function(context, key, watcher, meta) {
     var key = application.$key;
   }
   application.$meta = meta;
+  application.$method = method;
+
+
+  if (typeof method == 'string')
+    if (G.verbs[method].multiple)
+      application.$leading = context[key]; // remember last head element for array verbs
 
   (watcher.$applications || (watcher.$applications = []))
     .push(application)
@@ -252,7 +266,10 @@ G.Future.subscribe = function(context, key, watcher, meta) {
     G.$cause = application;
     G.record.push(watcher.$current)
     G.$called = G.last(watcher.$current);
-    context.set(key, watcher.$current, meta)
+    if (method)
+      context[method](key, watcher.$current, meta)
+    else
+      context.set(key, watcher.$current, meta)
     G.record.pop()
     G.$cause = cause;
   }

@@ -34,6 +34,7 @@ describe('Operations', function() {
       string.$meta = ['meta', 'arg'];
       string.call = G.prototype.call
       string.recall = G.prototype.recall
+      string.uncall = G.prototype.uncall
       expect(op).to.eql(string);
       expect(context.key).to.eql(string);
       expect(context.key == 'value').to.eql(true);
@@ -53,6 +54,7 @@ describe('Operations', function() {
       string.$meta = ['meta', 'arg'];
       string.call = G.prototype.call
       string.recall = G.prototype.recall
+      string.uncall = G.prototype.uncall
       expect(op).to.eql(string);
       expect(context.key).to.eql(string);
       expect(context.key == 'value').to.eql(true);

@@ -157,6 +157,79 @@ describe('Observers', function() {
       expect(person.title).to.eql(undefined);
 
     })
+
+
+    it ('should be able to put future into array', function() {
+      var context = new G;
+      var future1 = context.watch('key1');
+      var future2 = context.watch('key2');
+
+      context.push('array', future1);
+      context.push('array', future2);
+
+      expect(context.array).to.eql(undefined)
+
+      context.set('key1', 123);
+      expect(Number(context.array)).to.eql(123)
+
+      context.set('key2', 321);
+      expect(Number(context.array)).to.eql(321)
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([123, 321]))
+
+      context.unset('key1', 123);
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321]))
+
+      context.set('key1', 1234) //todo maintain order
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321, 1234]))
+
+      G.uncall(future1)
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321]))
+
+      G.call(future1)
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321, 1234]))
+
+      context.unset('array', future1);
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321]))
+
+      context.push('array', future1);
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([321, 1234]))
+
+      context.set('key2', 3210) //todo maintain order
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([1234, 3210]))
+      
+      context.set('key2', null)
+      expect(G.stringify(ValueGroup(context.array))).to.eql(G.stringify([1234]))
+    })
+
+
+    it ('should be able to put future array into another array', function() {
+      var context = new G;
+      var future = context.watch('source');
+
+
+      context.push('target', 100);
+      context.push('target', future);
+      context.push('target', 200);
+
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 200]))
+
+      var one = context.push('source', 1);
+      var two = context.push('source', 2);
+
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 1, 2, 200]));
+      debugger
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([1, 2]));
+
+      one.uncall()
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 2, 200]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([2]));
+
+      one.call()
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([1, 2]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([1, 2]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 1, 2, 200]));
+    })
+
     it ('should create a future value', function() {
       var context = new G;
       var future = context.watch('key')

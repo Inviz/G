@@ -23,20 +23,37 @@
   };
 
   ValueGroup = function(operation, before, after) {
-    var lastAfter, lastBefore, list;
+    var lastAfter, lastBefore, lastNext, lastPrevious, list;
     list = [];
     previous = next = operation;
     lastBefore = lastAfter = operation;
+    lastPrevious = lastNext = operation;
     while (previous = previous.$leading) {
       if (previous.$following !== lastBefore)
         break;
       list.unshift(previous);
+      if (previous.$parent == operation.$parent) {
+        if (previous.$next != lastPrevious)
+          throw 'Next pointer is not correct'
+        if (lastPrevious.$previous != previous)
+          throw 'previous pointer is not correct'
+
+        lastPrevious = previous;
+      }
       lastBefore = previous;
     }
     list.push(operation);
     while (next = next.$following) {
       if (next.$leading !== lastAfter)
         break;
+      if (next.$parent == operation.$parent) {
+        if (next.$previous != lastNext)
+          throw 'Previous pointer is not correct'
+        if (lastNext.$next != next)
+          throw 'next pointer is not correct'
+
+        lastNext = next;
+      }
       list.push(next);
       lastAfter = next;
     }
