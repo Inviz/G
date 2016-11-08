@@ -7,6 +7,8 @@ G.Array.prototype = new G
 G.Array.prototype.recall = function() {
   G.Array.unlink(this)
   G.Array.unregister(this)
+  if (this.$node && this.$node.parentNode)
+    this.$node.parentNode.removeChild(this.$node)
   return this
 };
 
@@ -185,6 +187,20 @@ G.Array.link = function(left, right) {
     right.$leading = last;
   }
 };
+
+// Get previous item for node that may already be detached
+G.Array.getPrevious = function(node) {
+  for (var e = node; e = e.$leading;)
+    if (e.$parent == node.$parent)
+      return e;
+}
+
+// Get next item for node that may already be detached
+G.Array.getNext = function(node) {
+  for (var e = node; e = e.$leading;)
+    if (e.$parent == node.$parent)
+      return e;
+}
 
 // Remove span of nodes from the graph
 // Without second argument it removes op's children

@@ -68,6 +68,9 @@ G.notify = function(context, key, value, old) {
 }
 
 G.reify = function(value, target) {
+  if (value.$target && value.$target.$after){       // fixme: Reified before?
+    debugger
+      return value.$target;}
   if (!target) target = value;
   if (value.$source.$context == target.$context     // If origin matches context and key
     && value.$source.$key == target.$key) {                
@@ -85,6 +88,9 @@ G.reify = function(value, target) {
 G.reify.reuse = function(target, source) {          // If plain JS object was referenced
   if (!source.$source.observe) {                    // Use G object as value
     target.$meta = source.$meta;
+    return target;
+  } else if (target.$key == source.$key && target.$context == source.$context && target.$chain && target.$chain.indexOf(source.$source || source) == -1) { // reusing previously reified object
+    target.observe(source)
     return target;
   } else {
     return source

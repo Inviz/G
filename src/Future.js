@@ -199,7 +199,7 @@ G.Future._unsetValue = function() {
   G.Future.revokeCalls(this, this.$cause)
   if (this == current)
     if (this.$multiple) {
-      this.$cause.$current = this.$leading || this.$following;
+      this.$cause.$current = G.Array.getPrevious(this) || G.Array.getNext(this);
     } else {
       this.$cause.$current = undefined;
     }

@@ -451,8 +451,9 @@ describe('G.Node', function() {
 
   it ('should build within iterator', function() {
     var context = new G;
-    context.push('items', {title: 'Title #1'});
-    context.push('items', {title: 'Title #2'});
+    var item1 = new G({title: 'Title #1'})
+    var first = context.push('items', item1);
+    var second = context.push('items', {title: 'Title #2'});
 
     var fragment = context.watch('items', function(item) {
       return G.Node('article', null, 
@@ -466,7 +467,6 @@ describe('G.Node', function() {
       fragment,
       G.Node('footer', null, 'Bye world'))
 
-
     expect(wrapper.render().outerHTML).to.eql(
       '<main>' +
         '<header>Hello world</header>' + 
@@ -474,8 +474,8 @@ describe('G.Node', function() {
         '<article><h1>Title #2</h1><hr><p></p></article>' + 
         '<footer>Bye world</footer>' + 
       '</main>')
-    context.unshift('items', {title: 'Title #0'});
 
+    context.unshift('items', {title: 'Title #0'});
     expect(wrapper.render().outerHTML).to.eql(
       '<main>' +
         '<header>Hello world</header>' + 
@@ -484,6 +484,7 @@ describe('G.Node', function() {
         '<article><h1>Title #2</h1><hr><p></p></article>' + 
         '<footer>Bye world</footer>' + 
       '</main>')
+
     context.push('items', {title: 'Title #3'});
         expect(wrapper.render().outerHTML).to.eql(
       '<main>' +
@@ -494,11 +495,76 @@ describe('G.Node', function() {
         '<article><h1>Title #3</h1><hr><p></p></article>' + 
         '<footer>Bye world</footer>' + 
       '</main>')
+
+    item1.set('title', 'Title One')
+
+      expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title One</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<article><h1>Title #3</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+
+    first.uncall()
+
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<article><h1>Title #3</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+
+
+    first.call()
+
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title One</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<article><h1>Title #3</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+
+    var last = context.items.uncall();
+
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title One</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+
+    debugger
+    last.call()
+
+
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title One</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<article><h1>Title #3</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+
   })
 })
 
 TagTree = function(node, recursive) {
-    if (node.$current) node = node.$current;
+    if (node.$current) {
+      node = node.$current;
+      recursive = false;
+    }
     var attrs = node.clean();
     delete attrs.tag;
     delete attrs.rule;
@@ -506,7 +572,7 @@ TagTree = function(node, recursive) {
 
     for (var child = node.$first; child; child = child.$next)
 
-        result.push(child.tag || child.rule ? TagTree(child, true) : child.text)
+        result.push(child.tag || child.rule || child.$current ? TagTree(child, true) : child.text)
 
 
     if (!recursive && node.$previous) {
