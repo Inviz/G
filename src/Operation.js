@@ -115,8 +115,6 @@ G.prototype.call = function(verb) {
     }
 
   if (value.$multiple) {  
-    
-    debugger
     G.Array.call(value, old)
     while (result.$next)
       result = result.$next;  

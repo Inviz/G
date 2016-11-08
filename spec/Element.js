@@ -467,32 +467,38 @@ describe('G.Node', function() {
       G.Node('footer', null, 'Bye world'))
 
 
-    //debugger
-    //expect(wrapper.render().outerHTML).to.eql('123')
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #1</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+    context.unshift('items', {title: 'Title #0'});
 
-    expect(G.stringify(TagTree(fragment.$current))).to.eql(G.stringify([undefined, {}, 
-      ['div', {}, 
-        ['h1', {}, 
-          ' Hello guys'],
-        ['if', {}, 
-          'This ', 
-          ['p', {},
-            'is'],
-          ' wonderful!!'],
-        ' ',
-        ['if', {}, 
-          'It ', 
-          ['p', {},
-            'aint'],
-          ' cool'],
-        ' ',
-        ['h2', {}, 'For real']
-      ]
-    ]))
+    expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title #1</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
+    context.push('items', {title: 'Title #3'});
+        expect(wrapper.render().outerHTML).to.eql(
+      '<main>' +
+        '<header>Hello world</header>' + 
+        '<article><h1>Title #0</h1><hr><p></p></article>' + 
+        '<article><h1>Title #1</h1><hr><p></p></article>' + 
+        '<article><h1>Title #2</h1><hr><p></p></article>' + 
+        '<article><h1>Title #3</h1><hr><p></p></article>' + 
+        '<footer>Bye world</footer>' + 
+      '</main>')
   })
 })
 
 TagTree = function(node, recursive) {
+    if (node.$current) node = node.$current;
     var attrs = node.clean();
     delete attrs.tag;
     delete attrs.rule;

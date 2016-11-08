@@ -253,8 +253,7 @@ G.Node.prototype.updateAttribute = function(value) {
 }
 
 G.Node.prototype.render = function(deep) {
-  if (this.$future && this.$current)
-    return G.Node.render(this.$current, deep)
+
   if (G.Node.isScheduled(this, this.$parent, '$detached'))
     return G.Node.detach(this, true)
   if (this.$attached) {
@@ -351,10 +350,27 @@ G.Node.prototype.commit = function(soft) {
 // Render descendant nodes
 G.Node.descend = function(node) {
   for (var last = node; last.$last;)
-    last = last.$last
+    last = last.$last;
+
   for (var after = node; after = after.$following;) {              // for each effect
-    var child = G.Node.render(after, false)
-    if (child) G.Node.place(after);
+    if (after.$future) {
+      if (after.$current.$multiple) {
+        var first = after.$current;
+        while (first.$previous)
+          first = first.$previous;
+        while (first) {
+          var child = G.Node.render(first)
+          if (child) G.Node.place(first);
+          first = first.$next;
+        }
+      } else {
+        var child = G.Node.render(after.$current, false)
+        if (child) G.Node.place(after.$current);
+      }
+    } else {
+      var child = G.Node.render(after, false)
+      if (child) G.Node.place(after);
+    }
     if (after == node.$last)
       node = after;
     if (last == after)
@@ -370,27 +386,43 @@ G.Node.place = function(node) {
 
   if (!node.$node) return;
   
-  for (var parent = node; parent = parent.$parent;)      // find closest parent that is in dom
+  for (var parent = node; parent = parent.$parent || parent.$cause;)      // find closest parent that is in dom
     if (parent.$node)
       break;
-  for (var prev = node; prev = prev.$leading;) {     // see previous effects
-    if (prev == parent) {
-      var anchor = parent.$node.firstChild;
+
+  var anchor = G.Node.findPreviousElement(node, parent);
+  if (anchor === false)
+    anchor = parent.$node.firstChild;
+  if (anchor != node.$node)
+  if (node.$node.parentNode != parent.$node || node.$node.nextSibling != anchor)
       parent.$node.insertBefore(node.$node, anchor)
-      return
-    } else if (prev.$node) {
-      if (prev.$node.parentNode == parent.$node) {
-        if (node.$node.previousSibling != prev.$node) {
-          var anchor = prev.$node.nextSibling;
-          // avoid extra dom mutations when splicing children in transction
-          while (anchor && 
-              G.Node.isScheduled(anchor, anchor.$parent, '$detached')) {
-            anchor = anchor.nextSibling
-          }
-          parent.$node.insertBefore(node.$node, anchor);
-        }
-        return
+}
+
+G.Node.findPreviousElement = function(node, parent, limit) {
+  for (var prev = node; prev = prev.$leading || prev.$cause;) {     // see previous effects
+    if (prev == limit)
+      return;
+
+    if (prev.$current) { // visit future tree 
+      for (var last = prev.$current; last.$last;)
+        last = last.$last;
+      if (last && last.$node && last.$node.parentNode == parent.$node)
+        return last;
+      last = G.Node.findPreviousElement(last, parent, prev)
+      if (last === false)
+        return false;
+      return last;
+    }
+    if (prev == parent) {
+      return parent.firstChild || false;
+    } else if (prev.$node && prev.$node.parentNode == parent.$node) {
+      var anchor = prev.$node.nextSibling;
+      // avoid extra dom mutations when splicing children in transction
+      while (anchor && 
+          G.Node.isScheduled(anchor, anchor.$parent, '$detached')) {
+        anchor = anchor.nextSibling
       }
+      return anchor;
     }
   }
 }

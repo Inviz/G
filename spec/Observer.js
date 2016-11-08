@@ -217,7 +217,6 @@ describe('Observers', function() {
       var two = context.push('source', 2);
 
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 1, 2, 200]));
-      debugger
       expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([1, 2]));
 
       one.uncall()
@@ -228,6 +227,31 @@ describe('Observers', function() {
       expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([1, 2]));
       expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([1, 2]));
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 1, 2, 200]));
+
+      var three = context.unshift('source', 3)
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([3, 1, 2]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([3, 1, 2]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 3, 1, 2, 200]));
+
+      one.uncall()
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([3, 2]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([3, 2]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 3, 2, 200]));
+
+      two.uncall()
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([3]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([3]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 3, 200]));
+
+      one.call()
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([3, 1]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([3, 1]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 3, 1, 200]));
+
+      two.call()
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([3, 2, 1]));
+      expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([3, 2, 1]));
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 3, 2, 1  , 200]));
     })
 
     it ('should create a future value', function() {
