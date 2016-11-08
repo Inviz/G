@@ -1130,45 +1130,59 @@ describe('Observers', function() {
     })
 
     it ('should observe and filter array', function() {
-      var context = new G;
+      var context = new G({
+        max: 10,
+        min: 0
+      });
       var observed = context.watch('value', function(value) {
-        if (value < 10 && value > 0)
+        if (value < this.max && value > this.min)
           return value
       })
       context.set('latest', observed)
       context.push('target', observed)
 
       context.push('value', 11);
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11]))
       expect(observed.valueOf()).to.eql(undefined)
       expect(context.target).to.eql(undefined)
       expect(context.latest).to.eql(undefined)
 
       var five = context.push('value', 5);
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5]))
 
       context.push('value', 51);
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5]))
 
       var two = context.push('value', 2);
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5, 2]))
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5, 2]))
 
       five.uncall()
-      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([51, 2]))
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 51, 2]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([2]))
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([2]))
 
       five.call()
-      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([5, 51, 2]))
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5, 2]))
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5, 2]))
+
+      debugger
+      context.set('max', 20)
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([11, 5, 2]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([11, 5, 2]))
     })
   })
 

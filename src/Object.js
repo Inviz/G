@@ -68,9 +68,8 @@ G.notify = function(context, key, value, old) {
 }
 
 G.reify = function(value, target) {
-  if (value.$target && value.$target.$after){       // fixme: Reified before?
-    debugger
-      return value.$target;}
+  if (value.$target && value.$target.$after)        // fixme: Reified before?
+      return value.$target;
   if (!target) target = value;
   if (value.$source.$context == target.$context     // If origin matches context and key
     && value.$source.$key == target.$key) {                

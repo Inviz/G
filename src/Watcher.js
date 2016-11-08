@@ -52,6 +52,8 @@ G.prototype.watch = function(key, watcher) {
       }
     }
   }
+
+  G.Future.watch(this, key, watcher);
   return watcher;
 };
 
@@ -66,6 +68,7 @@ G.prototype.unwatch = function(key, watcher, pure) {
     G.callback.revoke(value, watcher);              //    Update side effects
     G.record.pop(value)
   }
+  G.Future.unwatch(this, key, watcher);
 };
 
 
@@ -113,8 +116,7 @@ G.prototype.define = function(key, callback) {
     if (arguments.length > 2)
       observer.$meta = Array.prototype.slice.call(arguments, 2);
 
-    for (var i = 0; i < callback.$arguments.length; i++)
-      G.watch(this, callback.$arguments[i][0], observer, false)
+    G.Future.watch(this, key, observer)
     return observer;
   }
 }
@@ -129,24 +131,8 @@ G.prototype.undefine = function(key, callback) {
     G._removeWatcher(this, key, callback, '$formatters');
     if (this[key])
       return G.call(this[key], 'set')
-    return
-  }
-  for (var i = 0; i < callback.$arguments.length; i++) {
-    var args = callback.$arguments[i]
-    var argument = callback.$arguments[i];
-
-    var context = this;
-    for (var j = 0; j < args.length; j++) {
-      var watchers = context.$watchers[argument[j]];
-      for (var k= 0; k < watchers.length; k++) {
-        if (watchers[k].$getter == callback && watchers[k].$key == key) {
-          G.unwatch(context, args[j], watchers[k], false)
-        }
-      }
-      context = context[args[j]]
-      if (!context)
-        break;
-    }
+  } else {
+    G.Future.unwatch(this, key, callback);
   }
 }
 

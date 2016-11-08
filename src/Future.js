@@ -14,8 +14,7 @@ G.Future.prototype.call = function(method) {
 
     var computed = G.Future.invoke(this);                //    Invoke computation callback
     if (this.$getter.$arguments.length){
-      for (var i = 0; i < this.$getter.$arguments.length; i++)
-        G.watch(this.$context, this.$getter.$arguments[i][0], this, false)
+      G.Future.watch(this.$context, this.$key, this)
     } else{
       if (computed) 
         G.Future.notify(this, value, computed)
@@ -34,7 +33,7 @@ G.Future.prototype.uncall = function() {
     if (appl)
       for (var i = 0; i < appl.length; i++)
         G.Future.unsubscribe(appl[i].$context, appl[i].$key, this, appl[i].$meta, true)
-    G.Future.unwatch(this.$context, this.$key, this)
+    this.$context.unwatch(this.$key, this)
     this.$current = undefined
   } else {
     G.Future.unsubscribe(this.$context, this.$key, this.$cause)
@@ -74,11 +73,11 @@ G.Future.invoke = function(watcher, value) {
 
   var current = watcher.$context[watcher.$key];
   if (G.Future.prepare(watcher, value))
-    var computed = G.Future.compute(watcher, undefined, value);                //    Invoke computation callback
+    var computed = G.Future.compute(watcher, value);                //    Invoke computation callback
   G._observeProperties(value, watcher);
   watcher.$computing = undefined;
   if (computed == null) {                            //    Proceed if value was computed
-    if (!value.$multiple && current) {
+    if (value && !value.$multiple && current && !current.$multiple) {
       G.uncall(current, watcher.$meta)
       watcher.$current = undefined
     }
@@ -116,7 +115,7 @@ G.Future.notify = function(watcher, value, result) {
 }
 
 // Run computed property callback if all properties it uses are set
-G.Future.compute = function(watcher, trigger, current) {
+G.Future.compute = function(watcher, current) {
   if (current === undefined)
     current = watcher.$context[watcher.$key];
 
@@ -125,12 +124,14 @@ G.Future.compute = function(watcher, trigger, current) {
     return getter.call(watcher.$context, current);
 }
 
+G.Future.watch = function(context, key, watcher) {
+  var callback = watcher.$getter || watcher;
+  for (var i = 0; i < callback.$arguments.length; i++)
+    G.watch(context, callback.$arguments[i][0], watcher, false);
+}
+
 G.Future.unwatch = function(context, key, watcher) {
-  var callback = watcher.$getter;
-  if (!callback.$arguments.length) {
-    G._removeWatcher(context, key, watcher, '$watchers');
-    return
-  }
+  var callback = watcher.$getter || watcher;
   for (var i = 0; i < callback.$arguments.length; i++) {
     var args = callback.$arguments[i]
     var argument = callback.$arguments[i];
@@ -138,6 +139,7 @@ G.Future.unwatch = function(context, key, watcher) {
     var value = context;
     for (var j = 0; j < args.length; j++) {
       var watchers = value.$watchers[argument[j]];
+      if (!watchers) continue;
       for (var k= 0; k < watchers.length; k++) {
         if (watchers[k].$getter == callback && watchers[k].$key == key) {
           G.unwatch(value, args[j], watchers[k], false)
@@ -151,23 +153,19 @@ G.Future.unwatch = function(context, key, watcher) {
 }
 G.Future.setValue = function(watcher, value, result) {
   var current = watcher.$current;
-  if (!current || (!current.$multiple && !value.$multiple && result)) {
+  if (!current || (!current.$multiple && result)) {
   
     if (watcher.$current)                               // uncall state changes made on future directly
       G.Future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
     watcher.$current = result;
-    if (value.$multiple)
+    if ((value || G.$caller).$multiple)
       result.$multiple = true;
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
       if (n.$caller === value) {
         if (n === watcher.$current)
           watcher.$current = n.$previous;
-        G.Array.recall(n)
-        if (!G.$called) {
-          G.link(n.$before, result)
-          G.link(result, n.$after)
-        }
+        G.uncall(n)
         break;
       }
     }

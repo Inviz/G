@@ -121,10 +121,10 @@ G.prototype.call = function(verb) {
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
+  if (verb && verb.multiple)                                // If verb allows multiple values by same meta
+    value.$multiple = true                          //   Set flag on the value
 
   if (verb && old != null && old.$key) {              // If there was another value by that key
-    if (verb.multiple)                                // If verb allows multiple values by same meta
-      value.$multiple = true                          //   Set flag on the value
     if (other) {                                      // If history holds a value with same meta
       if (G.equals(other, result))                    //   If it's equal to given value
         return G.record.reuse(other);                 //     Rebase that value into record

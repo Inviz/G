@@ -74,33 +74,43 @@ G.callback.future = function(value, watcher, old) {
     // if property changed, use its context
     G.$called =  G.$caller = value = value.$context;
 
-  if (value.$after)
-    var effects = G.effects.caused(value, watcher);
-  
-  if (value != old && old && !old.$multiple && !value.$multiple)
-    var effects = G.effects.caused(old, watcher);
-  if (watcher.$future) {
-    var result = G.Future.invoke(watcher, value);
-    if (result)
-      G.Future.notify(watcher, value, result)
+  if (!watcher.$context || value.$key == watcher.$key && value.$context == watcher.$context) {
+    var target = value;
   } else {
-    watcher.$computing = true;
-    G._observeProperties(value, watcher);
-    watcher(value);
-    watcher.$computing = false;
+    var targeting = true;
+    var target = watcher.$context[watcher.$key]
+    while (target && target.$previous)
+      target = target.$previous;
   }
-  if (effects)
-    G.effects.clean(value, effects);
+  while (target !== false) {
+    if (target) {
+      if (target != old && old && !old.$multiple && !target.$multiple)
+        var effects = G.effects.caused(old, watcher);
+      else if (target.$after)
+        var effects = G.effects.caused(target, watcher);
+    }
+    if (watcher.$future) {
+      var result = G.Future.invoke(watcher, target);
+      if (result)
+        G.Future.notify(watcher, target, result)
+    } else {
+      watcher.$computing = true;
+      G._observeProperties(target, watcher);
+      watcher(target);
+      watcher.$computing = false;
+    }
+    if (effects)
+      G.effects.clean(target, effects);
 
-  G.$called = called;
-  G.$caller = caller;
-  G.$cause  = caused;
+    G.$called = called;
+    G.$caller = caller;
+    G.$cause  = caused;
+
+    target = targeting && target && target.$next || false;
+  }
   return result;
 }
 
-G.callback.transformation = function() {
-
-}
 
 G.callback.revoke = function(value, watcher) {
   var collection = G.effects.caused(value, watcher);
