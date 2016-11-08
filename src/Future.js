@@ -78,9 +78,10 @@ G.Future.invoke = function(watcher, value) {
   G._observeProperties(value, watcher);
   watcher.$computing = undefined;
   if (computed == null) {                            //    Proceed if value was computed
-    if (current)
+    if (!value.$multiple && current) {
       G.uncall(current, watcher.$meta)
-    watcher.$current = undefined
+      watcher.$current = undefined
+    }
     return
   } else {
     if (computed.$referenced)
@@ -150,11 +151,13 @@ G.Future.unwatch = function(context, key, watcher) {
 }
 G.Future.setValue = function(watcher, value, result) {
   var current = watcher.$current;
-  if (!current || (!current.$multiple && !value.$multiple)) {
+  if (!current || (!current.$multiple && !value.$multiple && result)) {
   
     if (watcher.$current)                               // uncall state changes made on future directly
       G.Future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
     watcher.$current = result;
+    if (value.$multiple)
+      result.$multiple = true;
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
       if (n.$caller === value) {

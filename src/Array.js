@@ -223,15 +223,16 @@ G.Array.findIterated = function(old) {
 
   // Push where it pushed last time
   if (G.$cause == old.$cause && G.$caller.$multiple) {
-    var prev = G.$caller.$previous;
-    if (prev)
+    var prev = G.$caller.$previous
+    for (; prev; prev = prev.$previous)
       for (var after = prev; after = after.$after;)
         if (after.$context == old.$context)
           if (after.$key == old.$key)
             if (after.$cause == G.$cause && after.$caller == prev)
               return after;
-    var next = G.$caller.$next;
-    if (next)
+
+    var next = G.$caller.$next
+    for (; next; next = next.$next)
       for (var after = next; after = after.$after;)
         if (after.$context == old.$context)
           if (after.$key == old.$key)

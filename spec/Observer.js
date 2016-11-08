@@ -1097,7 +1097,80 @@ describe('Observers', function() {
       expect(post.author.title).to.eql(undefined)
     })
   })
+  
+  describe('Filtering', function() {
+    it ('should observe single value with condition', function() {
+      var context = new G;
+      var observed = context.watch('value', function(value) {
+        if (value < 10 && value > 0)
+          return value
+      })
+      context.set('target', observed)
 
+      expect(observed.valueOf()).to.eql(undefined)
+      expect(context.target).to.eql(undefined)
+      context.set('value', 11);
+      expect(observed.valueOf()).to.eql(undefined)
+      expect(context.target).to.eql(undefined)
+      context.set('value', 5);
+      expect(observed.valueOf()).to.eql(5)
+      expect(context.target.valueOf()).to.eql(5)
+      context.set('value', 51);
+      expect(observed.valueOf()).to.eql(undefined)
+      expect(context.target).to.eql(undefined)
+      context.set('value', 2);
+      expect(observed.valueOf()).to.eql(2)
+      expect(context.target.valueOf()).to.eql(2)
+      context.set('value', 1);
+      expect(observed.valueOf()).to.eql(1)
+      expect(context.target.valueOf()).to.eql(1)
+      context.set('value', -1);
+      expect(observed.valueOf()).to.eql(undefined)
+      expect(context.target).to.eql(undefined)
+    })
+
+    it ('should observe and filter array', function() {
+      var context = new G;
+      var observed = context.watch('value', function(value) {
+        if (value < 10 && value > 0)
+          return value
+      })
+      context.set('latest', observed)
+      context.push('target', observed)
+
+      context.push('value', 11);
+      expect(observed.valueOf()).to.eql(undefined)
+      expect(context.target).to.eql(undefined)
+      expect(context.latest).to.eql(undefined)
+
+      var five = context.push('value', 5);
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5]))
+
+      context.push('value', 51);
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5]))
+
+      var two = context.push('value', 2);
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5, 2]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5, 2]))
+
+      five.uncall()
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([51, 2]))
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([2]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([2]))
+
+      five.call()
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([5, 51, 2]))
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([5, 2]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5, 2]))
+    })
+  })
 
   describe('Iterating', function() {
     it ('should watch array values', function() {
