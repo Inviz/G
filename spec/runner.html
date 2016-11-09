@@ -83,15 +83,13 @@
     <script>
       assert = chai.assert
       expect = chai.expect
+
     </script>
     <script>
       mocha.setup('bdd');
-      chai.config.includeStack = true;
-      chai.config.showDiff = true;
-      if (String(location.port).indexOf(9999) > -1)
-        setInterval(function() {
-          window.scrollTo(0, Infinity)
-        }, 100)
+      afterEach(function() {
+        G.$caller = G.$called = G.$cause = null;
+      })
     </script>
     <script src="./Operation.js"></script>
     <script src="./Observer.js"></script>
