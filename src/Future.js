@@ -13,6 +13,8 @@ G.Future.prototype.call = function(method) {
     }
 
     var computed = G.Future.invoke(this);                //    Invoke computation callback
+    //if (computed == null)
+    //  G.Future.revoke(this)
     if (this.$getter.$arguments.length){
       G.Future.watch(this.$context, this.$key, this)
     } else{
@@ -71,18 +73,11 @@ G.Future.prepare = function(watcher, trigger) {
 G.Future.invoke = function(watcher, value) {
   watcher.$computing = true;
 
-  var current = watcher.$context[watcher.$key];
   if (G.Future.prepare(watcher, value))
     var computed = G.Future.compute(watcher, value);                //    Invoke computation callback
   G._observeProperties(value, watcher);
   watcher.$computing = undefined;
-  if (computed == null) {                            //    Proceed if value was computed
-    if (value && !value.$multiple && current && !current.$multiple) {
-      G.uncall(current, watcher.$meta)
-      watcher.$current = undefined
-    }
-    return
-  } else {
+  if (computed != null) {                            //    Proceed if value was computed
     if (computed.$referenced)
       var result = computed;
     else
@@ -95,22 +90,38 @@ G.Future.invoke = function(watcher, value) {
   }
 }
 
+G.Future.revoke = function(watcher, value) {
+  var current = watcher.$context[watcher.$key];
+  if (value && !value.$multiple && current && !current.$multiple) {
+    G.uncall(current, watcher.$meta)
+    watcher.$current = undefined
+  }
+}
+
 G.Future.notify = function(watcher, value, result) {
+  var called = G.$called;
   G.record.sequence(result)
   G.record.causation(result)
   var cause = G.$cause;
   G.$cause = watcher;
   var current = watcher.$current;
 
-  G.Future.setValue(watcher, value, result);
-  G.record.push(result)
-  if (!current || result.valueOf() != current.valueOf()) {
-    var appl = watcher.$applications;
-    if (appl)
-      for (var i = 0; i < appl.length; i++)
-        G.Future.update(appl[i], result);
+  var old = G.Future.setValue(watcher, value, result);
+  if (!old) {
+    G.record.push(result)
+    if (!current || result.valueOf() != current.valueOf()) {
+      var appl = watcher.$applications;
+      if (appl)
+        for (var i = 0; i < appl.length; i++)
+          G.Future.update(appl[i], result);
+    }
+    G.record.pop(result)
+    return true;
+  } else {
+    debugger
+    called.$after = old;
+    G.$called = G.last(old);
   }
-  G.record.pop(result)
   G.$cause = cause;
 }
 
@@ -165,11 +176,17 @@ G.Future.setValue = function(watcher, value, result) {
       if (n.$caller === value) {
         if (n === watcher.$current)
           watcher.$current = n.$previous;
-        G.uncall(n)
+        var old = n;
         break;
       }
     }
-    watcher.$current = G.verbs.push(result, watcher.$current)
+    if (!old || old.valueOf() != result.valueOf()) {
+      watcher.$current = G.verbs.push(result, watcher.$current)
+      if (old)
+        G.uncall(old)
+    } else {
+      return old;
+    }
   }
   if (watcher.$calls) {
     var target = result.$source || result
@@ -251,7 +268,6 @@ G.Future.subscribe = function(context, key, watcher, meta, method) {
     var context = application.$context;
     var key = application.$key;
   }
-  application.$meta = meta;
   application.$method = method;
 
 

@@ -1177,12 +1177,24 @@ describe('Observers', function() {
       expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([5]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([5, 2]))
 
-      debugger
       context.set('max', 20)
       expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
       expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([11, 5, 2]))
-      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([2]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([11]))
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([11, 5, 2]))
+
+      context.set('min', 3)
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([11, 5]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([11]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([11, 5]))
+
+      context.set('min', 10)
+      context.set('max', 100)
+      expect(G.stringify(ValueGroup(context.value))).to.eql(G.stringify([11, 5, 51, 2]))
+      expect(G.stringify(ValueGroup(observed.$current))).to.eql(G.stringify([11, 51]))
+      expect(G.stringify(ValueGroup(context.latest))).to.eql(G.stringify([51]))
+      expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([11, 51]))
     })
   })
 

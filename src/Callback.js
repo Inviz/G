@@ -61,6 +61,8 @@ G.callback.getter = function(value, watcher) {
   var result = G.Future.invoke(watcher, value);
   if (result)
     return result.call('set')
+  else
+    G.Future.revoke(watcher, value)
 }
 
 G.callback.future = function(value, watcher, old) {
@@ -74,25 +76,35 @@ G.callback.future = function(value, watcher, old) {
     // if property changed, use its context
     G.$called =  G.$caller = value = value.$context;
 
+  // callback invoked by function argument
   if (!watcher.$context || value.$key == watcher.$key && value.$context == watcher.$context) {
     var target = value;
   } else {
+    // callback invoked by changed property (e.g. this.key)
     var targeting = true;
     var target = watcher.$context[watcher.$key]
     while (target && target.$previous)
       target = target.$previous;
   }
+
   while (target !== false) {
+    var effects = undefined;
     if (target) {
+      G.$caller = target || value;
+      G.$called =  G.record.find(target);
       if (target != old && old && !old.$multiple && !target.$multiple)
-        var effects = G.effects.caused(old, watcher);
+        effects = G.effects.caused(old, watcher);
       else if (target.$after)
-        var effects = G.effects.caused(target, watcher);
+        effects = G.effects.caused(target, watcher);
     }
     if (watcher.$future) {
       var result = G.Future.invoke(watcher, target);
-      if (result)
-        G.Future.notify(watcher, target, result)
+      if (result) {
+        if (!G.Future.notify(watcher, target, result))
+          effects = undefined;
+      } else {
+        G.Future.revoke(watcher, target)
+      }
     } else {
       watcher.$computing = true;
       G._observeProperties(target, watcher);
@@ -102,12 +114,12 @@ G.callback.future = function(value, watcher, old) {
     if (effects)
       G.effects.clean(target, effects);
 
-    G.$called = called;
-    G.$caller = caller;
-    G.$cause  = caused;
 
     target = targeting && target && target.$next || false;
   }
+    G.$called = called;
+    G.$caller = caller;
+    G.$cause  = caused;
   return result;
 }
 

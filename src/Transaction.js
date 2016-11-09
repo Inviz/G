@@ -168,6 +168,17 @@ G.record.write = function(value) {
   return value;
 }
 
+G.record.find = function(value) {
+  var prev = value;
+  for (var after = value; after = after.$after;) {
+    if (after.$before != value) break;
+    if (after.$cause == G.$cause)
+      return prev;
+    var prev = after;
+  }
+  return value;
+}
+
 // Make a two-way connection between two operations in graph
 G.link = function(old, value) {
   if (old == value)
