@@ -44,11 +44,12 @@ G.stack = function(context, key, value, meta, callback) {
       head = head.$next;
     if (head === current
     && (value === undefined || value === old.valueOf())) {      
-      callback(old)
+      var result = callback ? callback(old) : old;
       current = context[key]
     }
     if (!current || !next) break;
   }
+  return result;
 }
 
 

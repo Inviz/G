@@ -537,19 +537,23 @@ G.Node.updateAttributes = function(node, attributes, old) {
     node.text = attributes;
   } else {
     if (attributes)
-      for (var property in attributes) {
-        if (attributes[property] != (old ? old[property] : undefined))
-          node.set(property, attributes[property]);
+      for (var key in attributes) {
+        var v = attributes[key];
+        var o = (old ? old[key] : undefined);
+        
+        if (o != v) {
+          if (o == null || G.stack(node, key, o, o && o.$meta)) 
+            node.push(key, v)
+        }
       }
     if (old)
-      for (var property in old) {
+      for (var key in old) {
         if (!attributes || attributes[old] === undefined)
-          node.unset(property, old[property])
+          node.unset(key, old[key])
       }
   }
 
 }
-
 
 
 
