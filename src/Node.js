@@ -43,11 +43,15 @@ G.Node = function(tag, attributes) {
         }
     }
   } else {
+    if (G.Node.$migration) {
+      var self = G.Node.migrate.apply(this, arguments)
+      if (self) return self;
+    }
     var self = this;
-    if (tag)
-      self.tag = tag;
-    if (attributes)
-      self.merge(attributes);
+    this.setArguments(tag, attributes);
+    if (G.Node.$recording) {
+      G.Node.remember.apply(this, arguments);
+    }
   }
 
   for (var i = 2; i < arguments.length; i++)
@@ -66,8 +70,7 @@ G.Node.fromElement = function(element, mapping) {
       var self = G.Node(mapping[tag] || tag);
       break;
     case 3:
-      var self = new G.Node;
-      self.text = element.textContent;
+      var self = new G.Node(null, element.textContent);
       break;
     case 8:
       break;
@@ -125,6 +128,19 @@ G.Node.prototype.recall = function() {
   return G.Array.recall(this)
 };
 
+G.Node.prototype.setArguments = function(tag, attributes) {
+  if (tag)
+    this.tag = tag;
+  if (attributes)
+    if (typeof attributes.valueOf() == 'object')
+      this.merge(attributes);
+    else
+      this.text = attributes;
+
+  for (var i = 2; i < arguments.length; i++)
+    G.Node.append(this, arguments[i])
+}
+
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
   if (!this.$node || !(value || old).$context)
@@ -154,9 +170,10 @@ G.Node.append = function(context, child) {
   if (!child) return;
   if (typeof child.valueOf() == 'string') {
     var text = child;
-    child = new G.Node
-    child.text = text
+    child = new G.Node(null, text)
   }
+  if (G.Node.$migration)
+    return;
   return G.verbs.append(child, context);
 }
 
@@ -478,6 +495,62 @@ G.Node.unschedule = function(node, target, local, global) {
     }
   }
 }
+
+
+
+
+G.Node.prototype.migrate = function(record) {
+  G.Node.$migration = record;
+  G.Node.$migrated = []
+};
+G.Node.prototype.finalize = function() {
+  var migrated = G.Node.$migrated;
+  G.Node.$migration = undefined;
+  G.Node.$migrated = undefined;
+  return migrated;
+}
+
+G.Node.remember = function(tag, attributes) {
+  G.Node.$recording.push(this, attributes);
+}
+G.Node.record = function() {
+  G.Node.$recording = []
+};
+G.Node.stop = function() {
+  var recording = G.Node.$recording;
+  G.Node.$recording = undefined;
+  return recording;
+}
+G.Node.migrate = function(tag, attributes) {
+  var node = G.Node.$migration[G.Node.$migrated.length];
+  var old  = G.Node.$migration[G.Node.$migrated.length + 1];
+
+  G.Node.updateAttributes(node, attributes, old);
+  
+  G.Node.$migrated.push(node, attributes)
+
+  return this;
+}
+
+G.Node.updateAttributes = function(node, attributes, old) {
+  if (typeof attributes == 'string') {
+    node.text = attributes;
+  } else {
+    if (attributes)
+      for (var property in attributes) {
+        if (attributes[property] != (old ? old[property] : undefined))
+          node.set(property, attributes[property]);
+      }
+    if (old)
+      for (var property in old) {
+        if (!attributes || attributes[old] === undefined)
+          node.unset(property, old[property])
+      }
+  }
+
+}
+
+
 
 
 G.Directive = function(attributes) {

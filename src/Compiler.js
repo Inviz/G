@@ -22,9 +22,9 @@ G.compile.struct = function(struct) {
       // function that accept `self` as first argument,
       // are patched up to use `this` in their prototype variants
       var instance = G.compile.method(struct.prototype[property], 'self')
-      if (instance) {
+      if (instance && (!struct[property] || property == 'call')) {
         struct[property] = instance
-      }
+      } 
     }
   }
 
