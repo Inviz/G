@@ -99,13 +99,19 @@ G.prototype.define = function(key, callback) {
   G.analyze(callback);
   if (!callback.$arguments.length) {                  // 1. Adding value formatter
     G._addWatcher(this, key, callback, '$formatters' );
-    var value = this[key]
-    if (value != null)
+
+
+    var value = this[key];
+    while (value && value.$previous)
+      value = value.$previous;
+    for (; value; value = value.$next) {
       if (!value.$context) {                          // If Value was not unboxed yet
-        return G.set(this, key, value);               //   Turn primitive value to G op 
+        var result = G.set(this, key, value);               //   Turn primitive value to G op 
       } else {
-        return G.call(value, 'set');                  // Re-apply value 
+        var result = G.call(value);                  // Re-apply value 
       }
+    }
+    return result;
   } else {                                            
     var observer = new G.Future(this, key)                      // 2. Adding computed property
     if (!key) {
@@ -129,8 +135,9 @@ G.prototype.undefine = function(key, callback) {
   }
   if (!callback.$arguments.length) {
     G._removeWatcher(this, key, callback, '$formatters');
-    if (this[key])
-      return G.call(this[key], 'set')
+    var values = G.Array.slice(this[key]);
+    for (var i = 0; i < values.length; i++)
+      var result = G.call(values[i])
   } else {
     G.Future.unwatch(this, key, callback);
   }

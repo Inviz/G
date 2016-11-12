@@ -15,7 +15,6 @@ G.Array.prototype.recall = function() {
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
 G.Array.prototype.call = function() {
-
   if (!this.$parent) {
     var last = this.$context[this.$key];
     var first = this.$context ? last : self;
@@ -27,6 +26,24 @@ G.Array.prototype.call = function() {
     var last = this.$parent.$last
   }
 
+  for (var el = first; el; el = el.$next)
+    if (el === this)
+      return this;
+
+
+  if (!this.$leading && !this.$following) {
+    var value = this;
+    // check if unstransformed value is in array and replace it
+    loop: while (value.$transform) {
+      value = value.$before;
+      for (var other = last; other; other = other.$previous) {
+        if (other == value) {
+          G.Array.replace(this, other);
+          break loop;
+        }
+      }
+    }
+  }
     // for each node in the remembered parent
     // check if it matches anything before op
   for (var before = this; before = before.$leading;) {
@@ -139,6 +156,7 @@ G.Array.rebase = function(old, value) {
 
 // Connect two siblings with DOM pointers
 G.Array.register = function(left, right, parent) {
+  if (left == right) throw new Error('left == right')
   if (!left) {
     if (parent) {
       parent.$last = parent.$first = right;
@@ -193,6 +211,19 @@ G.Array.unregister = function(op) {
     op.$previous = undefined
     op.$next = undefined;
 }
+G.Array.replace = function(value, old) {
+  var p = old.$previous;
+  var n = old.$next;
+  G.uncall(old);
+  if (p){
+    G.Array.link(p, value);
+    G.Array.register(p, value, old.$parent)
+  }
+  if (n){
+    G.Array.link(value, n);
+    G.Array.register(value, n, old.$parent)
+  }
+}
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {
   for (var last = left; last.$last;)
@@ -201,6 +232,15 @@ G.Array.link = function(left, right) {
     right.$leading = last;
   }
 };
+
+G.Array.slice = function(value) {
+  var array = []
+  while (value && value.$previous)
+    value = value.$previous;
+  for (; value; value = value.$next)
+    array.push(value);
+  return array;
+}
 
 // Get previous item for node that may already be detached
 G.Array.getPrevious = function(node) {

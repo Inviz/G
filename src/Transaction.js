@@ -29,6 +29,7 @@ G.format = function(value, old) {
   if (current.$formatted === group) {               // 1. Value is already properly formatted 
     return current                                  //    return it
   } else {                                          // 2. Value not (yet) properly formatted
+    var multiple = value.$multiple;
     var result = G.unformatted(value)               //    get original value
     var after = current.$after                      //    remember next operation
     if (group) {                            
@@ -37,10 +38,14 @@ G.format = function(value, old) {
       result.$formatted = group                     //   store formatting configuration
     }
     G.rebase(value, result);                        // Replace value in the stack of values for key
-    G.link(result, after)
+    G.link(result, after);
+    if (multiple) {
+      result.$multiple = true;
+      G.Array.replace(result, current)
+    }
     return result;                                   
   }
-},
+};
 
 // Process all side effects for the value. 
 // When value is applied initially, it invokes all observers

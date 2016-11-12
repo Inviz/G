@@ -979,6 +979,25 @@ describe('Observers', function() {
 
       //G.define.preset(context, 'fullName', Property)
     })
+    it('should format array values', function() {
+      var context = new G;
+      var callback = function(value) {
+        return value + 123;
+      }
+
+      var first = context.push('collection', 100)
+      var second = context.push('collection', 200)
+
+
+      context.define('collection', callback);
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([223,323]))
+
+      var zero = context.unshift('collection', -100)
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([23,223, 323]))
+
+      context.undefine('collection', callback);
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([-100,100,200]))
+    })
 
     it ('should assign computed properties that observe deep keys', function() {
       

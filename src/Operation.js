@@ -108,7 +108,7 @@ G.prototype.call = function(verb) {
     var other = G.match(value.$meta, old)             //   Attempt to find value with same meta in history 
 
   if (value.$source)                                  // When value is a shallow reference to object
-    if (G.isReifying(old, verb, other)) {   
+    if (G.isChangeVisible(old, verb, other)) {   
       result = G.reify(value, this);                  // Create a G object subscribed to reference
       value = G.reify.reuse(result, value)            // Use it instead of value, if possible
     }
@@ -116,7 +116,8 @@ G.prototype.call = function(verb) {
   if (value.$multiple) {                              // If value is marked as multiple previously
     G.Array.call(value, old)                          // Attempt to restore it within collection
     while (result.$next)                              // Use head of collection as result
-      result = result.$next;  
+      result = result.$next;
+        
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
@@ -126,8 +127,8 @@ G.prototype.call = function(verb) {
   if (verb && old != null && old.$key) {              // If there was another value by that key
     if (other) {                                      // If history holds a value with same meta
       if (G.equals(other, result))                    //   If it's equal to given value
-        return G.record.reuse(other);                 //     Rebase that value into record
-      result = G.update(result, old, other);          //   then replace it in stack
+        return G.record.reuse(other);                 //     Use that other value instead
+      result = G.update(result, old, other);          //   Or replace it in stack
     } else {        
       result = verb(result, old);                     // invoke stack-manipulation method
       if (result === false)                           // No side effect will be observed
@@ -247,11 +248,8 @@ G.fork = function(primitive, value) {
 
 G.equals = function(value, old) {
   return value.valueOf() == old.valueOf() && 
-//         value.$caller == old.$caller && 
          G._compareMeta(value.$meta, old.$meta);
 }
-
-
 G.isObject = function(value) {
   return (value instanceof G && !(value instanceof G.Node)) || 
          (!value.recall && G.isPlainObject(value))
@@ -259,6 +257,7 @@ G.isObject = function(value) {
 G.isPlainObject = function(value) {
   return Object.prototype.toString.call(value) == '[object Object]';
 }
+
 G.isReplacing = function(self, value, old, verb) {
   if (!verb || !old)
     return;
@@ -269,6 +268,6 @@ G.isReplacing = function(self, value, old, verb) {
   return true;
 }
 
-G.isReifying = function(old, verb, other) {
+G.isChangeVisible = function(old, verb, other) {
   return !old || !verb || !verb.reifying || other
 }
