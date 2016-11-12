@@ -1,4 +1,8 @@
 describe('G.Node', function() {
+
+  var tags = function(e) {
+    return String(e.tag || e.text || e.rule)
+  };
   describe('Building', function() {
     it ('should reuse JSX AST', function() {
 
@@ -37,9 +41,6 @@ describe('G.Node', function() {
         )
       );
 
-      var tags = function(e) {
-        return e.tag || e.text || e.rule
-      };
 
 
       expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
@@ -136,10 +137,6 @@ describe('G.Node', function() {
           "Test"
         )
       );
-
-      var tags = function(e) {
-        return e.tag || e.text || e.rule
-      };
 
       expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
     
@@ -755,6 +752,32 @@ describe('G.Node', function() {
 
     })
   })
+
+  describe('Composing', function() {
+    it ('should inherit values object from parent form', function() {
+      var form = new G.Node('form', {method: 'post', action: '/whatever.html'},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('input', {name: 'your_name', value: 'Boris'}),
+        new G.Node('input', {type: 'submit'})
+      );
+      var input = form.$first.$next;
+
+      expect(form.values).to.not.eql(undefined)
+      expect(input.values).to.eql(form.values)
+      expect(String(form.values.your_name)).to.eql('Boris')
+
+      input.set('value', 'Vasya')
+
+      expect(String(form.values.your_name)).to.eql('Vasya')
+
+      input.set('name', 'MY_NAME')
+      
+      expect(String(form.values.MY_NAME)).to.eql('Vasya')
+      expect(form.values.your_name).to.eql(undefined)
+
+
+    })
+  })
 })
 
 TagTree = function(node, recursive) {
@@ -765,7 +788,8 @@ TagTree = function(node, recursive) {
     var attrs = node.clean();
     delete attrs.tag;
     delete attrs.rule;
-    var result = [node.tag || node.rule, attrs]
+    var str = node.tag || node.rule;
+    var result = [str && String(str), attrs]
 
     for (var child = node.$first; child; child = child.$next)
 

@@ -58,11 +58,17 @@ G.callback.proxy = function(value, watcher) {
 }
 
 G.callback.getter = function(value, watcher) {
-  var result = G.Future.invoke(watcher, value);
-  if (result)
-    return result.call('set')
-  else
+  var old = watcher.$current;
+  watcher.$current = G.Future.invoke(watcher, value);
+  if (watcher.$current) {
+    var result = watcher.$current.call('set')
+    if (old)
+      G.revoke(old)
+    return result;
+  } else {
     G.Future.revoke(watcher, value)
+  }
+  return result;
 }
 
 G.callback.future = function(value, watcher, old) {

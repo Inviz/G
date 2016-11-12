@@ -139,6 +139,15 @@ G.Array.rebase = function(old, value) {
 
 // Connect two siblings with DOM pointers
 G.Array.register = function(left, right, parent) {
+  if (!left) {
+    if (parent) {
+      parent.$last = parent.$first = right;
+      right.$parent = parent
+    }
+    if (right.onregister)
+      right.onregister(parent)
+    return;
+  }
   left.$next = right;
   right.$previous = left;
   
@@ -155,6 +164,11 @@ G.Array.register = function(left, right, parent) {
     left.$parent = parent
     right.$parent = parent
   }
+
+  if (left.onregister)
+    left.onregister(parent);
+  if (right.onregister)
+    right.onregister(parent);
 }
 
 // Remove element from DOM tree
@@ -340,14 +354,8 @@ G.Array.verbs = {
 
   // Nest value into another
   append: function(value, old) {
-    if (old.$last) {
-      G.Array.link(old, value)
-      G.Array.register(old.$last, value, old);
-    } else {
-      G.Array.link(old, value)
-      old.$last = old.$first = value;
-      value.$parent = old
-    }
+    G.Array.link(old, value)
+    G.Array.register(old.$last, value, old);
     return old;
   },
 

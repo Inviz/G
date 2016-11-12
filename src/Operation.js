@@ -21,7 +21,7 @@ var G = function(context, key, value) {
   if (context && this instanceof G) {
     this.observe.apply(this, arguments);
   } else if (key != null) {
-    this.$key = key;                                  // Store key
+    this.$key = String(key);                                  // Store key
     if (context != null)         
       this.$context = context;                        // Store context, object that holds operations
     if (value)                                        // If value is given to constructor, it's object
@@ -58,7 +58,7 @@ G.create = function(context, key, value) {
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
 
-    } else if (G._isObject(value)) {                  // 2. Wrapping plain/observable object
+    } else if (G.isObject(value)) {                  // 2. Wrapping plain/observable object
       var result = new G()                            //    Create new G wrapper
       result.$context = context;
       result.$key = key;
@@ -104,25 +104,24 @@ G.prototype.call = function(verb) {
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
-  if (verb && (!verb.multiple && !(this instanceof G) 
-  && ((verb.reifying && !(value instanceof G))) && old))
-    var other = G.match(value.$meta, old)             //   Attempt to find value with given meta in history 
+  if (G.isReplacing(this, value, old, verb))          // If key is supposed to have singular value
+    var other = G.match(value.$meta, old)             //   Attempt to find value with same meta in history 
 
   if (value.$source)                                  // When value is a shallow reference to object
-    if (!old || !verb || !verb.reifying || other) {   
+    if (G.isReifying(old, verb, other)) {   
       result = G.reify(value, this);                  // Create a G object subscribed to reference
       value = G.reify.reuse(result, value)            // Use it instead of value, if possible
     }
 
-  if (value.$multiple) {  
-    G.Array.call(value, old)
-    while (result.$next)
+  if (value.$multiple) {                              // If value is marked as multiple previously
+    G.Array.call(value, old)                          // Attempt to restore it within collection
+    while (result.$next)                              // Use head of collection as result
       result = result.$next;  
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
-  if (verb && verb.multiple)                                // If verb allows multiple values by same meta
-    value.$multiple = true                          //   Set flag on the value
+  if (verb && verb.multiple)                          // If verb allows multiple values by same meta
+    value.$multiple = true                            //   Set flag on the value
 
   if (verb && old != null && old.$key) {              // If there was another value by that key
     if (other) {                                      // If history holds a value with same meta
@@ -209,7 +208,7 @@ G.prototype.uncall = function(soft) {
   if (this.$computed) {
     for (var i = 0; i < this.$computed.length; i++) {
       if (this.$computed[i].$current)
-        G.uncall(this.$computed[i].$current);
+        G.revoke(this.$computed[i].$current);
     }
     this.$computed = undefined;
   }
@@ -252,11 +251,24 @@ G.equals = function(value, old) {
          G._compareMeta(value.$meta, old.$meta);
 }
 
-G._isPlain = function(value) {
+
+G.isObject = function(value) {
+  return (value instanceof G && !(value instanceof G.Node)) || 
+         (!value.recall && G.isPlainObject(value))
+}
+G.isPlainObject = function(value) {
   return Object.prototype.toString.call(value) == '[object Object]';
 }
+G.isReplacing = function(self, value, old, verb) {
+  if (!verb || !old)
+    return;
+  if (verb.multiple || !verb.reifying)
+    return;
+  if (self instanceof G || value instanceof G)
+    return
+  return true;
+}
 
-G._isObject = function(value) {
-  return (value instanceof G && !(value instanceof G.Node)) || 
-         (!value.recall && G._isPlain(value))
+G.isReifying = function(old, verb, other) {
+  return !old || !verb || !verb.reifying || other
 }

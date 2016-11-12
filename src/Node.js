@@ -129,13 +129,36 @@ G.Node.prototype.recall = function() {
 };
 
 G.Node.prototype.setArguments = function(tag, attributes) {
-  if (tag)
-    this.tag = tag;
+  if (tag) {
+    this.set('tag', tag);
+    var definition = G.Node.tags[tag];
+  }
+  if (definition) {
+    
+    if (!definition.$arguments)
+      G.analyze(definition);
+    if (definition.$arguments.length) {
+      if (!this.$role) {
+        this.$role = new G.Future(this, null)
+        this.$role.$future = true;
+        this.$role.$getter = definition
+        G.Future.watch(this, null, this.$role)
+      }
+      G.record.push(this.tag);
+      G.Future.invoke(this.$role)
+      G.record.pop(this.tag);
+    } else {
+      definition.call(this);
+    }
+  }
+
   if (attributes)
     if (typeof attributes.valueOf() == 'object')
       this.merge(attributes);
     else
       this.text = attributes;
+
+
 
   for (var i = 2; i < arguments.length; i++)
     G.Node.append(this, arguments[i])
@@ -143,7 +166,7 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
-  if (!this.$node || !(value || old).$context)
+  if (!this.$node || !(value || old).$context || key == 'tag')
     return;
 
   var transaction = G.Node.$transaction
@@ -177,6 +200,35 @@ G.Node.append = function(context, child) {
   return G.verbs.append(child, context);
 }
 
+G.Node.inherit = function(node) {
+  if (node.tag != 'input')
+    return;
+  for (var parent = node; parent; parent = parent.$parent) {
+    //if (node.tag == 'input') {
+    if (parent.values) {
+      if (node.values !== parent.values) {
+        var watchers = node.$watchers && node.$watchers.values;
+        node.values = parent.values;
+        if (watchers) {
+          for (var i = 0; i < watchers.length; i++) {
+            G.record.push(node.values)
+            G.callback(node.values, watchers[i]);
+            G.record.pop(node.values);
+          }
+        }
+        debugger
+      }
+      break;
+    }
+    //}
+  }
+}
+
+G.Node.inherited = {
+  values: function() {
+
+  }
+}
 
 G.Node.attributes = {
   text: function(value) {
@@ -196,8 +248,8 @@ G.Node.attributes = {
     }
   },
 
-  name: function() {
-    this.$inherited.values.propagate(this.name, this.value);
+  name: function(name) {
+    this.values.set(name, this.value);
   },
 
   action: function() {
@@ -213,21 +265,18 @@ G.Node.attributes = {
   }
 }
 
-
-// sort values in accordance to DOM order
-G.verbs.propagate = function(value, old) {
-  return value;
-}
-
 G.Node.tags = {
   form: function() {
-    this.set('values', new G);
+    this.set('values', {});
   },
   fieldset: function() {
     //this.scope('values', this.inherited.values)
   },
   dialog: function() {
 
+  },
+  input: function() {
+    this.values.set(this.name, this.value);
   }
 }
 
@@ -241,6 +290,11 @@ G.Node.types = {
   }
 }
 
+G.Node.prototype.onregister = function(parent) {
+  var last = this.$last;
+  for (var child = this; child != this.$last; child = child.$following)
+    G.Node.inherit(child);
+}
 G.Node.prototype.decorate = function(value) {
   // format token list
   var result = value
@@ -495,6 +549,7 @@ G.Node.unschedule = function(node, target, local, global) {
     }
   }
 }
+
 
 
 

@@ -837,6 +837,149 @@ describe('Observers', function() {
 
       //G.define.preset(context, 'fullName', Property)
     })
+
+
+    it ('handle formatters in computed values', function() {
+      var context = new G;
+
+      var Property = function() {
+        return this.firstName + ' ' + this.lastName
+      };
+
+      var capitalize = function(value) {
+        return value.charAt(0).toUpperCase() + value.substring(1)
+      }
+
+      G.define(context, 'firstName', capitalize);
+      G.define(context, 'lastName', capitalize);
+      G.define(context, 'fullName', Property, 'ololo')
+
+      expect(context.fullName).to.eql(undefined)
+
+      context.set('firstName', 'John')
+      expect(context.fullName).to.eql(undefined)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      
+      var lastName = context.set('lastName', 'doe')
+      expect(context.fullName.valueOf()).to.eql('John Doe')
+      expect(context.fullName.$meta).to.eql(['ololo'])
+      expect(StateGraph(context.lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.recall(lastName)
+      expect(context.fullName).to.eql(undefined)
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.call(lastName)
+      expect(context.fullName.valueOf()).to.eql('John Doe')
+      expect(StateGraph(lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      context.set('firstName', 'ivan')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(3)
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+
+      G.preset(context, 'fullName', 'unknown', 'value by default')
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(3)
+
+      G.recall(lastName)
+      expect(context.fullName.valueOf()).to.eql('unknown')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.call(lastName)
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+      expect(StateGraph(lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      G.undefine(context, 'fullName', Property, 'ololo')
+      expect(context.fullName.valueOf()).to.eql('unknown')
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      expect(context.$watchers).to.eql({
+          firstName: undefined,
+          lastName: undefined
+      })
+      expect(StateGraph(lastName).length).to.eql(2)
+
+      //G.define.preset(context, 'fullName', Property)
+    })
+
+
+    it ('should update graph in place', function() {
+      var context = new G;
+      var target = new G;
+      var Property = function() {
+        return this.firstName + ' ' + this.lastName
+      };
+
+
+
+      var sideffect = function(value) {
+        target.set(value.$key, value);
+      }
+
+      G.watch(context, 'firstName', sideffect);
+      G.watch(context, 'lastName', sideffect);
+      G.define(context, 'fullName', Property, 'ololo')
+
+      expect(context.fullName).to.eql(undefined)
+
+      context.set('firstName', 'John')
+      expect(context.fullName).to.eql(undefined)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      
+      var lastName = context.set('lastName', 'Doe')
+      expect(context.fullName.valueOf()).to.eql('John Doe')
+      expect(context.fullName.$meta).to.eql(['ololo'])
+      expect(StateGraph(context.lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.recall(lastName)
+      expect(context.fullName).to.eql(undefined)
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.call(lastName)
+      expect(context.fullName.valueOf()).to.eql('John Doe')
+      expect(StateGraph(lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      context.set('firstName', 'Ivan')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(3)
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+
+      G.preset(context, 'fullName', 'unknown', 'value by default')
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(3)
+
+      G.recall(lastName)
+      expect(context.fullName.valueOf()).to.eql('unknown')
+      expect(StateGraph(lastName).length).to.eql(2)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+      
+      G.call(lastName)
+      expect(context.fullName.valueOf()).to.eql('Ivan Doe')
+      expect(StateGraph(lastName).length).to.eql(3)
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      G.undefine(context, 'fullName', Property, 'ololo')
+      expect(context.fullName.valueOf()).to.eql('unknown')
+      expect(StateGraph(context.firstName).length).to.eql(2)
+
+      expect(StateGraph(lastName).length).to.eql(2)
+
+      //G.define.preset(context, 'fullName', Property)
+    })
+
     it ('should assign computed properties that observe deep keys', function() {
       
       var called = 0;

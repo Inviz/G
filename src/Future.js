@@ -93,7 +93,7 @@ G.Future.invoke = function(watcher, value) {
 G.Future.revoke = function(watcher, value) {
   var current = watcher.$context[watcher.$key];
   if (value && !value.$multiple && current && !current.$multiple) {
-    G.uncall(current, watcher.$meta)
+    G.revoke(current)
     watcher.$current = undefined
   }
 }
