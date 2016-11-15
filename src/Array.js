@@ -14,7 +14,7 @@ G.Array.prototype.recall = function() {
 
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
-G.Array.prototype.call = function() {
+G.Array.prototype.call = function(verb) {
   if (!this.$parent) {
     var last = this.$context[this.$key];
     var first = this.$context ? last : self;
@@ -30,22 +30,8 @@ G.Array.prototype.call = function() {
     if (el === this)
       return this;
 
-
-  if (!this.$leading && !this.$following) {
-    var value = this;
-    // check if unstransformed value is in array and replace it
-    loop: while (value.$transform) {
-      value = value.$before;
-      for (var other = last; other; other = other.$previous) {
-        if (other == value) {
-          G.Array.replace(this, other);
-          break loop;
-        }
-      }
-    }
-  }
-    // for each node in the remembered parent
-    // check if it matches anything before op
+  // for each node in the remembered parent
+  // check if it matches anything before op
   for (var before = this; before = before.$leading;) {
     for (var item = first; item; item = item.$next) {
       if (before == this.$parent)
@@ -81,8 +67,7 @@ G.Array.prototype.call = function() {
       }
     } 
   } 
-  
-  return this;
+  return false;
 };
 
 
@@ -214,7 +199,7 @@ G.Array.unregister = function(op) {
 G.Array.replace = function(value, old) {
   var p = old.$previous;
   var n = old.$next;
-  G.uncall(old);
+  G.uncall(old, false, true);
   if (p){
     G.Array.link(p, value);
     G.Array.register(p, value, old.$parent)
@@ -223,7 +208,13 @@ G.Array.replace = function(value, old) {
     G.Array.link(value, n);
     G.Array.register(value, n, old.$parent)
   }
+  var called = G.$called;
+  //G.$called = old;
+  //G.affect(value, old)
+  //G.$called = called;
+  return true;
 }
+
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {
   for (var last = left; last.$last;)
@@ -312,6 +303,13 @@ G.Array.isAfter = function(value, another) {
     if (prev == value)
       return true;
 }
+
+G.Array.contains = function(array, value) {
+  for (; array; array = array.$previous)
+    if (array === value)
+      return true;
+}
+
 G.Array.multiple = true
 G.Array.verbs = {
 

@@ -41,8 +41,12 @@ G.format = function(value, old) {
     G.link(result, after);
     if (multiple) {
       result.$multiple = true;
-      G.Array.replace(result, current)
+      var other = value.$context[value.$key];
+      if (other && G.Array.contains(other, value))
+        G.Array.replace(result, value);
     }
+    if (result != value && value.$formatted)
+      value.$formatted = undefined
     return result;                                   
   }
 };
@@ -100,15 +104,17 @@ G.$callers = [];
 G.$caller = G.$called = null;
 
 // register operation in graph
-G.record = function(value, old) {
+G.record = function(value, old, verb) {
+  if (verb !== null || value.$caller === old.$caller) // When not navigating history
+    G.record.sequence(value, old, verb);              //   register at current graph position
   G.record.causation(value, old);
-  G.record.sequence(value, old);
 }
 
-G.record.sequence = function(value, old) {
+G.record.sequence = function(value, old, verb) {
   if (old && old.$after && old.$after !== value)      // 1. Updating effect graph:
     if (!old.$multiple && !value.$multiple)
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
+
   if (old && old.$caller === G.$caller && !value.$multiple) { //    If new value has the same caller as old
     G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
@@ -163,8 +169,7 @@ G.record.reuse = function(value) {
 }
 
 G.record.continue = function(value, old) {
-  G.record.causation(value);
-  G.record.sequence(value, old);
+  G.record(value, old);
   return G.record.write(value);
 }
 
@@ -199,7 +204,8 @@ G.unlink = function(from, to, hard) {
     if (from.$before.$after == from)
       G.link(from.$before, to.$after);            //   Connect previous & next operations
   } else if (to.$after) {                       // Or if it was first,
-    to.$after.$before = undefined               //   Shift history 
+    if (!to.$after.$transform)                  // edge case: Removing transform from array
+      to.$after.$before = undefined             //   Shift history 
   }
   for (var c = from; c; c = c.$after) {
     if (c.ondetach) c.ondetach();

@@ -146,7 +146,7 @@ G.analyze = function(fn) {
   if (fn.length) {                                  // check if first argument is something else than value
     var args = string.match(/\(\s*([^\),\s]*)/)[1];
     if (args && args != 'value') {
-      fn.$properties = []
+      //fn.$properties = []
       target = args
     }
   }
@@ -167,7 +167,7 @@ G.analyze = function(fn) {
         if (target == 'this')
           fn.$arguments.push(clean.split('.'))
         else
-          fn.$properties.push(clean.split('.'))
+          (fn.$properties || (fn.$properties = [])).push(clean.split('.'))
       }
     }
   return fn;

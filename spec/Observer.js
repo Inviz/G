@@ -997,6 +997,17 @@ describe('Observers', function() {
 
       context.undefine('collection', callback);
       expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([-100,100,200]))
+
+      first.uncall()
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([-100,200]))
+
+      context.define('collection', callback);
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([23, 323]))
+
+      first.call() // todo maintain order
+      expect(G.stringify(ValueGroup(context.collection))).to.eql(G.stringify([23, 323, 223]))
+
+
     })
 
     it ('should assign computed properties that observe deep keys', function() {
@@ -1377,6 +1388,41 @@ describe('Observers', function() {
 
       G.call(doll)
       expect(Number(doll.test)).to.eql(123)
+    })
+
+    it ('should watch formatted array values', function() {
+      var context = new G;
+      var trex = context.push('toys', 'Toy A');
+      var doll = context.push('toys', 'Toy B');
+
+      expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['Toy A', 'Toy B']));
+
+      context.watch('toys', function(toy) {
+        context.push('test', toy)
+      })
+      expect(G.stringify(ValueGroup(context.test))).to.eql(G.stringify(['Toy A', 'Toy B']));
+
+      var formatter = function(toy) {
+        return '~' + toy + '~'
+      };
+
+      context.define('toys', formatter)
+      expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['~Toy A~', '~Toy B~']));
+      expect(G.stringify(ValueGroup(context.test))).to.eql(G.stringify(['~Toy A~', '~Toy B~']));
+
+      trex.uncall()
+
+      expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['~Toy B~']));
+      expect(G.stringify(ValueGroup(context.test))).to.eql(G.stringify(['~Toy B~']));
+
+      G.call(trex)
+      expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['~Toy A~', '~Toy B~']));
+      expect(G.stringify(ValueGroup(context.test))).to.eql(G.stringify(['~Toy A~', '~Toy B~']));
+
+      context.undefine('toys', formatter)
+      expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['Toy A', 'Toy B']));
+      expect(G.stringify(ValueGroup(context.test))).to.eql(G.stringify(['Toy A', 'Toy B']));
+
     })
     it('should track local property changes', function() {
       var context = new G;
@@ -1964,37 +2010,6 @@ describe('Observers', function() {
       
     })
 
-    xit('should create empty array (self changing callback)', function() {
-      var context = new G;
-      var trex = context.push('toys', {name: 'T-Rex', price: 195.99});
-      var doll = context.push('toys', {name: 'Doll'});
-      var product = new G({
-        price: 95.99,
-        description: 'Serious toy',
-        //content: function() {
-        //  return this.title + 'for $' + this.price
-        //}
-      })
-      var transaction = G.transact()
-      var loop = context.toys.forEach(function(toy) {
-        toy.preset('price', product.price, 'deflt')
-        toy.preset('description', product.description, 'deflt')
-        if (toy.price > 100)
-          toy.set('expensive', true)
-      })
-
-      expect(String(trex.description)).to.eql('Serious toy')
-      expect(Number(trex.price)).to.eql(195.99)
-      expect(Boolean(trex.expensive)).to.eql(true)
-      expect(String(doll.description)).to.eql('Serious toy')
-
-      G.uncall(trex.price)
-      expect(Boolean(trex.expensive)).to.eql(false)
-
-
-
-      context.push('toys', {name: 'Starship', description: 'Dull uninteresting piece of space aviation'})
-      
-    })
-})
+    
+  })
 });

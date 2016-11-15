@@ -100,8 +100,7 @@ G.Future.revoke = function(watcher, value) {
 
 G.Future.notify = function(watcher, value, result) {
   var called = G.$called;
-  G.record.sequence(result)
-  G.record.causation(result)
+  G.record(result)
   var cause = G.$cause;
   G.$cause = watcher;
   var current = watcher.$current;

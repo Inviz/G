@@ -100,15 +100,17 @@ G.prototype.define = function(key, callback) {
   if (!callback.$arguments.length) {                  // 1. Adding value formatter
     G._addWatcher(this, key, callback, '$formatters' );
 
-
-    var value = this[key];
-    while (value && value.$previous)
-      value = value.$previous;
-    for (; value; value = value.$next) {
-      if (!value.$context) {                          // If Value was not unboxed yet
-        var result = G.set(this, key, value);               //   Turn primitive value to G op 
+    var current = this[key];
+    if (!current) return;
+    if (current.$previous) {
+      var values = G.Array.slice(this[key]);
+      for (var i = 0; i < values.length; i++)
+        var result = G.call(values[i])
+    } else {
+      if (!current.$context) {                          // If Value was not unboxed yet
+        var result = G.set(this, key, current);               //   Turn primitive value to G op 
       } else {
-        var result = G.call(value);                  // Re-apply value 
+        var result = G.call(current);                  // Re-apply value 
       }
     }
     return result;
@@ -135,9 +137,15 @@ G.prototype.undefine = function(key, callback) {
   }
   if (!callback.$arguments.length) {
     G._removeWatcher(this, key, callback, '$formatters');
-    var values = G.Array.slice(this[key]);
-    for (var i = 0; i < values.length; i++)
-      var result = G.call(values[i])
+    var current = this[key];
+    if (!current) return;
+    if (current.$previous) {
+      var values = G.Array.slice(this[key]);
+      for (var i = 0; i < values.length; i++)
+        var result = G.call(values[i])
+    } else {
+      var result = G.call(current)
+    }
   } else {
     G.Future.unwatch(this, key, callback);
   }

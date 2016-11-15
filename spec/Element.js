@@ -579,6 +579,12 @@ describe('G.Node', function() {
       var second = context.push('items', {title: 'Title #2'});
 
       var fragment = context.watch('items', function(item) {
+        /*return <article>
+          <h1>{item.title}</h1>
+          <hr />
+          <p>{item.text}</p>
+        </article>*/
+
         return G.Node('article', null, 
           G.Node('h1', null, item.title),
           G.Node('hr'),

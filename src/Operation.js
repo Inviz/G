@@ -114,10 +114,11 @@ G.prototype.call = function(verb) {
     }
 
   if (value.$multiple) {                              // If value is marked as multiple previously
-    G.Array.call(value, old)                          // Attempt to restore it within collection
+    if (!G.Array.call(value))                         // Attempt to restore it within collection
+      if (!verb && verb !== null)                     // When not switching values
+        verb = G.verbs.push;                          //   fall back to push verb
     while (result.$next)                              // Use head of collection as result
       result = result.$next;
-        
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
@@ -138,8 +139,9 @@ G.prototype.call = function(verb) {
     }
   }
 
-  if (verb !== false && !G.isLinked(value))           // If operation position in graph needs update
-    G.record(value, old);                             // Register in graph and remember caller op/callback
+  if (verb !== false && !G.isLinked(value)) {         // If operation position in graph needs update
+    G.record(value, old, verb);                             // Register in graph and remember caller op/callback
+  }
 
   if (result !== old)                                 // If value is the new head
     this.$context[this.$key] = result;                // Save value in its context
@@ -166,7 +168,7 @@ G.prototype.recall = function() {
 };
 
 // Undo operation. Reverts value and its effects to previous versions. 
-G.prototype.uncall = function(soft) {
+G.prototype.uncall = function(soft, unformatted) {
   if (this.$target) {                                 // 1. Unmerging object
     this.$target.unobserve(this)  
     if (this.$target.$chain.length == 0)              // todo check no extra keys
@@ -181,7 +183,7 @@ G.prototype.uncall = function(soft) {
       
   if (context)  
     var current = context[this.$key]  
-  var value = G.formatted(this);                      // 2. Return to previous version
+  var value = unformatted ? this : G.formatted(this); // 2. Return to previous version
   var from = G.unformatted(value)                     // Get initial value before formatting
   
   var prec = value.$preceeding;  
