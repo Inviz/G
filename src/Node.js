@@ -10,11 +10,9 @@
 
 // That extra list is also used for document fragments
 // and virtual elements. Invisible parts of DOM, like
-// conditional rules, or fragments are still kept in that
-// graph, while DOM is unaware of them them.
-// This allows easy detaching and reattaching of DOM
-// spans not necessarily wrapped into shared physical
-// parent.  
+// conditional rules, or fragments are still kept in
+// virtual DOM, while real DOM is unaware of them them.
+// This enables easy manipulation of DOM fragments.
 
 // Changes to actual DOM are applied in batch when 
 // `root.render()` method is called.
@@ -123,9 +121,9 @@ G.Node.prototype.call   = function() {
   }
   return called
 }
-G.Node.prototype.recall = function() {
+G.Node.prototype.uncall = function() {
   G.Node.detach(this)
-  return G.Array.recall(this)
+  return G.Array.uncall(this)
 };
 
 G.Node.prototype.setArguments = function(tag, attributes) {
@@ -164,8 +162,19 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
+  var trigger = G.Node.triggers[key];
+  if (trigger) {
+    if (value && old == null) {
+      trigger.$returns = true;
+      this.watch(value.$key, trigger)
+    } else if (old && value == null) {
+      this.unwatch(value.$key, trigger)
+    }
+  }
+
   if (!this.$node || !(value || old).$context || key == 'tag')
     return;
+
 
   var transaction = G.Node.$transaction
   if (transaction && arguments.length > 2) {
@@ -201,7 +210,7 @@ G.Node.append = function(context, child) {
 G.Node.inherit = function(node) {
   if (node.tag != 'input')
     return;
-  for (var parent = node; parent; parent = parent.$parent) {
+  for (var parent = node; parent = parent.$parent;) {
     //if (node.tag == 'input') {
     if (parent.values) {
       if (node.values !== parent.values) {
@@ -214,7 +223,30 @@ G.Node.inherit = function(node) {
             G.record.pop(node.values);
           }
         }
-        debugger
+      }
+      break;
+    }
+    //}
+  }
+}
+
+
+G.Node.deinherit = function(node) {
+  if (node.tag != 'input')
+    return;
+  for (var parent = node; parent = parent.$parent;) {
+    //if (node.tag == 'input') {
+    if (parent.values) {
+      if (node.values === parent.values) {
+        node.values = undefined;
+        var watchers = node.$watchers && node.$watchers.values;
+        if (watchers) {
+          for (var i = 0; i < watchers.length; i++) {
+            if (watchers[i].$future) {
+              G.callback.future(parent.values, watchers[i]);
+            }
+          }
+        }
       }
       break;
     }
@@ -228,6 +260,13 @@ G.Node.inherited = {
   }
 }
 
+G.Node.triggers = {
+  name: function(name) {
+    this.values.set(name, this.value, this);
+  }
+}
+
+
 G.Node.attributes = {
   text: function(value) {
     if (this.$node)
@@ -237,29 +276,6 @@ G.Node.attributes = {
 
   tag: function() {
     return null;
-  },
-
-  type: function(value) {
-    var type = G.Node.types[value];
-    if (type) {
-
-    }
-  },
-
-  name: function(name) {
-    this.values.set(name, this.value);
-  },
-
-  action: function() {
-    this.add('class', 'selected')
-  },
-
-  do: function() {
-    this.push('action', this.action)
-  },
-
-  onclick: function() {
-    
   }
 }
 
@@ -272,10 +288,10 @@ G.Node.tags = {
   },
   dialog: function() {
 
-  },
-  input: function() {
-    this.values.set(this.name, this.value);
-  }
+  }//,
+  //input: function() {
+  //  this.values.set(this.name, this.value, this);
+  //}
 }
 
 G.Node.types = {
@@ -293,6 +309,11 @@ G.Node.prototype.onregister = function(parent) {
   for (var child = this; child != this.$last; child = child.$following)
     G.Node.inherit(child);
 }
+G.Node.prototype.onunregister = function(parent) {
+  var last = this.$last;
+  for (var child = this; child != this.$last; child = child.$following)
+    G.Node.deinherit(child);
+}
 G.Node.prototype.decorate = function(value) {
   // format token list
   var result = value
@@ -306,10 +327,12 @@ G.Node.prototype.updateAttribute = function(value) {
   var old = this[value.$key];
   var descriptor = G.Node.attributes[value.$key];
   if (descriptor) {
+    
     var descripted = descriptor.call(this, value, old);
     if (descripted === null)
     if (descripted !== undefined)
       value = descripted
+
   }
   if (this.tag) {
     var formatted = this.decorate(old);

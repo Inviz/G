@@ -53,8 +53,7 @@ G.prototype.watch = function(key, watcher, watching) {
     }
   }
 
-  if (!watching)
-    G.Future.watch(this, key, watcher);
+  G.Future.watch(this, key, watcher);
   return watcher;
 };
 

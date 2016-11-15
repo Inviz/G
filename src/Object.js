@@ -59,11 +59,13 @@ G.prototype.stringify = function() {
 };
 
 G.notify = function(context, key, value, old) {
-  if (context.onChange)                               
-    context.onChange(key, value, old)
-  
-  if (old instanceof G && context.$watchers) {
-    context.unwatch.object(context, key, old);
+  if (key) {
+    if (context.onChange)                               
+      context.onChange(key, value, old)
+    
+    if (old instanceof G && context.$watchers) {
+      context.unwatch.object(context, key, old);
+    }
   }
 }
 

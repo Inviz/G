@@ -4,7 +4,7 @@ G.Array = function() {
 G.Array.prototype = new G
 
 // Remove node from tree
-G.Array.prototype.recall = function() {
+G.Array.prototype.uncall = function() {
   G.Array.unlink(this)
   G.Array.unregister(this)
   if (this.$node && this.$node.parentNode)
@@ -176,6 +176,9 @@ G.Array.register = function(left, right, parent) {
 
 // Remove element from DOM tree
 G.Array.unregister = function(op) {
+  if (op.onunregister)
+    op.onunregister(op.$parent);
+  
   if (op.$previous) {
     if (op.$previous.$next == op)
       op.$previous.$next = op.$next
@@ -187,14 +190,15 @@ G.Array.unregister = function(op) {
     if (op.$next.$previous == op)
       op.$next.$previous = op.$previous
   }
+  
   if (op.$parent) {
     if (op.$parent.$last == op)
       op.$parent.$last = op.$previous
     if (op.$parent.$first == op)
       op.$parent.$first = op.$next
   }
-    op.$previous = undefined
-    op.$next = undefined;
+  op.$previous = undefined
+  op.$next = undefined;
 }
 G.Array.replace = function(value, old) {
   var p = old.$previous;

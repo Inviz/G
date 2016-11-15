@@ -140,7 +140,7 @@ G.prototype.call = function(verb) {
   }
 
   if (verb !== false && !G.isLinked(value)) {         // If operation position in graph needs update
-    G.record(value, old, verb);                             // Register in graph and remember caller op/callback
+    G.record(value, old, verb);                       // Register in graph and remember caller op/callback
   }
 
   if (result !== old)                                 // If value is the new head
@@ -197,7 +197,7 @@ G.prototype.uncall = function(soft, unformatted) {
         current = value.$previous;  
         context[this.$key] = value.$previous;         // reset head pointer on 
       }  
-      G.Array.recall(value);   
+      G.Array.uncall(value);   
       G.notify(context, this.$key, current, value)    // Notify 
     } else if (current === value) {
       current = undefined

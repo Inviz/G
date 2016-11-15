@@ -1397,6 +1397,7 @@ describe('Observers', function() {
 
       expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['Toy A', 'Toy B']));
 
+      debugger
       context.watch('toys', function(toy) {
         context.push('test', toy)
       })

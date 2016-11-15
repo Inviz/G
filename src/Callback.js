@@ -149,13 +149,12 @@ G.callback.revoke = function(value, watcher) {
 G.analyze = function(fn) {
   if (fn.$arguments) return fn;
   var string = String(fn)
-  var target = 'this'
 
   if (fn.length) {                                  // check if first argument is something else than value
     var args = string.match(/\(\s*([^\),\s]*)/)[1];
     if (args && args != 'value') {
       //fn.$properties = []
-      target = args
+      var target = args
     }
   }
   if (string.match(/if\s*\(/))
@@ -165,17 +164,15 @@ G.analyze = function(fn) {
   fn.$arguments = [] 
   var m = string.match(G.$findProperties);          // find all property accessors
   if (m)
-    for (var i = 0; i < m.length; i++) {     
-      if (m[i].substring(0, target.length) != target  // proceed if starts with `this.` or `arg.`
-       || m[i].charAt(target.length) != '.')
-        continue
-      var clean = m[i].substring(target.length + 1)   // skip prefix
-                      .replace(G.$cleanProperty, ''); // clean out tail method call
-      if (clean.length) {
-        if (target == 'this')
+    for (var i = 0; i < m.length; i++) {
+      if (m[i].substring(0, 5) == 'this.') {
+        var clean = m[i].substr(5).replace(G.$cleanProperty, '');
+        if (clean)
           fn.$arguments.push(clean.split('.'))
-        else
-          (fn.$properties || (fn.$properties = [])).push(clean.split('.'))
+      } else if (target && m[i].substring(0, target.length) 
+             &&  m[i].charAt(target.length) == '.') {
+        var clean = m[i].substr(target.length + 1).replace(G.$cleanProperty, '');
+        (fn.$properties || (fn.$properties = [])).push(clean.split('.'))
       }
     }
   return fn;

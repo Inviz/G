@@ -48,12 +48,12 @@ describe('G.Node', function() {
       var IF = tree.$following.$following.$following;
       var ELSE = IF.$following.$following.$following.$following;
       
-      IF.recall()
+      IF.uncall()
       expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "else", "This this is not published", "button", "Publish", "p", "Test"])
     
       var unpublishButton = IF.$following.$following
       var publishButton = ELSE.$following.$following
-      unpublishButton.recall()
+      unpublishButton.uncall()
 
       expect(ValueGroup(IF).map(tags)).to.eql(["if", "Published"])
 
@@ -70,13 +70,13 @@ describe('G.Node', function() {
       '<p>Test</p></div>')
 
 
-      IF.recall()
+      IF.uncall()
       
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       '<else>This this is not published<button test="blah">Publish</button></else>' + 
       '<p>Test</p></div>')
-      G.Node.recall(publishButton)
+      G.Node.uncall(publishButton)
 
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
@@ -84,7 +84,7 @@ describe('G.Node', function() {
       '<p>Test</p></div>')
 
       G.Node.call(IF)
-      G.Node.recall(ELSE)
+      G.Node.uncall(ELSE)
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       '<if published="true">Published<button class="blah">Unpublish</button></if>' +
@@ -93,7 +93,7 @@ describe('G.Node', function() {
 
       G.Node.call(publishButton)
       G.Node.call(ELSE)
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       '<else>This this is not published<button test="blah">Publish</button></else>' + 
@@ -143,12 +143,12 @@ describe('G.Node', function() {
       var IF = tree.$following.$following.$following;
       var ELSE = tree.$following.$following.$following.$following.$following.$following.$following;
       
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "else", "This this is not published", "button", "Publish", "p", "Test"])
     
       var unpublishButton = IF.$following.$following
       var publishButton = ELSE.$following.$following
-      G.Node.recall(unpublishButton)
+      G.Node.uncall(unpublishButton)
 
       expect(ValueGroup(IF).map(tags)).to.eql(["if", "Published"])
 
@@ -165,13 +165,13 @@ describe('G.Node', function() {
       '<p>Test</p></div>')
 
 
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
 
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       'This this is not published<button test="blah">Publish</button>' + 
       '<p>Test</p></div>')
-      G.Node.recall(publishButton)
+      G.Node.uncall(publishButton)
 
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
@@ -179,7 +179,7 @@ describe('G.Node', function() {
       '<p>Test</p></div>')
 
       G.Node.call(IF)
-      G.Node.recall(ELSE)
+      G.Node.uncall(ELSE)
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       'Published<button class="blah">Unpublish</button>' +
@@ -188,7 +188,7 @@ describe('G.Node', function() {
 
       G.Node.call(publishButton)
       G.Node.call(ELSE)
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.render().outerHTML).to.eql(
       '<div><h1>Hello world</h1>' + 
       'This this is not published<button test="blah">Publish</button>' + 
@@ -331,7 +331,7 @@ describe('G.Node', function() {
       var zuul = span.unshift('class', 'zuul', 'spook source')
       expect(span.$node.outerHTML).to.eql('<span class="zuul zest cool"></span>')
 
-      // recall all classes set with no extra arguments
+      // uncall all classes set with no extra arguments
       span.class.recall(':)')
       expect(span.$node.outerHTML).to.eql('<span class="zuul"></span>')
       
@@ -343,7 +343,7 @@ describe('G.Node', function() {
       span.push('class', zest)
       expect(span.$node.outerHTML).to.eql('<span class="cool zuul zest"></span>')
 
-      // recall zuul class by its meta
+      // uncall zuul class by its meta
       span.class.recall('spook source')
       expect(span.$node.outerHTML).to.eql('<span class="cool zest"></span>')
 
@@ -396,7 +396,7 @@ describe('G.Node', function() {
       expect(span.$node.outerHTML).to.eql('<span class="zest cool"></span>')
       expect(span.render().outerHTML).to.eql('<span class="zuul zest cool"></span>')
 
-      // recall all classes set with `:)` 
+      // uncall all classes set with `:)` 
       span.class.recall(':)')
       expect(span.$node.outerHTML).to.eql('<span class="zuul zest cool"></span>')
       expect(span.render().outerHTML).to.eql('<span class="zuul"></span>')
@@ -411,7 +411,7 @@ describe('G.Node', function() {
       expect(span.$node.outerHTML).to.eql('<span class="cool zuul"></span>')
       expect(span.render().outerHTML).to.eql('<span class="cool zuul zest"></span>')
 
-      // recall zuul class by its meta
+      // uncall zuul class by its meta
       span.class.recall('spook source')
       expect(span.$node.outerHTML).to.eql('<span class="cool zuul zest"></span>')
       expect(span.render().outerHTML).to.eql('<span class="cool zest"></span>')
@@ -505,7 +505,7 @@ describe('G.Node', function() {
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
       var IF = tree.$first.$first.$next;
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1> It <p>aint</p> cool <h2>For real</h2>')
 
       G.Node.call(IF)
@@ -514,7 +514,7 @@ describe('G.Node', function() {
 
       tree.transact()   // dont update dom
 
-      G.Node.recall(IF) // dom not updated
+      G.Node.uncall(IF) // dom not updated
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
       tree.render()
@@ -526,7 +526,7 @@ describe('G.Node', function() {
       tree.render()
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
       IF.render()
@@ -538,7 +538,7 @@ describe('G.Node', function() {
       IF.render()
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
       tree.commit(true);
@@ -550,7 +550,7 @@ describe('G.Node', function() {
       tree.commit(true);
       expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderful!! It <p>aint</p> cool <h2>For real</h2>')
 
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       G.Node.call(IF)
 
       expect(tree.$attaching).to.eql([IF])
@@ -560,11 +560,11 @@ describe('G.Node', function() {
       expect(tree.$attaching).to.eql([IF])
       expect(tree.$detaching).to.eql([])
 
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.$attaching).to.eql([])
       expect(tree.$detaching).to.eql([IF])
       
-      G.Node.recall(IF)
+      G.Node.uncall(IF)
       expect(tree.$attaching).to.eql([])
       expect(tree.$detaching).to.eql([IF])
 
@@ -767,6 +767,7 @@ describe('G.Node', function() {
         new G.Node('input', {type: 'submit'})
       );
       var input = form.$first.$next;
+      var submit = form.$first.$next.$next;
 
       expect(form.values).to.not.eql(undefined)
       expect(input.values).to.eql(form.values)
@@ -785,6 +786,39 @@ describe('G.Node', function() {
       expect(String(form.values.MY_NAME)).to.eql('Johny')
       expect(form.values.your_name).to.eql(undefined)
 
+      input.uncall();
+      expect(form.values.MY_NAME).to.eql(undefined)
+      expect(form.values.your_name).to.eql(undefined)
+
+      input.set('value', 'Jackie')
+      expect(form.values.MY_NAME).to.eql(undefined)
+      expect(form.values.your_name).to.eql(undefined)
+
+      input.call();
+      expect(String(form.values.MY_NAME)).to.eql('Jackie')
+      expect(form.values.your_name).to.eql(undefined)
+
+      input.set('name', 'her_name')
+      expect(String(form.values.her_name)).to.eql('Jackie')
+      expect(form.values.her_name.$meta).to.eql([input])
+      expect(form.values.MY_NAME).to.eql(undefined)
+      expect(form.values.your_name).to.eql(undefined)
+
+      submit.set('name', 'submission_button');
+      expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie'}))
+
+
+      var value = submit.set('value', 'the_button');
+
+      expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button'}))
+
+      var value = submit.set('value', 'the_button');
+
+
+      var input3 = new G.Node('input', {name: 'comment', value: 'Boo!'})
+
+      G.Node.append(submit.$parent, input3)
+      expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button', comment: 'Boo!'}))
 
     })
   })
