@@ -14,7 +14,7 @@
 */
 
 // Add observer for key, call it if there's a value with that key
-G.prototype.watch = function(key, watcher) {
+G.prototype.watch = function(key, watcher, watching) {
   if (!watcher || (typeof watcher != 'function' && !watcher.$context)) 
     watcher = G.callback.pass;
   
@@ -53,7 +53,8 @@ G.prototype.watch = function(key, watcher) {
     }
   }
 
-  G.Future.watch(this, key, watcher);
+  if (!watching)
+    G.Future.watch(this, key, watcher);
   return watcher;
 };
 

@@ -82,15 +82,21 @@ G.callback.future = function(value, watcher, old) {
     // if property changed, use its context
     G.$called =  G.$caller = value = value.$context;
 
-  // callback invoked by function argument
-  if (!watcher.$context || value.$key == watcher.$key && value.$context == watcher.$context) {
-    var target = value;
-  } else {
-    // callback invoked by changed property (e.g. this.key)
-    var targeting = true;
-    var target = watcher.$context[watcher.$key]
-    while (target && target.$previous)
-      target = target.$previous;
+  
+  if (!watcher.$context || value.$key === watcher.$key // 1. Future observes key
+    && value.$context === watcher.$context) {          // When observed value was set or changed
+    var target = value;                                //   only run callback against that value
+  } else {                                             // Side effects are owned by observed value
+    if (watcher.$key) {
+      var targeting = true;                            // When property used in callback was changed
+      var target = watcher.$context[watcher.$key]      //   trigger callback for each observed value
+      while (target && target.$previous)               
+        target = target.$previous;
+    } else {                                           
+      var last = watcher.$last;                        // 2. Future is anonymous
+      watcher.$last = G.$called;                       // Last changed property owns caused side effects
+    }
+    
   }
 
   while (target !== false) {
@@ -102,6 +108,8 @@ G.callback.future = function(value, watcher, old) {
         effects = G.effects.caused(old, watcher);
       else if (target.$after)
         effects = G.effects.caused(target, watcher);
+    } else if (last) {
+      effects = G.effects.caused(last, watcher)
     }
     if (watcher.$future) {
       var result = G.Future.invoke(watcher, target);

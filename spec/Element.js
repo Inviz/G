@@ -476,7 +476,7 @@ describe('G.Node', function() {
 
 
     it ('should unwrap tree from DOM node', function() {
-      var html = "<div><h1> Hello guys</h1><if a=b>This <p>is</p> wonderful!!</if> <if b=c>It <p>aint</p> cool</if> <h2>For real</h2></div>"
+      var html = "<div><h1> Hello guys</h1><if a=b>This <p>is</p> wonderful!!</if> <if>It <p>aint</p> cool</if> <h2>For real</h2></div>"
       var fragment = document.createRange().createContextualFragment(html);
 
       var tree = G.Node(fragment);
@@ -779,6 +779,10 @@ describe('G.Node', function() {
       input.set('name', 'MY_NAME')
       
       expect(String(form.values.MY_NAME)).to.eql('Vasya')
+      expect(form.values.your_name).to.eql(undefined)
+
+      input.set('value', 'Johny')
+      expect(String(form.values.MY_NAME)).to.eql('Johny')
       expect(form.values.your_name).to.eql(undefined)
 
 

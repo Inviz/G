@@ -117,7 +117,6 @@ G.Future.notify = function(watcher, value, result) {
     G.record.pop(result)
     return true;
   } else {
-    debugger
     called.$after = old;
     G.$called = G.last(old);
   }
@@ -136,8 +135,11 @@ G.Future.compute = function(watcher, current) {
 
 G.Future.watch = function(context, key, watcher) {
   var callback = watcher.$getter || watcher;
-  for (var i = 0; i < callback.$arguments.length; i++)
+  for (var i = 0; i < callback.$arguments.length; i++) {
+    watcher.$computing = i < callback.$arguments.length - 1;
     G.watch(context, callback.$arguments[i][0], watcher, false);
+    watcher.$computing = undefined;
+  }
 }
 
 G.Future.unwatch = function(context, key, watcher) {

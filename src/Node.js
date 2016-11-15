@@ -144,9 +144,7 @@ G.Node.prototype.setArguments = function(tag, attributes) {
         this.$role.$getter = definition
         G.Future.watch(this, null, this.$role)
       }
-      G.record.push(this.tag);
-      G.Future.invoke(this.$role)
-      G.record.pop(this.tag);
+      //G.Future.invoke(this.$role)
     } else {
       definition.call(this);
     }
