@@ -65,6 +65,7 @@ G.compile.verb = function(verb) {
       if (op)
         return op.call(verb)
     } else {
+      if (this[key])
       switch (arguments.length) {
         case 1:
         case 2:  return this[key].recall();

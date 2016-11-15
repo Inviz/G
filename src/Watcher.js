@@ -315,7 +315,7 @@ G._removeWatcher = function(self, key, watcher, property) {
   if (watchers && watchers[key]) {                  
     watchers[key] =                                 // Removing a watcher creates new array 
       watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
-        return other !== watcher;                   // recompute stale values
+        return other !== watcher && other.$getter !== watcher;                   // recompute stale values
       });
     if (!watchers[key].length)
       watchers[key] = undefined

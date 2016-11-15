@@ -763,11 +763,13 @@ describe('G.Node', function() {
     it ('should inherit values object from parent form', function() {
       var form = new G.Node('form', {method: 'post', action: '/whatever.html'},
         new G.Node('label', null, 'What is your name?'),
-        new G.Node('input', {name: 'your_name', value: 'Boris'}),
-        new G.Node('input', {type: 'submit'})
+        new G.Node('div', null, 
+          new G.Node('input', {name: 'your_name', value: 'Boris'}),
+          new G.Node('input', {type: 'submit'})
+        )
       );
-      var input = form.$first.$next;
-      var submit = form.$first.$next.$next;
+      var input = form.$last.$first;
+      var submit = form.$last.$last;
 
       expect(form.values).to.not.eql(undefined)
       expect(input.values).to.eql(form.values)
@@ -820,6 +822,88 @@ describe('G.Node', function() {
       G.Node.append(submit.$parent, input3)
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button', comment: 'Boo!'}))
 
+
+      expect(input3.$watchers.value).to.not.eql(undefined)
+      expect(input3.$watchers.values).to.not.eql(undefined)
+      
+      input3.name.uncall()
+
+      expect(input3.$watchers.value).to.eql(undefined)
+      expect(input3.$watchers.values).to.eql(undefined)
+    })
+
+    it ('should inherit microdata object from parent scope', function() {
+      var form = new G.Node('article', {itemscope: true},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('a', {itemprop: 'your_name', href: 'boris.html'}),
+          new G.Node('span', {itemprop: 'submit'}, 'Hello')
+        )
+      );
+      var input = form.$last.$first;
+      var submit = form.$last.$last;
+
+      expect(form.microdata).to.not.eql(undefined)
+      expect(input.microdata).to.eql(form.microdata)
+      expect(String(form.microdata.your_name)).to.eql('boris.html')
+
+      debugger
+      input.set('href', 'vasya.html')
+
+      expect(String(form.microdata.your_name)).to.eql('vasya.html')
+
+      debugger
+      input.set('itemprop', 'MY_NAME')
+      
+      expect(String(form.microdata.MY_NAME)).to.eql('vasya.html')
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      input.set('href', 'johny.html')
+      expect(String(form.microdata.MY_NAME)).to.eql('johny.html')
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      input.uncall();
+      expect(form.microdata.MY_NAME).to.eql(undefined)
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      input.set('href', 'jackie.html')
+      expect(form.microdata.MY_NAME).to.eql(undefined)
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      input.call();
+      expect(String(form.microdata.MY_NAME)).to.eql('jackie.html')
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      input.set('itemprop', 'her_name')
+      expect(String(form.microdata.her_name)).to.eql('jackie.html')
+      expect(form.microdata.her_name.$meta).to.eql([input])
+      expect(form.microdata.MY_NAME).to.eql(undefined)
+      expect(form.microdata.your_name).to.eql(undefined)
+
+      submit.set('itemprop', 'submission_button');
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+
+
+      var value = submit.set('content', 'the_button');
+
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button'}))
+
+      var value = submit.set('value', 'the_button');
+
+
+      var input3 = new G.Node('meta', {itemprop: 'comment', src: 'Boo!'})
+
+      G.Node.append(submit.$parent, input3)
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button', comment: 'Boo!'}))
+
+
+      expect(input3.$watchers.itemprop).to.not.eql(undefined)
+      expect(input3.$watchers.microdata).to.not.eql(undefined)
+      
+      input3.itemprop.uncall()
+      debugger
+      expect(input3.$watchers.itemprop).to.eql(undefined)
+      expect(input3.$watchers.microdata).to.eql(undefined)
     })
   })
 })

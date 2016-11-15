@@ -57,7 +57,7 @@ G.Future.prepare = function(watcher, trigger) {
         && trigger instanceof G) {               // When observer returned object
         trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
       }
-      if (!(context = context[bits[j]]))         // Proceed if argument has value
+      if (!(context = context[bits[j]]) && (getter.$returns || watcher.$future)) // Proceed if argument has value
         return;
     }
     var computed = context.$computed;

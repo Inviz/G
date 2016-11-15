@@ -21,7 +21,7 @@ G.callback.dispatch = function(watcher) {
 G.callback.property = function(value, watcher, old) {
   var caused = G.$cause
   G.$cause = watcher;
-  var transformed = watcher(value, old);
+  var transformed = watcher.call(value.$context, value, old);
   if (old)
     for (var after = old; after = after.$after;)                   // undo all conditional stuff
       if (after.$caller == old && after.$cause == watcher)         // that did not fire this time

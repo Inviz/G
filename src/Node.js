@@ -160,16 +160,24 @@ G.Node.prototype.setArguments = function(tag, attributes) {
     G.Node.append(this, arguments[i])
 }
 
+G.Node.getTextContent = function() {
+  return null;
+}
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
   var trigger = G.Node.triggers[key];
   if (trigger) {
     if (value && old == null) {
-      trigger.$returns = true;
       this.watch(value.$key, trigger)
     } else if (old && value == null) {
-      this.unwatch(value.$key, trigger)
+      this.unwatch(old.$key, trigger)
     }
+  }
+
+  if (this.itemprop && G.Node.itemvalues[key] && this.microdata) {
+    G.record.push(G.last(this.itemprop));
+    G.Node.triggers.itemprop.call(this, this.itemprop)
+    G.record.pop(this.itemprop);
   }
 
   if (!this.$node || !(value || old).$context || key == 'tag')
@@ -208,61 +216,105 @@ G.Node.append = function(context, child) {
 }
 
 G.Node.inherit = function(node) {
-  if (node.tag != 'input')
-    return;
-  for (var parent = node; parent = parent.$parent;) {
-    //if (node.tag == 'input') {
-    if (parent.values) {
-      if (node.values !== parent.values) {
-        var watchers = node.$watchers && node.$watchers.values;
-        node.values = parent.values;
-        if (watchers) {
-          for (var i = 0; i < watchers.length; i++) {
-            G.record.push(node.values)
-            G.callback(node.values, watchers[i]);
-            G.record.pop(node.values);
+  for (var x = 0; x < G.Node.inheritable.length; x++) {
+    var prop = G.Node.inheritable[x];
+    for (var parent = node; parent = parent.$parent;) {
+      if (parent[prop]) {
+        if (node[prop] !== parent[prop]) {
+          var watchers = node.$watchers && node.$watchers[prop];
+          node[prop] = parent[prop];
+          if (watchers) {
+            for (var i = 0; i < watchers.length; i++) {
+              G.record.push(node[prop])
+              G.callback(node[prop], watchers[i]);
+              G.record.pop(node[prop]);
+            }
           }
         }
+        break;
       }
-      break;
     }
-    //}
   }
 }
 
 
 G.Node.deinherit = function(node) {
-  if (node.tag != 'input')
-    return;
-  for (var parent = node; parent = parent.$parent;) {
-    //if (node.tag == 'input') {
-    if (parent.values) {
-      if (node.values === parent.values) {
-        node.values = undefined;
-        var watchers = node.$watchers && node.$watchers.values;
-        if (watchers) {
-          for (var i = 0; i < watchers.length; i++) {
-            if (watchers[i].$future) {
-              G.callback.future(parent.values, watchers[i]);
-            }
-          }
+  for (var x = 0; x < G.Node.inheritable.length; x++) {
+    var prop = G.Node.inheritable[x];
+    for (var parent = node; parent = parent.$parent;) {
+      if (parent[prop]) {
+        if (node[prop] === parent[prop]) {
+          node[prop] = undefined;
+          var watchers = node.$watchers && node.$watchers[prop];
+          if (watchers)
+            for (var i = 0; i < watchers.length; i++)
+              if (watchers[i].$future)
+                G.callback.future(parent[prop], watchers[i]);
         }
+        break;
       }
-      break;
     }
-    //}
   }
 }
 
 G.Node.inherited = {
-  values: function() {
+  values: function(target) {
+
+  },
+
+  microdata: function() {
 
   }
 }
+G.Node.itemvalues = {
+  content: function() {},
+  href: function() {},
+  src: function() {}
+}
 
+G.Node.inheritable = Object.keys(G.Node.inherited);
+
+// Triggers should have return statement 
+// if they are expected to observe all properties
 G.Node.triggers = {
   name: function(name) {
     this.values.set(name, this.value, this);
+    return
+  },
+
+  itemprop: function(itemprop) {
+    if (this['href'] != null)
+      this.microdata.set(itemprop, this['href'], this);
+    else if (this['src'] != null)
+      this.microdata.set(itemprop, this['src'], this);
+    else if (this['content'] != null)
+      this.microdata.set(itemprop, this['content'], this);
+    else
+      this.microdata.set(itemprop, G.Node.getTextContent(this), this);
+    return 
+  },
+
+  itemscope: function() {
+    this.set('microdata', {}, this);
+  }
+
+  //itemvalue: function() {
+  //  this.set('microdata', {}, this);
+  //},
+
+}
+
+G.Node.initializers = {
+  microdata: function() {
+    // inherit
+  },
+
+  values: function() {
+    // inherit
+  },
+
+  itemvalue: function() {
+    return this.href || this.url
   }
 }
 
@@ -271,7 +323,6 @@ G.Node.attributes = {
   text: function(value) {
     if (this.$node)
       this.$node.textContent = value
-    return
   },
 
   tag: function() {
