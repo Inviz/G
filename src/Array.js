@@ -24,7 +24,16 @@ G.Array.prototype.call = function(verb) {
   } else {
     var first = this.$parent.$first
     var last = this.$parent.$last
+    
+    if (!first) {
+      var before = this.$parent;
+      G.Array.link(this, before.$next || before.$following)
+      G.Array.link(before, this)
+      G.Array.register(null, this, this.$parent)
+      return this; 
+    }
   }
+
 
   for (var el = first; el; el = el.$next)
     if (el === this)

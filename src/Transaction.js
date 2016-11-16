@@ -178,11 +178,13 @@ G.record.write = function(value) {
   return value;
 }
 
-G.record.find = function(value) {
+G.record.find = function(value, cause) {
+  if (!cause)
+    cause = G.$cause;
   var prev = value;
   for (var after = value; after = after.$after;) {
     if (after.$before != value) break;
-    if (after.$cause == G.$cause)
+    if (after.$cause == cause)
       return prev;
     var prev = after;
   }

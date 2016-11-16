@@ -119,11 +119,20 @@ G.Node.prototype.call   = function() {
     else
       G.children(this, G.Node.place)
   }
+  if (this.text != null)
+    G.Node.updateTextContent(this);
+  
   return called
 }
 G.Node.prototype.uncall = function() {
   G.Node.detach(this)
-  return G.Array.uncall(this)
+  var uncalled =  G.Array.uncall(this)
+
+  if (this.text != null)
+    G.Node.updateTextContent(this);
+  
+  return uncalled;
+
 };
 
 G.Node.prototype.setArguments = function(tag, attributes) {
@@ -152,7 +161,7 @@ G.Node.prototype.setArguments = function(tag, attributes) {
     if (typeof attributes.valueOf() == 'object')
       this.merge(attributes);
     else
-      this.text = attributes;
+      this.set('text', attributes); //lazy text content
 
 
 
@@ -160,9 +169,43 @@ G.Node.prototype.setArguments = function(tag, attributes) {
     G.Node.append(this, arguments[i])
 }
 
-G.Node.getTextContent = function() {
-  return null;
+G.Node.getTextContent = function(node) {
+  var result;
+  if (node.$first)
+    for (var lead = node; lead = lead.$following;) {
+      if (lead && !lead.tag && lead.text) {
+        result = (result || '') + lead.text;
+      }
+      if (lead == node.$last)
+        break;
+    }
+  return result;
 }
+
+// Update itemvalue
+G.Node.updateMicroData = function(node) {
+  G.record.push(node.itemprop);
+  var watchers = node.$watchers.itemprop;
+  var cause = G.$cause;
+  var called = G.$called;
+  for (var i = 0; i < watchers.length; i++) {
+    if (watchers[i].$getter == G.Node.triggers.itemprop)
+      G.$cause = watchers[i];
+  }
+  G.$called = G.record.find(node.itemprop)
+  G.Node.triggers.itemprop.call(node, node.itemprop)
+  G.record.pop(node.itemprop);
+  G.$cause = cause;
+  G.$called = called;
+}
+
+G.Node.updateTextContent = function(node) {
+  for (var parent = node; parent = parent.$parent;) {
+    if (parent.itemprop)
+      G.Node.updateMicroData(parent);
+  }
+}
+
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
   var trigger = G.Node.triggers[key];
@@ -174,11 +217,8 @@ G.Node.prototype.onChange = function(key, value, old) {
     }
   }
 
-  if (this.itemprop && G.Node.itemvalues[key] && this.microdata) {
-    G.record.push(G.last(this.itemprop));
-    G.Node.triggers.itemprop.call(this, this.itemprop)
-    G.record.pop(this.itemprop);
-  }
+  if (this.itemprop && G.Node.itemvalues[key] && this.microdata)
+    G.Node.updateMicroData(this);
 
   if (!this.$node || !(value || old).$context || key == 'tag')
     return;
@@ -284,18 +324,29 @@ G.Node.triggers = {
 
   itemprop: function(itemprop) {
     if (this['href'] != null)
-      this.microdata.set(itemprop, this['href'], this);
+      var value = this['href'];
     else if (this['src'] != null)
-      this.microdata.set(itemprop, this['src'], this);
+      var value = this['src'];
     else if (this['content'] != null)
-      this.microdata.set(itemprop, this['content'], this);
+      var value = this['content'];
     else
-      this.microdata.set(itemprop, G.Node.getTextContent(this), this);
+      var value = G.Node.getTextContent(this)
+
+    this.microdata.set(itemprop, value, this);
     return 
   },
 
   itemscope: function() {
     this.set('microdata', {}, this);
+  },
+
+  text: function(value) {
+    for (var parent = this; parent = parent.$parent;) {
+      if (!parent.itemprop) continue;
+      if (!parent.itemscope)
+        G.Node.updateMicroData(parent)
+      break;
+    }
   }
 
   //itemvalue: function() {
@@ -311,10 +362,6 @@ G.Node.initializers = {
 
   values: function() {
     // inherit
-  },
-
-  itemvalue: function() {
-    return this.href || this.url
   }
 }
 

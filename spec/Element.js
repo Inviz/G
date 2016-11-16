@@ -203,12 +203,11 @@ describe('G.Node', function() {
       var node = G.Node('article', null, 'Hello world');
       var record = G.Node.stop()
 
-      expect(node.$first.text).to.eql('Hello world')
-      debugger
+      expect(String(node.$first.text)).to.eql('Hello world')
       node.migrate(record)
       G.Node('article', null, 'Bye world');
       node.finalize()
-      expect(node.$first.text).to.eql('Bye world')
+      expect(String(node.$first.text)).to.eql('Bye world')
     })
 
     it ('should migrate attribute change', function() {
@@ -847,14 +846,10 @@ describe('G.Node', function() {
       expect(input.microdata).to.eql(form.microdata)
       expect(String(form.microdata.your_name)).to.eql('boris.html')
 
-      debugger
       input.set('href', 'vasya.html')
-
       expect(String(form.microdata.your_name)).to.eql('vasya.html')
 
-      debugger
       input.set('itemprop', 'MY_NAME')
-      
       expect(String(form.microdata.MY_NAME)).to.eql('vasya.html')
       expect(form.microdata.your_name).to.eql(undefined)
 
@@ -880,30 +875,49 @@ describe('G.Node', function() {
       expect(form.microdata.MY_NAME).to.eql(undefined)
       expect(form.microdata.your_name).to.eql(undefined)
 
+      // make submit provide microdata 
       submit.set('itemprop', 'submission_button');
-      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
-
+      // use attribute instead of text content
       var value = submit.set('content', 'the_button');
-
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button'}))
 
-      var value = submit.set('value', 'the_button');
+      // fall back to text content
+      var value = submit.content.uncall();
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
-
-      var input3 = new G.Node('meta', {itemprop: 'comment', src: 'Boo!'})
-
+      // add new input
+      var input3 = new G.Node('meta', {itemprop: 'comment'}, 'Boo!')
       G.Node.append(submit.$parent, input3)
-      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button', comment: 'Boo!'}))
-
-
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello', comment: 'Boo!'}))
       expect(input3.$watchers.itemprop).to.not.eql(undefined)
       expect(input3.$watchers.microdata).to.not.eql(undefined)
       
       input3.itemprop.uncall()
-      debugger
       expect(input3.$watchers.itemprop).to.eql(undefined)
       expect(input3.$watchers.microdata).to.eql(undefined)
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
+
+      submit.$first.set('text', 'Goodbye')
+
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
+
+      var textnode = submit.$first.uncall()
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+
+      textnode.call()
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
+
+      submit.set('href', 'zozo.html')
+
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
+
+      submit.$first.uncall()
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
+
+      submit.href.uncall()
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
     })
   })
 })
