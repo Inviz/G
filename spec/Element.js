@@ -808,7 +808,7 @@ describe('G.Node', function() {
       submit.set('name', 'submission_button');
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie'}))
 
-
+      debugger
       var value = submit.set('value', 'the_button');
 
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button'}))
@@ -836,7 +836,7 @@ describe('G.Node', function() {
         new G.Node('label', null, 'What is your name?'),
         new G.Node('div', null, 
           new G.Node('a', {itemprop: 'your_name', href: 'boris.html'}),
-          new G.Node('span', {itemprop: 'submit'}, 'Hello')
+          new G.Node('span', {}, 'Hello')
         )
       );
       var input = form.$last.$first;
@@ -876,6 +876,7 @@ describe('G.Node', function() {
       expect(form.microdata.your_name).to.eql(undefined)
 
       // make submit provide microdata 
+      debugger
       submit.set('itemprop', 'submission_button');
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
@@ -918,6 +919,60 @@ describe('G.Node', function() {
 
       submit.href.uncall()
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+    })
+
+    it ('should chain microdata scopes', function() {
+      var form = new G.Node('article', {itemscope: true},
+        new G.Node('label', {itemprop: 'header'}, 'What is your name?'),
+
+        new G.Node('div', {itemscope: true, itemprop: 'person'}, 
+          new G.Node('a', {itemprop: 'your_name', href: 'boris.html'}),
+          new G.Node('span', {}, 'Hello')
+        ),
+        new G.Node('div', {itemscope: true, itemprop: 'person'}, 
+          new G.Node('a', {itemprop: 'your_name', href: 'vasya.html'}),
+          new G.Node('span', {}, 'Bye')
+        )
+      );
+      var div = form.$last;
+
+      expect(form.microdata).to.not.eql(div.microdata)
+      expect(form.microdata.person).to.eql(div.microdata)
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+      expect(String(form.microdata.person.your_name)).to.eql('vasya.html')
+      expect(String(form.microdata.header)).to.eql('What is your name?')
+
+      div.$first.set('href', 'jackie.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+      expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
+
+      div.uncall();
+      expect(String(form.microdata.person.your_name)).to.eql('boris.html')
+      expect(form.microdata.person.$previous).to.eql(undefined)
+      expect(form.microdata.person.$next).to.eql(undefined)
+
+      div.call()
+      expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      div.$first.set('href', 'joey.html')
+      expect(String(form.microdata.person.your_name)).to.eql('joey.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      var bye = div.$last.set('itemprop', 'your_name')
+      expect(String(form.microdata.person.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      div.$last.unset('itemprop', 'your_name')
+      expect(String(form.microdata.person.your_name)).to.eql('joey.html')
+      expect(form.microdata.person.your_name.$next).to.eql(undefined)
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      bye.call()
+      expect(String(form.microdata.person.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
     })
   })
 })

@@ -183,26 +183,19 @@ G.Node.getTextContent = function(node) {
 }
 
 // Update itemvalue
-G.Node.updateMicroData = function(node) {
-  G.record.push(node.itemprop);
-  var watchers = node.$watchers.itemprop;
-  var cause = G.$cause;
-  var called = G.$called;
-  for (var i = 0; i < watchers.length; i++) {
-    if (watchers[i].$getter == G.Node.triggers.itemprop)
-      G.$cause = watchers[i];
-  }
-  G.$called = G.record.find(node.itemprop)
-  G.Node.triggers.itemprop.call(node, node.itemprop)
-  G.record.pop(node.itemprop);
-  G.$cause = cause;
-  G.$called = called;
+G.Node.updateTrigger = function(node, prop) {
+  var watchers = node.$watchers[prop];
+  for (var i = 0; i < watchers.length; i++)
+    if (watchers[i].$getter === G.Node.triggers[prop]) {
+      G.callback.future(node[prop], watchers[i])
+      break;
+    }
 }
 
 G.Node.updateTextContent = function(node) {
   for (var parent = node; parent = parent.$parent;) {
     if (parent.itemprop)
-      G.Node.updateMicroData(parent);
+      G.Node.updateTrigger(parent, 'itemprop');
   }
 }
 
@@ -210,15 +203,21 @@ G.Node.updateTextContent = function(node) {
 G.Node.prototype.onChange = function(key, value, old) {
   var trigger = G.Node.triggers[key];
   if (trigger) {
+    var prop = G.Node.inheriting[key];
     if (value && old == null) {
-      this.watch(value.$key, trigger)
+      this.watch(key, trigger)
+      if (prop)
+        G.Node.inherit.property(this, prop);
+
     } else if (old && value == null) {
-      this.unwatch(old.$key, trigger)
+      this.unwatch(key, trigger)
+      if (prop)
+        G.Node.deinherit.property(this, prop);
     }
   }
 
   if (this.itemprop && G.Node.itemvalues[key] && this.microdata)
-    G.Node.updateMicroData(this);
+    G.Node.updateTrigger(this, 'itemprop');
 
   if (!this.$node || !(value || old).$context || key == 'tag')
     return;
@@ -256,55 +255,68 @@ G.Node.append = function(context, child) {
 }
 
 G.Node.inherit = function(node) {
-  for (var x = 0; x < G.Node.inheritable.length; x++) {
-    var prop = G.Node.inheritable[x];
-    for (var parent = node; parent = parent.$parent;) {
-      if (parent[prop]) {
-        if (node[prop] !== parent[prop]) {
-          var watchers = node.$watchers && node.$watchers[prop];
-          node[prop] = parent[prop];
-          if (watchers) {
-            for (var i = 0; i < watchers.length; i++) {
-              G.record.push(node[prop])
-              G.callback(node[prop], watchers[i]);
-              G.record.pop(node[prop]);
-            }
-          }
-        }
-        break;
+  for (var x = 0; x < G.Node.inheritable.length; x++)
+    G.Node.inherit.property(node, G.Node.inheritable[x]);
+}
+
+G.Node.inherit.property = function(node, property) {
+  if (node[G.Node.inherited[property]] == null)
+    return;
+  var $prop = G.Node.$inherited[property];
+  for (var parent = node; parent = parent.$parent;) {
+    if (parent[property] && node[$prop] != parent[property]) {
+      if (!node[property]) {
+        node[property] = parent[property];
       }
+      node[$prop] = parent[property]
+      G.Node.updateTrigger(node, G.Node.inherited[property])
+      break;
     }
   }
 }
 
 
 G.Node.deinherit = function(node) {
-  for (var x = 0; x < G.Node.inheritable.length; x++) {
-    var prop = G.Node.inheritable[x];
-    for (var parent = node; parent = parent.$parent;) {
-      if (parent[prop]) {
-        if (node[prop] === parent[prop]) {
-          node[prop] = undefined;
-          var watchers = node.$watchers && node.$watchers[prop];
-          if (watchers)
-            for (var i = 0; i < watchers.length; i++)
-              if (watchers[i].$future)
-                G.callback.future(parent[prop], watchers[i]);
+  for (var x = 0; x < G.Node.inheritable.length; x++)
+    G.Node.deinherit.property(node, G.Node.inheritable[x])
+}
+
+G.Node.deinherit.property = function(node, property) {
+  var $prop = G.Node.$inherited[property];
+  var key = G.Node.inherited[property];
+  for (var parent = node; parent = parent.$parent;) {
+    if (parent[property]) {
+      if (node[$prop] === parent[property]) {
+        if (node[property] == node[$prop]) {
+          node[property] = undefined;
+        } else if (node[key] && node[property].$context != node) {
+          
+          var object = node[property].uncall() // detach named sub-microdata 
+          // node.set(key, object)
         }
-        break;
+        node[$prop] = undefined
+        var watchers = node.$watchers && node.$watchers[property];
+        if (watchers)
+          for (var i = 0; i < watchers.length; i++)
+            if (watchers[i].$future)
+              G.callback.future(parent[property], watchers[i]);
       }
+      break;
     }
   }
 }
 
 G.Node.inherited = {
-  values: function(target) {
-
-  },
-
-  microdata: function() {
-
-  }
+  values: 'name',
+  microdata: 'itemprop'
+}
+G.Node.$inherited = {
+  values: '$values',
+  microdata: '$microdata'
+}
+G.Node.inheriting = {
+  name: 'values',
+  itemprop: 'microdata'
 }
 G.Node.itemvalues = {
   content: function() {},
@@ -322,49 +334,41 @@ G.Node.triggers = {
     return
   },
 
-  itemprop: function(itemprop) {
-    if (this['href'] != null)
-      var value = this['href'];
-    else if (this['src'] != null)
+  itemprop: function(itemprop) { // itemprop future is optimized to
+    if (this['itemscope']) {
+      if (this.$microdata)
+        this.$microdata.push(itemprop, this.microdata)
+      return;
+    } else if (this['href'] != null)    // be triggered by any possible
+      var value = this['href'];  // source of itemvalue without 
+    else if (this['src'] != null)// individual subscription
       var value = this['src'];
     else if (this['content'] != null)
       var value = this['content'];
     else
       var value = G.Node.getTextContent(this)
 
-    this.microdata.set(itemprop, value, this);
+    if (this.microdata[itemprop] != value){
+      debugger
+          this.microdata.push(itemprop, value, this);}
     return 
   },
 
   itemscope: function() {
-    this.set('microdata', {}, this);
+    var microdata = this.set('microdata', {}, this);
+    microdata.$composable = true;
   },
 
   text: function(value) {
     for (var parent = this; parent = parent.$parent;) {
       if (!parent.itemprop) continue;
       if (!parent.itemscope)
-        G.Node.updateMicroData(parent)
+        G.Node.updateTrigger(parent, 'itemprop');
       break;
     }
   }
 
-  //itemvalue: function() {
-  //  this.set('microdata', {}, this);
-  //},
-
 }
-
-G.Node.initializers = {
-  microdata: function() {
-    // inherit
-  },
-
-  values: function() {
-    // inherit
-  }
-}
-
 
 G.Node.attributes = {
   text: function(value) {
