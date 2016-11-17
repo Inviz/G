@@ -818,7 +818,7 @@ describe('G.Node', function() {
 
       var input3 = new G.Node('input', {name: 'comment', value: 'Boo!'})
 
-      G.Node.append(submit.$parent, input3)
+      submit.$parent.appendChild(input3)
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button', comment: 'Boo!'}))
 
 
@@ -890,7 +890,7 @@ describe('G.Node', function() {
 
       // add new input
       var input3 = new G.Node('meta', {itemprop: 'comment'}, 'Boo!')
-      G.Node.append(submit.$parent, input3)
+      submit.$parent.appendChild(input3)
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello', comment: 'Boo!'}))
       expect(input3.$watchers.itemprop).to.not.eql(undefined)
       expect(input3.$watchers.microdata).to.not.eql(undefined)
@@ -934,6 +934,7 @@ describe('G.Node', function() {
           new G.Node('span', {}, 'Bye')
         )
       );
+      var first = form.$last.$previous;
       var div = form.$last;
 
       expect(form.microdata).to.not.eql(div.microdata)
@@ -973,6 +974,15 @@ describe('G.Node', function() {
       expect(String(form.microdata.person.your_name)).to.eql('Bye')
       expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      first.uncall()
+      expect(String(form.microdata.person.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
+      expect(form.microdata.person.$previous).to.eql(undefined)
+
+      div.$parent.appendChild(first)
+      expect(String(form.microdata.person.your_name)).to.eql('boris.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('joey.html')
     })
   })
 })

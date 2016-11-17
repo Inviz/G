@@ -53,7 +53,7 @@ G.Node = function(tag, attributes) {
   }
 
   for (var i = 2; i < arguments.length; i++)
-    G.Node.append(self, arguments[i])
+    self.appendChild(arguments[i])
 
   return self
 }
@@ -88,15 +88,15 @@ G.Node.fromElement = function(element, mapping) {
           // If found closing comment
           if (element.childNodes[j].nodeValue.trim().substring(0, tag.length + 1) == '/' + tag) {
             var rule = G.Node(tag)
-            G.Node.append(self, rule)
+            self.appendChild(rule)
             while (++i < j)
-              G.Node.append(rule, G.Node.fromElement(element.childNodes[i], mapping))
+              rule.appendChild(G.Node.fromElement(element.childNodes[i], mapping))
           }
         }
       }
     } else {
       var node = G.Node.fromElement(child, mapping);
-      G.Node.append(self, node)
+      self.appendChild(node)
     }
   }
   return self;
@@ -125,7 +125,7 @@ G.Node.prototype.call   = function() {
   return called
 }
 G.Node.prototype.uncall = function() {
-  G.Node.detach(this)
+  this.detach()
   var uncalled =  G.Array.uncall(this)
 
   if (this.text != null)
@@ -166,17 +166,17 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 
 
   for (var i = 2; i < arguments.length; i++)
-    G.Node.append(this, arguments[i])
+    this.appendChild(arguments[i])
 }
 
-G.Node.getTextContent = function(node) {
+G.Node.prototype.getTextContent = function() {
   var result;
-  if (node.$first)
-    for (var lead = node; lead = lead.$following;) {
+  if (this.$first)
+    for (var lead = this; lead = lead.$following;) {
       if (lead && !lead.tag && lead.text) {
         result = (result || '') + lead.text;
       }
-      if (lead == node.$last)
+      if (lead == this.$last)
         break;
     }
   return result;
@@ -243,7 +243,7 @@ G.Node.prototype.onChange = function(key, value, old) {
 
 // Inject node into another
 // If child is a string, creates text node
-G.Node.append = function(context, child) {
+G.Node.prototype.appendChild = function(child) {
   if (!child) return;
   if (typeof child.valueOf() == 'string') {
     var text = child;
@@ -251,7 +251,7 @@ G.Node.append = function(context, child) {
   }
   if (G.Node.$migration)
     return;
-  return G.verbs.append(child, context);
+  return G.verbs.append(child, this);
 }
 
 G.Node.inherit = function(node) {
@@ -346,10 +346,9 @@ G.Node.triggers = {
     else if (this['content'] != null)
       var value = this['content'];
     else
-      var value = G.Node.getTextContent(this)
+      var value = this.getTextContent()
 
     if (this.microdata[itemprop] != value){
-      debugger
           this.microdata.push(itemprop, value, this);}
     return 
   },
@@ -449,7 +448,7 @@ G.Node.prototype.updateAttribute = function(value) {
 G.Node.prototype.render = function(deep) {
 
   if (G.Node.isScheduled(this, this.$parent, '$detached'))
-    return G.Node.detach(this, true)
+    return this.detach(true)
   if (this.$attached) {
     for (var i = 0; i < this.$attached.length; i++)
       G.Node.place(this.$attached[i], true)
@@ -457,7 +456,7 @@ G.Node.prototype.render = function(deep) {
   }
   if (this.$detached) {
     for (var i = 0; i < this.$detached.length; i++)
-      G.Node.detach(this.$detached[i], true)
+      this.$detached[i].detach(true)
     this.$detached = undefined;
   }
   
@@ -473,7 +472,7 @@ G.Node.prototype.render = function(deep) {
       this.$node = document.createDocumentFragment()
     }
   } else if (this.rule) { // detach node used to initialize rule
-    G.Node.detach(this);
+    this.detach();
     this.$node = undefined;
   }
 
@@ -513,8 +512,7 @@ G.Node.prototype.commit = function(soft) {
       }
       if (transaction.$detaching) {
         for (var i = 0; transaction.$detaching[i]; i++) {
-          var node = transaction.$detaching[i];
-          G.Node.detach(node, true)
+          transaction.$detaching[i].detach(true)
         }
       }
       if (transaction.$attaching) {
@@ -622,19 +620,19 @@ G.Node.findPreviousElement = function(node, parent, limit) {
 }
 
 // Remove DOM node from its parent
-G.Node.detach = function(node, force) {
+G.Node.prototype.detach = function(force) {
   var transaction = G.Node.$transaction
   if (transaction && !force) {
-    G.Node.unschedule(node, node.$parent, '$attached', '$attaching')
-    G.Node.schedule(node, node.$parent, '$detached', '$detaching')
+    G.Node.unschedule(this, this.$parent, '$attached', '$attaching')
+    G.Node.schedule(this, this.$parent, '$detached', '$detaching')
     return;
   }
   if (force)
-    G.Node.unschedule(node, node.$parent, '$detached', '$detaching')
-  if (node.$node) {
-    node.$node.parentNode.removeChild(node.$node)
+    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+  if (this.$node) {
+    this.$node.parentNode.removeChild(this.$node)
   } else 
-    G.children(node, G.Node.detach, force)
+    G.children(this, G.Node.detach, force)
 }
 
 G.Node.isScheduled = function(node, target, local) {
@@ -738,7 +736,7 @@ G.Node.updateAttributes = function(node, attributes, old) {
 G.Directive = function(attributes) {
   G.Node.extend(this, null, attributes);
   for (var i = 1; i < arguments.length; i++)
-    G.Node.append(this, arguments[i])
+    this.appendChild(arguments[i])
 }
 G.Directive.prototype = new G.Node;
 
