@@ -43,7 +43,7 @@ G.format = function(value, old) {
       result.$multiple = true;
       var other = value.$context[value.$key];
       if (other && G.Array.contains(other, value))
-        G.Array.replace(result, value);
+        G.Array.verbs.replace(result, value);
     }
     if (result != value && value.$formatted)
       value.$formatted = undefined

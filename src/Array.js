@@ -217,24 +217,7 @@ G.Array.unregister = function(op) {
   op.$previous = undefined
   op.$next = undefined;
 }
-G.Array.replace = function(value, old) {
-  var p = old.$previous;
-  var n = old.$next;
-  old.uncall(false, true);
-  if (p){
-    G.Array.link(p, value);
-    G.Array.register(p, value, old.$parent)
-  }
-  if (n){
-    G.Array.link(value, n);
-    G.Array.register(value, n, old.$parent)
-  }
-  var called = G.$called;
-  //G.$called = old;
-  //G.affect(value, old)
-  //G.$called = called;
-  return true;
-}
+
 
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right) {
@@ -352,9 +335,7 @@ G.Array.verbs = {
     G.Array.link(value, old.$next)
     G.Array.link(old, value)
     G.Array.register(old, value, old.$parent)
-    while (old.$next)
-      old = old.$next;
-    return old;
+    return G.Array.last(old);
   },
 
   // place element before another
@@ -365,9 +346,7 @@ G.Array.verbs = {
     }
     G.Array.link(value, old)
     G.Array.register(value, old, old.$parent)
-    while (old.$next)
-      old = old.$next;
-    return old;
+    return G.Array.last(old);
   },
 
   // Add value on top of the stack 
@@ -379,7 +358,6 @@ G.Array.verbs = {
     } else {
       return G.Array.verbs.after(value, after || old);   // place as head
     }
-    return value;
   },
 
   // Add unique value
@@ -399,17 +377,18 @@ G.Array.verbs = {
     return G.verbs.before(value, before);
   },
 
-  // Replace element in a list 
-  swap: function(value, old) {
-    if (old.$previous){
-      G.Array.link(old.$previous, value)
-      G.Array.register(old.$previous, value, old.$parent)
+  replace: function(value, old) {
+    var p = old.$previous;
+    var n = old.$next;
+    old.uncall(false, true);
+    if (p){
+      G.Array.link(p, value);
+      G.Array.register(p, value, old.$parent)
     }
-    if (old.$next) {
-      G.Array.link(value, old.$next)
-      G.Array.register(value, old.$next, old.$parent)
+    if (n){
+      G.Array.link(value, n);
+      G.Array.register(value, n, old.$parent)
     }
-    old.$next = old.$previous = undefined;
     return old;
   },
 
@@ -435,71 +414,3 @@ G.Array.verbs = {
 };
 
 G.Array.verbs.before.binary = G.Array.verbs.after.binary = true;
-
-/*
-G.Methods.Array = {
-  iterate: function(array, callback) {
-    var results;
-    results = null;
-    G.forEach(array, function(value, index, result) {
-      var transformed;
-      if (transformed = callback.call(value, index, result)) {
-        return results = G.push(results, transformed);
-      }
-    });
-    return results;
-  },
-  find: function(array, callback) {
-    return G.iterate(array, callback, function(value, index, result) {
-      if (result) {
-        return value;
-      }
-    }, true);
-  },
-  filter: function(array, callback) {
-    return G.iterate(array, callback, function(value, index, result) {
-      if (result) {
-        return value;
-      }
-    });
-  },
-  reject: function(array, callback) {
-    return G.iterate(array, callback, function(value, index, result) {
-      if (!result) {
-        return value;
-      }
-    });
-  },
-  map: function(array, callback) {
-    return G.iterate(array, callback, function(value, index, result) {
-      return result;
-    });
-  },
-  collect: function(array, callback) {
-    return G.iterate(array, callback, function(value, index, result) {
-      if (result) {
-        return result;
-      }
-    });
-  },
-  splice: function(array, start, removing) {
-    var diff, i, inserting, j, k, ref, ref1;
-    inserting = arguments.length - 3;
-    for (i = j = 0, ref = removing; j < ref; i = j += 1) {
-      if (i < inserting) {
-        G.swap(array, i + start, arguments[i + 3]);
-      } else {
-        G.eject(array, i + start);
-      }
-    }
-    if ((diff = inserting - removing) > 0) {
-      for (i = k = 0, ref1 = diff; k < ref1; i = k += 1) {
-        G.inject(array, i + start + removing, arguments[i + 3 + removing]);
-      }
-    }
-    return array;
-  },
-  getByIndex: function() {},
-  setByIndex: function() {}
-};
-*/
