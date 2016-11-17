@@ -34,7 +34,11 @@ G.compile.struct = function(struct) {
       if (struct.multiple)                            // Pass flag that allows method to set
         handler.multiple = struct.multiple            // multiple values /w same meta in array 
       G.verbs[verb]  = handler;                       // Plain callback    `G.verbs.set(value, old)`
-      G['$' + verb]  = G.compile.setter(verb);        // Gerneric function `G.set(context)`
+      if (handler.anonymous)
+        G['$' + verb]  = G.compile.anonymous(verb);        // Gerneric function `G.before(old, value)`
+      else
+        G['$' + verb]  = G.compile.setter(verb);        // Gerneric function `G.set(context)`
+
       if (!G[verb])
         G[verb]      = G['$' + verb]      
       if (!struct[verb])
@@ -97,6 +101,29 @@ G.compile.setter = function(verb) {
     }
   };
 };
+
+// G.before(context, 'key', value, anchor)
+// G.before(value, anchor)
+G.compile.anonymous = function(verb) {
+  return function(c, k, v, o) {
+    if (arguments.length < 3 ||  k.constructor !== String
+    ||  v.$context !== c     ||  v.$key !== k) {
+      switch (arguments.length) {
+        case 2:  return G.create(k.$context, k.$key, c).call(verb, k);
+        case 3:  return G.create(k.$context, k.$key, c, o).call(verb, k);
+        case 4:  return G.create(k.$context, k.$key, c, o, arguments[4]).call(verb, k);
+        default: return G.create(k.$context, k.$key, c, o, arguments[4], arguments[5]).call(verb, k);
+      }
+    } else {
+      switch (arguments.length) {
+        case 3:  return G.create(c, k, v).call(verb, o);
+        case 4:  return G.create(c, k, v, arguments[4]).call(verb, o);
+        case 5:  return G.create(c, k, v, arguments[4], arguments[4]).call(verb, o);
+        default: return G.create(c, k, v, arguments[4], arguments[4], arguments[5]).call(verb, o);
+      }
+    }
+  };
+}
 
 G.compile.observer = function(fn, verb) {
   var string = fn.toString()

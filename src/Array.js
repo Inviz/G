@@ -322,33 +322,54 @@ G.Array.contains = function(array, value) {
     if (array === value)
       return true;
 }
+G.Array.first = function(array) {
+  while (array.$previous)
+    array = array.$previous;
+  return array;
+}
+
+G.Array.last = function(array) {
+  while (array.$next)
+    array = array.$next;
+  return array;
+}
 
 G.Array.multiple = true
 G.Array.verbs = {
+
+  // place element after another
+  after: function(value, old) {
+    if (old.$next)
+      G.Array.register(value, old.$next, old.$parent)
+    G.Array.link(value, old.$next)
+    G.Array.link(old, value)
+    G.Array.register(old, value, old.$parent)
+    while (old.$next)
+      old = old.$next;
+    return old;
+  },
+
+  // place element before another
+  before: function(value, old) {
+    if (old.$previous) {
+      G.Array.link(old.$previous, value)
+      G.Array.register(old.$previous, value, old.$parent)
+    }
+    G.Array.link(value, old)
+    G.Array.register(value, old, old.$parent)
+    while (old.$next)
+      old = old.$next;
+    return old;
+  },
 
   // Add value on top of the stack 
   push: function(value, old) {
     // if push() was inside iterator
     var after = G.Array.findIterated(old);
-    if (after) { // place after returned element
-      if (after.$next)
-        G.Array.register(value, after.$next, after.$parent)
-      G.Array.link(value, after.$next)
-      G.Array.link(after, value)
-      G.Array.register(after, value, after.$parent)
-      if (after == old)
-        return value
-      else
-        return old;
-    } else if (after === false) { // place as tail
-      for (var first = old; first.$previous;)
-        first = first.$previous;
-      G.Array.link(value, first);
-      G.Array.register(value, first, old.$parent)
-      return old;
+    if (after === false) { 
+      return G.Array.verbs.before(value, G.Array.first(old)); // place as tail
     } else {
-      G.Array.link(old, value)  // place as head
-      G.Array.register(old, value, old.$parent)
+      return G.Array.verbs.after(value, after || old);   // place as head
     }
     return value;
   },
@@ -361,32 +382,13 @@ G.Array.verbs = {
         return old;
       }
     }
-    G.Array.link(old, value)
-    G.Array.register(old, value, old.$parent)
-    return value;
+    return G.Array.verbs.push(value, old);
   },
 
   // Add value to the bottom of the stack 
   unshift: function(value, old) {
-    var after = G.Array.findIterated(old);
-    if (after) {
-      if (after.$previous) {
-        G.Array.link(after.$previous, value)
-        G.Array.register(after.$previous, value, after.$parent)
-      }
-      G.Array.link(value, after)
-      G.Array.register(value, after, after.$parent)
-      if (after == old)
-        return old
-      else
-        return value;
-    }
-
-    for (var first = old; first.$previous;)
-      first = first.$previous;
-    G.Array.link(value, first);
-    G.Array.register(value, first, old.$parent)
-    return old;
+    var before = G.Array.findIterated(old) || G.Array.first(old);
+    return G.verbs.before(value, before);
   },
 
   // Replace element in a list 
@@ -424,6 +426,7 @@ G.Array.verbs = {
   }
 };
 
+G.Array.verbs.before.anonymous = G.Array.verbs.after.anonymous = true;
 
 /*
 G.Methods.Array = {
