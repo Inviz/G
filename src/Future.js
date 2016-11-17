@@ -80,8 +80,10 @@ G.Future.invoke = function(watcher, value) {
   if (computed != null) {                            //    Proceed if value was computed
     if (computed.$referenced)
       var result = computed;
-    else
-      var result = G.create(watcher.$context, watcher.$key, computed);
+    else {
+      var result = G.create(watcher.$context, null, computed);
+      result.$key = watcher.$key; // avoid reusing of value
+    }
     result.$cause = watcher
     result.$meta = watcher.$meta;
     result.$context = watcher.$context;

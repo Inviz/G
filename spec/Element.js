@@ -654,6 +654,7 @@ describe('G.Node', function() {
           '<footer>Bye world</footer>' + 
         '</main>')
 
+      debugger
       item1.set('title', 'Title One')
 
         expect(wrapper.render().outerHTML).to.eql(

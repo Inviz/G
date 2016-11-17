@@ -65,18 +65,24 @@ G.create = function(context, key, value) {
       if (value)
         result.$source = value;
     } else {                                          // 3. Applying operation as value
-      if (value.recall) {
-        var primitive = value.valueOf();              //    Get its primitive value
-      } else
-        var primitive = value;   
-      if (primitive instanceof G) {
-        var result = value.transfer(context, key)     // Assign object ownreship
+      
+      if (false && value.$key == key && value.$context == context) {
+        var result = value;
       } else {
-        var result = G.extend(primitive, context, key)//    Construct new operation
-      }                     
-      if (result.$context == value.$context &&            
-          result.$key     == value.$key)              //    If operation is from before
-      result.$meta = value.$meta                      //      Restore meta 
+        if (value.recall) {
+          var primitive = value.valueOf();              //    Get its primitive value
+        } else {
+          var primitive = value;   
+        }
+        if (primitive instanceof G) {
+          var result = value.transfer(context, key)     // Assign object ownreship
+        } else {
+          var result = G.extend(primitive, context, key)//    Construct new operation
+        }                     
+        if (result.$context == value.$context &&            
+            result.$key     == value.$key)              //    If operation is from before
+        result.$meta = value.$meta                      //      Restore meta 
+      }
     }
     break;
   case 'function':
@@ -100,11 +106,12 @@ G.create = function(context, key, value) {
 // If method name is not provided, 
 // linked list of effects will not be altered 
 G.extend = G.call
-G.prototype.call = function(verb) {
+G.prototype.call = function(verb, old) {
   if (!this) return;
   if (typeof verb == 'string')
     verb = G.verbs[verb];
-  var old     = this.$context[this.$key];
+  if (old === undefined)
+    var old     = this.$context[this.$key];
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 

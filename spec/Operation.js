@@ -286,12 +286,20 @@ describe('Operations', function() {
       var value3 = G.push(context, 'key', 'value3', 'meta2', 'scope3');
       expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value3']))
 
-      G.before('value0', context.key)
+      var value0 = G.before('value0', value1)
 
-      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value0', 'value3']))
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value3']))
 
-      G.before('value0', context.key)
+      G.before('value2', value3)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value2', 'value3']))
 
+      var valueR = G.replace('valueR', value1)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'valueR', 'value2', 'value3']))
+
+      var valueS = G.swap('valueS', value0)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['valueS', 'valueR', 'value2', 'value3']))
+
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['valueR', 'valueS', 'value2', 'value3']))
     });
   });
 })

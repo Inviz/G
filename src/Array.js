@@ -34,10 +34,7 @@ G.Array.prototype.inject = function(verb) {
     var last = this.$parent.$last
     
     if (!first) {
-      var before = this.$parent;
-      G.Array.link(this, before.$next || before.$following)
-      G.Array.link(before, this)
-      G.Array.register(null, this, this.$parent)
+      G.Array.verbs.append(this, this.$parent);
       return this; 
     }
   }
@@ -56,13 +53,7 @@ G.Array.prototype.inject = function(verb) {
       if (before == item) {
         if (before.$next == this)
           return this;
-        G.Array.link(this, before.$next || before.$following)
-        G.Array.link(before, this)
-        if (before.$next) 
-          G.Array.register(this, before.$next, this.$parent)
-        G.Array.register(before, this, this.$parent)
-
-        return this
+        return G.Array.verbs.after(this, before);
       }
     } 
   }
@@ -71,16 +62,7 @@ G.Array.prototype.inject = function(verb) {
       if (after == this.$parent)
         break;
       if (after == item) {
-        //if (before.$next == this)
-        //  return this;
-        G.Array.link(this, after)
-        if (after.$previous) {
-          G.Array.link(after.$previous, this)
-          G.Array.register(after.$previous, this, this.$parent)
-        }
-        G.Array.register(this, after, this.$parent)
-
-        return last
+        return G.Array.verbs.before(this, after);
       }
     } 
   } 
@@ -330,11 +312,18 @@ G.Array.verbs = {
 
   // place element after another
   after: function(value, old) {
-    if (old.$next)
-      G.Array.register(value, old.$next, old.$parent)
-    G.Array.link(value, old.$next)
+    if (!old.$next){
+      if (!old.$following || old.$following.$parent === old)
+        G.Array.link(value, null)
+      else
+        G.Array.link(value, old.$following)
+    } else
+      G.Array.link(value, old.$next)
     G.Array.link(old, value)
-    G.Array.register(old, value, old.$parent)
+
+    if (old.$next)
+      G.Array.register(value, old.$next, value.$parent)
+    G.Array.register(old, value, value.$parent)
     return G.Array.last(old);
   },
 
@@ -377,10 +366,19 @@ G.Array.verbs = {
     return G.verbs.before(value, before);
   },
 
-  replace: function(value, old) {
+  swap: function(value, old) {
+    debugger
+    if (value.$next || value.$previous) {
+      return value;
+    } else {
+      return G.Array.verbs.replace(value, old)
+    }
+  },
+
+  replace: function(value, old, arg) {
     var p = old.$previous;
     var n = old.$next;
-    old.uncall(false, true);
+    old.uncall(null, arg);
     if (p){
       G.Array.link(p, value);
       G.Array.register(p, value, old.$parent)
@@ -413,4 +411,7 @@ G.Array.verbs = {
   }
 };
 
-G.Array.verbs.before.binary = G.Array.verbs.after.binary = true;
+G.Array.verbs.before.binary = 
+G.Array.verbs.after.binary = 
+G.Array.verbs.swap.binary = 
+G.Array.verbs.replace.binary = true;

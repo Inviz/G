@@ -585,7 +585,7 @@ G.Node.place = function(node) {
     if (parent.$node)
       break;
 
-  var anchor = G.Node.findPreviousElement(node, parent);
+  var anchor = G.Node.findNextElement(node, parent);
   if (anchor === false)
     anchor = parent.$node.firstChild;
   if (anchor != node.$node)
@@ -593,7 +593,13 @@ G.Node.place = function(node) {
       parent.$node.insertBefore(node.$node, anchor)
 }
 
-G.Node.findPreviousElement = function(node, parent, limit) {
+G.Node.findNextElement = function(node, parent, limit) {
+  if (!node.$leading && node.$next) {
+    for (var next = node.$next; next; next = next.$following) {
+      if (next.$node && next.$node.parentNode == parent.$node)
+        return next.$node;
+    }
+  }
   for (var prev = node; prev = prev.$leading || prev.$cause;) {     // see previous effects
     if (prev == limit)
       return;
@@ -603,7 +609,7 @@ G.Node.findPreviousElement = function(node, parent, limit) {
         last = last.$last;
       if (last && last.$node && last.$node.parentNode == parent.$node)
         return last;
-      last = G.Node.findPreviousElement(last, parent, prev)
+      last = G.Node.findNextElement(last, parent, prev)
       if (last === false)
         return false;
       return last;
