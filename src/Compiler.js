@@ -34,10 +34,10 @@ G.compile.struct = function(struct) {
       if (struct.multiple)                            // Pass flag that allows method to set
         handler.multiple = struct.multiple            // multiple values /w same meta in array 
       G.verbs[verb]  = handler;                       // Plain callback    `G.verbs.set(value, old)`
-      if (handler.anonymous)
-        G['$' + verb]  = G.compile.anonymous(verb);        // Gerneric function `G.before(old, value)`
+      if (handler.binary)
+        G['$' + verb]  = G.compile.binary(verb);        // Gerneric function `G.before(old, value)`
       else
-        G['$' + verb]  = G.compile.setter(verb);        // Gerneric function `G.set(context)`
+        G['$' + verb]  = G.compile.unary(verb);        // Gerneric function `G.set(context)`
 
       if (!G[verb])
         G[verb]      = G['$' + verb]      
@@ -68,8 +68,7 @@ G.compile.verb = function(verb) {
       }
       if (op)
         return op.call(verb)
-    } else {
-      if (this[key])
+    } else if (this[key] != null) {
       switch (arguments.length) {
         case 1:
         case 2:  return this[key].recall();
@@ -81,7 +80,7 @@ G.compile.verb = function(verb) {
   };
 }
 
-G.compile.setter = function(verb) {
+G.compile.unary = function(verb) {
   return function(context, key, value) {
     if (value != null) {
       switch (arguments.length) {
@@ -90,7 +89,7 @@ G.compile.setter = function(verb) {
         case 5:  return G.create(context, key, value, arguments[3], arguments[4]).call(verb);
         default: return G.create(context, key, value, arguments[3], arguments[4], arguments[5]).call(verb);
       }
-    } else {
+    } else if (this[key] != null) {
       switch (arguments.length) {
         case 2:
         case 3:  return context[key].recall();
@@ -104,10 +103,9 @@ G.compile.setter = function(verb) {
 
 // G.before(context, 'key', value, anchor)
 // G.before(value, anchor)
-G.compile.anonymous = function(verb) {
+G.compile.binary = function(verb) {
   return function(c, k, v, o) {
-    if (arguments.length < 3 ||  k.constructor !== String
-    ||  v.$context !== c     ||  v.$key !== k) {
+    if (arguments.length < 3 ||  o == null || o.$context !== c ||  o.$key != k) {
       switch (arguments.length) {
         case 2:  return G.create(k.$context, k.$key, c).call(verb, k);
         case 3:  return G.create(k.$context, k.$key, c, o).call(verb, k);
@@ -125,56 +123,17 @@ G.compile.anonymous = function(verb) {
   };
 }
 
-G.compile.observer = function(fn, verb) {
-  var string = fn.toString()
-  var arguments = string.slice(string.indexOf('(') + 1, string.indexOf(')'))
-  var body = string.slice(string.indexOf('{') + 1, string.lastIndexOf('}'))
-
-  return new Function(
-    arguments, 
-    body.replace(/G.set/g, 'G.' + verb)
-        .replace(/'set'/g, "'" + verb + "'")
-  )
-
-}
-
 G.compile.method = function(fn, scope) {
-  var string = fn.toString();
-  if (string.indexOf('[native') > -1)
-    return
-  var arguments = string.slice(string.indexOf('(') + 1, string.indexOf(')'))
-  var body = string.slice(string.indexOf('{') + 1, string.lastIndexOf('}'))
-  var index
-  var digit
-  body = body.replace(/this/g, scope) //fixme better regexp
-
-      // increment argument counter if any
-      .replace(/(Array.prototype.slice.call\(arguments,)\s*(\d+)/, function(match, prefix, d, i) {
-        digit = d
-        index = i
-        return prefix + (parseInt(d) + 1);
-      })
-      // increment argument counter if any
-      .replace(/(arity\s*=\s*)(\d+)/, function(match, prefix, d) {
-        return prefix + (parseInt(d) + 1);
-      })
-
-      // genericize method reference
-      .replace(/G.prototype/g, 'G')
-
-  if (index) {
-    var z = body.lastIndexOf(digit, index);
-    if (z != -1) 
-      body = body.substring(0, z) + (parseInt(digit) + 1) + body.substring(z + 1);
+  return function(context) {
+    switch (arguments.length) {
+      case 1: return fn.call(context)
+      case 2: return fn.call(context, arguments[1])
+      case 3: return fn.call(context, arguments[1], arguments[2])
+      case 4: return fn.call(context, arguments[1], arguments[2], arguments[3])
+      case 5: return fn.call(context, arguments[1], arguments[2], arguments[3], arguments[4])
+      case 6: return fn.call(context, arguments[1], arguments[2], arguments[3], arguments[4], arguments[5])
+    }
   }
-  if (arguments)
-    arguments = scope + ', ' + arguments
-  else
-    arguments = scope
-  return new Function(
-    arguments, 
-    body
-  )
 }
 
 

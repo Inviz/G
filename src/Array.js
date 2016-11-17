@@ -426,7 +426,7 @@ G.Array.verbs = {
   }
 };
 
-G.Array.verbs.before.anonymous = G.Array.verbs.after.anonymous = true;
+G.Array.verbs.before.binary = G.Array.verbs.after.binary = true;
 
 /*
 G.Methods.Array = {
