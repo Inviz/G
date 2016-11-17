@@ -172,7 +172,7 @@ G.prototype.uncall = function(soft, unformatted) {
   if (this.$target) {                                 // 1. Unmerging object
     this.$target.unobserve(this)  
     if (this.$target.$chain.length == 0)              // todo check no extra keys
-      return G.uncall(this.$target);   
+      return this.$target.uncall();   
     return this;  
   } else if (this.$future) {  
     return G.Future.uncall(this)  
@@ -196,8 +196,11 @@ G.prototype.uncall = function(soft, unformatted) {
       if (value == current) {  
         current = value.$previous;  
         context[this.$key] = value.$previous;         // reset head pointer on 
-      }  
-      G.Array.uncall(value);   
+      }
+      if (value.eject)
+        value.eject()
+      else
+        G.Array.eject(value);   
       G.notify(context, this.$key, current, value)    // Notify 
     } else if (current === value) {
       current = undefined
@@ -215,7 +218,7 @@ G.prototype.uncall = function(soft, unformatted) {
     }
     this.$computed = undefined;
   }
-  var watchers = context.$watchers && context.$watchers[this.$key];
+  var watchers = context && context.$watchers && context.$watchers[this.$key];
   if (watchers) {
     for (var i = 0; i < watchers.length; i++) {
       if ((watchers[i].$getter || watchers[i]).$properties)
@@ -234,7 +237,7 @@ G.prototype.uncall = function(soft, unformatted) {
 
 // Recall and remove from history
 G.prototype.revoke = function() {
-  G.uncall(this);
+  this.uncall();
   G.rebase(G.formatted(this), null)
   return this;
 }

@@ -289,7 +289,7 @@ G.effects.clean = function(value, effects) {
         break;
       }
     if (!next)
-      G.uncall(effects[i])
+      effects[i].uncall()
   }  
 }
 

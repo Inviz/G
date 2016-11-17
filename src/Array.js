@@ -4,11 +4,9 @@ G.Array = function() {
 G.Array.prototype = new G
 
 // Remove node from tree
-G.Array.prototype.uncall = function() {
+G.Array.prototype.eject = function() {
   G.Array.unlink(this)
   G.Array.unregister(this)
-  if (this.$node && this.$node.parentNode)
-    this.$node.parentNode.removeChild(this.$node)
   return this
 };
 
@@ -212,7 +210,7 @@ G.Array.unregister = function(op) {
 G.Array.replace = function(value, old) {
   var p = old.$previous;
   var n = old.$next;
-  G.uncall(old, false, true);
+  old.uncall(false, true);
   if (p){
     G.Array.link(p, value);
     G.Array.register(p, value, old.$parent)

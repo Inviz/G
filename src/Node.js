@@ -124,9 +124,9 @@ G.Node.prototype.call   = function() {
   
   return called
 }
-G.Node.prototype.uncall = function() {
+G.Node.prototype.eject = function() {
   this.detach()
-  var uncalled =  G.Array.uncall(this)
+  var uncalled =  G.Array.eject(this)
 
   if (this.text != null)
     G.Node.updateTextContent(this);
@@ -630,7 +630,8 @@ G.Node.prototype.detach = function(force) {
   if (force)
     G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
   if (this.$node) {
-    this.$node.parentNode.removeChild(this.$node)
+    if (this.$node.parentNode)
+      this.$node.parentNode.removeChild(this.$node)
   } else 
     G.children(this, G.Node.detach, force)
 }

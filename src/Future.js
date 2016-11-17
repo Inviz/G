@@ -185,7 +185,7 @@ G.Future.setValue = function(watcher, value, result) {
     if (!old || old.valueOf() != result.valueOf()) {
       watcher.$current = G.verbs.push(result, watcher.$current)
       if (old)
-        G.uncall(old)
+        old.uncall()
     } else {
       return old;
     }
@@ -207,7 +207,7 @@ G.Future.revokeCalls = function(value, watcher) {
   var effects = G.effects.caused(value.$source || value, watcher)
   if (effects)
     for (var i = 0; i < effects.length; i++)
-      G.uncall(effects[i]);
+      effects[i].uncall();
 }
 G.Future._getValue = function() {
   if (this.$current && !this.$current.$multiple)

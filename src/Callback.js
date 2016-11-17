@@ -26,7 +26,7 @@ G.callback.property = function(value, watcher, old) {
     for (var after = old; after = after.$after;)                   // undo all conditional stuff
       if (after.$caller == old && after.$cause == watcher)         // that did not fire this time
         if (after.$multiple || !G.isUndone(after))
-          G.uncall(after, true)
+          after.uncall(true)
     
   G.$cause = caused;
   if (transformed == null)
