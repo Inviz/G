@@ -3,6 +3,36 @@ describe('G.Node', function() {
   var tags = function(e) {
     return String(e.tag || e.text || e.rule)
   };
+  describe('Referencing', function() {
+    
+    it ('should be able to use nodes as values', function() {
+      var context = new G;
+      var parent = G.Node('parent');
+      var child = G.Node('child');
+
+      parent.appendChild(child);
+
+      context.set('wrapper', parent);
+      context.set('content', child)
+
+      expect(context.wrapper).to.eql(parent)
+      expect(context.content).to.eql(child)
+      expect(child.$parent).to.eql(parent);
+      expect(parent.$first).to.eql(child)
+      
+      child.uncall();
+      expect(context.wrapper).to.eql(parent)
+      expect(context.content).to.eql(undefined)
+      expect(child.$parent).to.eql(parent);
+      expect(parent.$first).to.eql(undefined)
+
+      child.call();
+      expect(context.wrapper).to.eql(parent)
+      expect(context.content).to.eql(child)
+      expect(child.$parent).to.eql(parent);
+      expect(parent.$first).to.eql(child)
+    })
+  })
   describe('Building', function() {
     it ('should reuse JSX AST', function() {
 

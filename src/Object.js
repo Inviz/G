@@ -58,6 +58,13 @@ G.prototype.stringify = function() {
   return JSON.stringify(G.clean(this))
 };
 
+G.prototype.transfer = function(context, key) {
+  //if (value.$context && value.$key)
+  this.$key = key;
+  this.$context = context; 
+  return this;
+}
+
 G.notify = function(context, key, value, old) {
   if (key) {
     if (context.onChange)                               

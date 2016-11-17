@@ -65,11 +65,15 @@ G.create = function(context, key, value) {
       if (value)
         result.$source = value;
     } else {                                          // 3. Applying operation as value
-      if (value.recall)
-        var primitive = value.valueOf();
-      else
-        var primitive = value;                        //    Get its primitive value
-      var result = G.extend(primitive, context, key)  //    Construct new operation
+      if (value.recall) {
+        var primitive = value.valueOf();              //    Get its primitive value
+      } else
+        var primitive = value;   
+      if (primitive instanceof G) {
+        var result = value.transfer(context, key)     // Assign object ownreship
+      } else {
+        var result = G.extend(primitive, context, key)//    Construct new operation
+      }                     
       if (result.$context == value.$context &&            
           result.$key     == value.$key)              //    If operation is from before
       result.$meta = value.$meta                      //      Restore meta 
