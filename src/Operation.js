@@ -114,7 +114,7 @@ G.prototype.call = function(verb) {
     }
 
   if (value.$multiple) {                              // If value is marked as multiple previously
-    if (!G.Array.call(value))                         // Attempt to restore it within collection
+    if (!G.Array.inject(value))                         // Attempt to restore it within collection
       if (!verb && verb !== null)                     // When not switching values
         verb = G.verbs.push;                          //   fall back to push verb
     while (result.$next)                              // Use head of collection as result

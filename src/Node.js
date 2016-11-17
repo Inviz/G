@@ -106,10 +106,13 @@ G.Node.prototype.$multiple = true;
 G.Node.prototype.$referenced = true;
 
 G.Node.extend           = G.Node.call;
-G.Node.prototype.call   = function() {
-  G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
-  G.Node.schedule(this, this.$parent, '$attached', '$attaching')
-  var called = G.Array.call(this);
+G.Node.prototype.call   = G.Array.prototype.call;
+G.Node.prototype.inject   = function() {
+  if (this.$parent) {
+    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+    G.Node.schedule(this, this.$parent, '$attached', '$attaching')
+  }
+  var called = G.Array.prototype.inject.apply(this, arguments);
   var transaction = G.Node.$transaction
   if (transaction) {
     (transaction.$nodes || (transaction.$nodes = [])).push(this)

@@ -12,8 +12,18 @@ G.Array.prototype.eject = function() {
 
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
-G.Array.prototype.call = function(verb) {
+G.Array.prototype.call = function() {
+  if (this.$context && this.$key) // go through full property pipeline
+    return G.prototype.call.apply(this, arguments);
+  if (this.inject) // use subclass inject method
+    return this.inject.apply(this, arguments);
+  else
+    return G.Array.prototype.inject.apply(this, arguments);
+}
+G.Array.prototype.inject = function(verb) {
   if (!this.$parent) {
+    if (!this.$context)
+      return;
     var last = this.$context[this.$key];
     var first = this.$context ? last : self;
     if (first)
