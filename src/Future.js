@@ -92,6 +92,16 @@ G.Future.invoke = function(watcher, value) {
   }
 }
 
+G.Future._callValue = function() {
+  if (this.$multiple) {
+    G.Array.inject(this)
+    G.effects(this, G.call)
+  } else {
+
+  }
+  return;
+}
+
 G.Future.revoke = function(watcher, value) {
   var current = watcher.$context[watcher.$key];
   if (current == watcher.$current)

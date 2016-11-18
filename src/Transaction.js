@@ -70,10 +70,8 @@ G.affect = function(value, old) {
     if (!(cause.$getter || cause).$properties)
     if (observers && observers.indexOf(cause) > -1
     ||  group     &&     group.indexOf(cause) > -1) {
-      if (!after.ondetach) {
-        after.call();
-        (present || (present = [])).push(cause)
-      }
+      after.call();
+      (present || (present = [])).push(cause)
     } else if (!iterators || iterators.indexOf(after) == -1) {
       (removed || (removed = [])).push(after)
     }

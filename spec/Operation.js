@@ -63,6 +63,29 @@ describe('Operations', function() {
       }));
     });
 
+    it('should be able to reassign operations if key/context matches', function() {
+      var context = new G;
+
+      var value = context.set('key', 'value');
+
+
+      var other = context.set('other', value);
+
+      expect(value).to.not.eql(other)
+
+      context.set('other', 'zzz');
+
+      expect(context.other).to.not.eql(other);
+
+      context.set('other', other)
+
+      expect(context.other).to.eql(other);
+
+      context.set('other', value)
+
+      expect(context.other).to.not.eql(value);
+
+    });
 
     (window.Proxy ? it : xit)('should be compatible with ES6 proxy', function() {
       var context, proxy;
@@ -280,7 +303,7 @@ describe('Operations', function() {
       expect(head.$previous.valueOf()).to.eql('value1');
       return expect(head.$previous.$next.valueOf()).to.eql('value2');
     });
-    it('should be able to insert before another element', function() {
+    it('should be able to splice and rearrange arrays', function() {
       var context = {};
       var value1 = G.push(context, 'key', 'value1', 'meta1', 'scope1');
       var value3 = G.push(context, 'key', 'value3', 'meta2', 'scope3');
@@ -299,7 +322,17 @@ describe('Operations', function() {
       var valueS = G.swap('valueS', value0)
       expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['valueS', 'valueR', 'value2', 'value3']))
 
+      G.swap(valueS, valueR)
       expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['valueR', 'valueS', 'value2', 'value3']))
+
+      G.swap(valueS, valueR)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['valueS', 'valueR', 'value2', 'value3']))
+
+      G.swap(valueS, value3)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value3', 'valueR', 'value2', 'valueS']))
+
+      G.swap(valueS, valueR)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value3', 'valueS', 'value2', 'valueR']))
     });
   });
 })

@@ -4,9 +4,9 @@ G.Array = function() {
 G.Array.prototype = new G
 
 // Remove node from tree
-G.Array.prototype.eject = function() {
+G.Array.prototype.eject = function(soft) {
   G.Array.unlink(this)
-  G.Array.unregister(this)
+  G.Array.unregister(this, soft)
   return this
 };
 
@@ -24,8 +24,8 @@ G.Array.prototype.inject = function(verb) {
   if (!this.$parent) {
     if (!this.$context)
       return;
-    var last = this.$context[this.$key];
-    var first = this.$context ? last : self;
+    var last = this.$cause && this.$cause.$future ? this.$cause.$current : this.$context[this.$key];
+    var first = last;
     if (first)
       while (first.$previous)
         first = first.$previous;
@@ -41,9 +41,16 @@ G.Array.prototype.inject = function(verb) {
 
 
   for (var el = first; el; el = el.$next)
-    if (el === this)
+    if (el === this){
+      if (this.$cause) {
+        var before = G.Array.findIterated(this, this.$cause)
+        if (before === false)
+          return G.Array.verbs.unshift(this, this);
+        if (this.$previous != before)
+          return G.Array.verbs.after(this, before);
+      }
       return this;
-
+    }
   // for each node in the remembered parent
   // check if it matches anything before op
   for (var before = this; before = before.$leading;) {
@@ -175,8 +182,8 @@ G.Array.register = function(left, right, parent) {
 }
 
 // Remove element from DOM tree
-G.Array.unregister = function(op) {
-  if (op.onunregister)
+G.Array.unregister = function(op, soft) {
+  if (op.onunregister && !soft)
     op.onunregister(op.$parent);
   
   if (op.$previous) {
@@ -184,7 +191,7 @@ G.Array.unregister = function(op) {
       op.$previous.$next = op.$next
   }
 
-  if (op.$iterators)
+  if (op.$iterators && !soft)
     G.Array.uniterate(op)
   if (op.$next) {
     if (op.$next.$previous == op)
@@ -249,18 +256,26 @@ G.Array.unlink = function(op, to) {
   return to;
 }
 
+
+G.Array.cleanup = function(self, value) {
+  if (value.$leading && value.$leading.$context == self.$context && value.$leading.$key == self.$key)
+    value.$leading = undefined;
+  if (value.$following && value.$following.$context == self.$context && value.$following.$key == self.$key)
+    value.$following = undefined;
+}
+
 // Find a good place to insert new value
-G.Array.findIterated = function(old) {
-  if (!G.$cause) return;
+G.Array.findIterated = function(old, cause) {
+  if (!cause && !(cause = G.$cause)) return;
 
   // Push where it pushed last time
-  if (G.$cause == old.$cause && G.$caller.$multiple) {
+  if (cause == old.$cause && G.$caller.$multiple) {
     var prev = G.$caller.$previous
     for (; prev; prev = prev.$previous)
       for (var after = prev; after = after.$after;)
         if (after.$context == old.$context)
           if (after.$key == old.$key)
-            if (after.$cause == G.$cause && after.$caller == prev)
+            if (after.$cause == cause && after.$caller == prev)
               return after;
 
     var next = G.$caller.$next
@@ -268,14 +283,14 @@ G.Array.findIterated = function(old) {
       for (var after = next; after = after.$after;)
         if (after.$context == old.$context)
           if (after.$key == old.$key)
-            if (after.$cause == G.$cause && after.$caller == next)
+            if (after.$cause == cause && after.$caller == next)
               return after.$previous || false;
   // Future binds to specific place in array
-  } else if (G.$cause.$leading !== undefined) {
+  } else if (cause.$leading !== undefined) {
     for (var prev = old; prev; prev = prev.$previous) {
-      if (prev == G.$cause.$leading) {                              // find hook element remembered by future
+      if (prev == cause.$leading) {                              // find hook element remembered by future
         for (var next = prev; next = next.$next;) 
-          if (next.$cause && next.$cause.$cause == G.$cause.$cause
+          if (next.$cause && next.$cause.$cause == cause.$cause
           && G.Array.isAfter(next.$caller, G.$caller)) // next element is added by same future
             prev = next;
           else
@@ -292,8 +307,11 @@ G.Array.isAfter = function(value, another) {
 }
 
 G.Array.contains = function(array, value) {
-  for (; array; array = array.$previous)
-    if (array === value)
+  for (var source = array; source; source = source.$previous)
+    if (source === array)
+      return true;
+  for (var source = array; source; source = source.$next)
+    if (source === array)
       return true;
 }
 G.Array.first = function(array) {
@@ -313,13 +331,17 @@ G.Array.verbs = {
 
   // place element after another
   after: function(value, old) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     if (!old.$next){
       if (!old.$following || old.$following.$parent === old)
         G.Array.link(value, null)
       else
         G.Array.link(value, old.$following)
-    } else
+    } else {
       G.Array.link(value, old.$next)
+    }
+
     G.Array.link(old, value)
 
     if (old.$next)
@@ -330,22 +352,28 @@ G.Array.verbs = {
 
   // place element before another
   before: function(value, old) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     if (old.$previous) {
       G.Array.link(old.$previous, value)
       G.Array.register(old.$previous, value, old.$parent)
     } else {
+      if (value.$following && value.$following.$parent == value.$parent)
+        value.$following = undefined;
       if (!old.$leading || old.$leading === old.$parent)
         value.$leading = undefined
       else
         G.Array.link(old.$leading, value)
     }
     G.Array.link(value, old)
-    G.Array.register(value, old, old.$parent)
+    G.Array.register(value, old, old.$parent);
     return G.Array.last(old);
   },
 
   // Add value on top of the stack 
   push: function(value, old) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     // if push() was inside iterator
     var after = G.Array.findIterated(old);
     if (after === false) { 
@@ -373,14 +401,45 @@ G.Array.verbs = {
   },
 
   swap: function(value, old) {
-    if (value.$next || value.$previous) {
-      return value;
+    if ((value.$next || value.$previous) && (old.$next || old.$previous)) {
+      if (value.$next === old) {
+        return G.Array.verbs.after(value, old)
+      } else if (value.$previous === old) {
+        return G.Array.verbs.before(value, old)
+      } else {
+        var l = value.$previous;
+        var r = value.$next;
+        var p = old.$previous;
+        var n = old.$next;
+        G.Array.eject(value);
+        G.Array.eject(old);
+        if (l) {
+          G.Array.register(l, old);
+          G.Array.link(l, old);
+        }
+        if (r) {
+          G.Array.register(old, r)
+          G.Array.link(old, r);
+        }
+        if (p) {
+          G.Array.register(p, value);
+          G.Array.link(p, value);
+        }
+        if (n) {
+          G.Array.register(value, n)
+          G.Array.link(value, n);
+        }
+        G.propagate(old, old)                         // ! Update effects of the swapped value
+        return value;
+      }
     } else {
       return G.Array.verbs.replace(value, old)
     }
   },
 
   replace: function(value, old, arg) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     var p = old.$previous;
     var n = old.$next;
     old.uncall(null, arg);
@@ -397,6 +456,8 @@ G.Array.verbs = {
 
   // Nest value into another
   append: function(value, old) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     G.Array.link(old, value)
     G.Array.register(old.$last, value, old);
     return old;
@@ -404,6 +465,8 @@ G.Array.verbs = {
 
   // Add element on top
   prepend: function(value, old) {
+    if (value.$next || value.$previous)
+      G.Array.eject(value, true);
     if (old.$first) {
       G.Array.link(value, old.$first)
       G.Array.register(value, old.$first, old);

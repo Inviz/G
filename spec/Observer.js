@@ -218,10 +218,12 @@ describe('Observers', function() {
 
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 1, 2, 200]));
       expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([1, 2]));
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([1, 2]));
 
       one.uncall()
       expect(G.stringify(ValueGroup(context.target))).to.eql(G.stringify([100, 2, 200]));
       expect(G.stringify(ValueGroup(future.valueOf()))).to.eql(G.stringify([2]));
+      expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([2]));
 
       one.call()
       expect(G.stringify(ValueGroup(context.source))).to.eql(G.stringify([1, 2]));
@@ -1390,6 +1392,102 @@ describe('Observers', function() {
       expect(Number(doll.test)).to.eql(123)
     })
 
+    it ('should rearrange effects in observer', function() {
+      var context = new G;
+      var A = context.push('letters', 'A');
+      var B = context.push('letters', 'B');
+      var C = context.push('letters', 'C');
+
+      context.watch('letters', function(letter) {
+        context.push('lowers', letter.toLowerCase())
+      })
+
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+
+      G.swap(A, B);
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'A', 'C']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'a', 'c']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'C', 'A']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'c', 'a']))
+
+      G.swap(C, B)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['C', 'B', 'A']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['c', 'b', 'a']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['A', 'B', 'C']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+    })
+
+    it ('should rearrange effects in iterator', function() {
+      var context = new G;
+      var A = context.push('letters', 'A');
+      var B = context.push('letters', 'B');
+      var C = context.push('letters', 'C');
+
+      var lowers = context.watch('letters', function(letter) {
+        return letter.toLowerCase();
+      })
+
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a', 'b', 'c']))
+
+      G.swap(A, B);
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'A', 'C']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b', 'a', 'c']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'C', 'A']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b', 'c', 'a']))
+
+      G.swap(C, B)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['C', 'B', 'A']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['c', 'b', 'a']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['A', 'B', 'C']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a', 'b', 'c']))
+    })
+
+    it ('should rearrange effects in both iterator and effects callback', function() {
+      var context = new G;
+      var A = context.push('letters', 'A');
+      var B = context.push('letters', 'B');
+      var C = context.push('letters', 'C');
+
+      var lowers = context.watch('letters', function(letter) {
+        return letter.toLowerCase();
+      })
+
+      context.watch('letters', function(letter) {
+        context.push('lowers', letter.toLowerCase())
+      })
+
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a', 'b', 'c']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+
+      G.swap(A, B);
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'A', 'C']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b', 'a', 'c']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'a', 'c']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'C', 'A']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b', 'c', 'a']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'c', 'a']))
+
+      G.swap(C, B)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['C', 'B', 'A']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['c', 'b', 'a']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['c', 'b', 'a']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['A', 'B', 'C']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a', 'b', 'c']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+    })
+
     it ('should watch formatted array values', function() {
       var context = new G;
       var trex = context.push('toys', 'Toy A');
@@ -1397,7 +1495,7 @@ describe('Observers', function() {
 
       expect(G.stringify(ValueGroup(context.toys))).to.eql(G.stringify(['Toy A', 'Toy B']));
 
-      debugger
+
       context.watch('toys', function(toy) {
         context.push('test', toy)
       })

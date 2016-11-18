@@ -114,6 +114,7 @@ G.callback.future = function(value, watcher, old) {
     if (watcher.$future) {
       var result = G.Future.invoke(watcher, target);
       if (result) {
+        result.call = G.Future._callValue;
         if (!G.Future.notify(watcher, target, result))
           effects = undefined;
       } else {
@@ -172,7 +173,8 @@ G.analyze = function(fn) {
       } else if (target && m[i].substring(0, target.length) 
              &&  m[i].charAt(target.length) == '.') {
         var clean = m[i].substr(target.length + 1).replace(G.$cleanProperty, '');
-        (fn.$properties || (fn.$properties = [])).push(clean.split('.'))
+        if (clean)
+          (fn.$properties || (fn.$properties = [])).push(clean.split('.'))
       }
     }
   return fn;

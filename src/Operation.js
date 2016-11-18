@@ -67,7 +67,6 @@ G.create = function(context, key, value) {
     } else {                                          // 3. Applying operation as value
       
       if (value.$key == key && value.$context == context) {
-        debugger
         var result = value;
       } else {
         if (value.recall) {
@@ -125,8 +124,8 @@ G.prototype.call = function(verb, old) {
       value = G.reify.reuse(result, value)            // Use it instead of value, if possible
     }
 
-  if (value.$multiple && !verb) {                     // If value is marked as multiple previously
-    if (G.Array.inject(value)) {                     // Attempt to restore it within collection
+  if (value.$multiple && !verb) {                     // If value is marked as arraylike previously
+    if (G.Array.inject(value)) {                      // Attempt to put it back at its place in collection
       while (result.$next)                            // Use head of collection as result
         result = result.$next;
     } else if (!verb && verb !== null)                // When not switching values
@@ -134,14 +133,11 @@ G.prototype.call = function(verb, old) {
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
-  if (verb)                          // If verb allows multiple values by same meta
+  if (verb)                                           // If verb allows multiple values by same meta
     if (verb.multiple)
-      value.$multiple = true                            //   Set flag on the value
+      value.$multiple = true                          //   Set flag on the value
     else if (value.$multiple) {
-      if (value.$leading && value.$leading.$context == this.$context && value.$leading.$key == this.$key)
-        value.$leading = undefined;
-      if (value.$following && value.$following.$context == this.$context && value.$following.$key == this.$key)
-        value.$following = undefined;
+      G.Array.cleanup(this, value);
       if (value.hasOwnProperty('$multiple'))
         value.$multiple = undefined;
     }
@@ -150,7 +146,7 @@ G.prototype.call = function(verb, old) {
       if (G.equals(other, result))                    //   If it's equal to given value
         return G.record.reuse(other);                 //     Use that other value instead
       result = G.update(result, old, other);          //   Or replace it in stack
-    } else {        
+    } else {
       result = verb(result, old);                     // invoke stack-manipulation method
       if (result === false)                           // No side effect will be observed
         return G.record.continue(value, old);
@@ -159,24 +155,26 @@ G.prototype.call = function(verb, old) {
     }
   }
 
-  if (verb !== false && !G.isLinked(value)) {         // If operation position in graph needs update
+  if (verb !== false && !G.isLinked(value))           // If operation position in graph needs update
     G.record(value, old, verb);                       // Register in graph and remember caller op/callback
-  }
 
   if (result !== old)                                 // If value is the new head
     this.$context[this.$key] = result;                // Save value in its context
 
   var origin = value.$multiple ? value : result;
-  if (origin !== old) {
-    G.record.push(origin);                            // Put operation onto the caller stack
-    G.affect(origin, old);                            // Apply side effects and invoke observers 
-    if (old && old.$iterators)
-      G.Array.iterate(value, old.$iterators)          // Invoke array's active iterators
-    G.notify(this.$context, this.$key, origin, old)   // Trigger user callbacks 
-    G.record.pop();                                   // Remove operation from the caller stack
-  }  
+  if (origin !== old)
+    G.propagate(origin, old);                         // Propagate side effects
   return value;
 };
+
+G.propagate = function(value, old) {
+  G.record.push(value);                              // Put operation onto the caller stack
+  G.affect(value, old);                              // Apply side effects and invoke observers 
+  if (old && old.$iterators)
+    G.Array.iterate(value, old.$iterators)           // Invoke array's active iterators
+  G.notify(value.$context, value.$key, value, old)   // Trigger user callbacks 
+  G.record.pop();  
+}
 
 G.prototype.recall = function() {
   var arity = 0;
@@ -210,7 +208,6 @@ G.prototype.uncall = function(soft, unformatted) {
   if (prec && prec.$succeeding == value) {            // If stack holds values before given
     if (value == current && !value.$succeeding)       // And value is current and on top of history
       G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
-    var to = G.last(value)                            // Find deepest last within value
   } else {  
     if (value.$multiple) {                            // 3. Removing value from group 
       if (value == current) {  
@@ -228,7 +225,7 @@ G.prototype.uncall = function(soft, unformatted) {
       G.notify(context, this.$key, current, value)    // Notify 
     }  
     if (!recalling) G.$recaller = this                //   set global flag to detect recursion
-    var to = G.effects(value, G.revoke) || value      // Recurse to recall side effects, remember last
+    G.effects(value, G.revoke)                        // Recurse to recall side effects
     if (!recalling) G.$recaller = null;               // Reset recursion pointer
   }
   if (this.$computed) {
@@ -249,7 +246,7 @@ G.prototype.uncall = function(soft, unformatted) {
     var cause = this.$cause;
     if (this.$key && cause && cause.$cause && cause.$cause.$future)
       G.Future.unobserve(cause.$cause, cause)
-    G.unlink(from, to, true)                        // Patch graph and detach the tree at top
+    G.unlink(from, G.last(value), true)                        // Patch graph and detach the tree at top
   }
   return value;
 }
