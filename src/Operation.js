@@ -58,31 +58,29 @@ G.create = function(context, key, value) {
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
 
-    } else if (G.isObject(value)) {                   // 2. Wrapping plain/observable object
+    } else if (value.$key == key                      // 2. Reusing previously set value
+            && value.$context == context) {
+      var result = value;
+    } else if (G.isObject(value)) {                   // 3. Wrapping plain/observable object
       var result = new G()                            //    Create new G wrapper
       result.$context = context;
       result.$key = key;
       if (value)
         result.$source = value;
-    } else {                                          // 3. Applying operation as value
-      
-      if (value.$key == key && value.$context == context) {
-        var result = value;
+    } else {                                          // 4. Applying operation as value
+      if (value.recall) {
+        var primitive = value.valueOf();              //    Get its primitive value
       } else {
-        if (value.recall) {
-          var primitive = value.valueOf();            //    Get its primitive value
-        } else {
-          var primitive = value;   
-        }
-        if (primitive instanceof G) {
-          var result = value.transfer(context, key)   // Assign object ownreship
-        } else {
-          var result = G.extend(primitive, context, key)//    Construct new operation
-        }                     
-        if (result.$context == value.$context &&            
-            result.$key     == value.$key)            //    If operation is from before
-        result.$meta = value.$meta                    //      Restore meta 
+        var primitive = value;   
       }
+      if (primitive instanceof G) {
+        var result = value.transfer(context, key)   // Assign object ownreship
+      } else {
+        var result = G.extend(primitive, context, key)//    Construct new operation
+      }                     
+      if (result.$context == value.$context &&            
+          result.$key     == value.$key)            //    If operation is from before
+      result.$meta = value.$meta                    //      Restore meta 
     }
     break;
     break;

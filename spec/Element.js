@@ -353,8 +353,6 @@ describe('G.Node', function() {
       });
 
       var article = future.$current;
-      var h1 = future.$current.$first;
-      var span = future.$current.$last;
 
       expect(future.$current.render().outerHTML).to.eql('<article class="age-26"><h1>Yaro</h1><span>age is 26</span></article>')
 
@@ -368,12 +366,41 @@ describe('G.Node', function() {
 
       expect(future.$current).to.eql(undefined)
 
+
       yaro.call()
 
       expect(future.$current.render().outerHTML).to.eql('<article class="age-27"><h1>Yaro</h1><span>age is 27</span></article>')
 
 
       expect(article).to.eql(future.$current)
+
+      var jimmy = context.push('person', {name: 'Jimmy', age: 18});
+      expect(future.$current.render().outerHTML).to.eql('<article class="age-18"><h1>Jimmy</h1><span>age is 18</span></article>')
+
+      var article2 = future.$current;
+      expect(article2).to.not.eql(article);
+      expect(jimmy.$previous).to.eql(yaro)
+      expect(article2.$previous).to.eql(article)
+
+      jimmy.uncall()
+
+      expect(jimmy.$previous).to.eql(undefined)
+      expect(article2.$previous).to.eql(undefined)
+
+      jimmy.call()
+      expect(jimmy.$previous).to.eql(yaro)
+      expect(article2.$previous).to.eql(article)
+
+      G.swap(jimmy, yaro)
+
+      expect(jimmy.$previous).to.eql(undefined)
+      expect(article2.$previous).to.eql(undefined)
+      expect(jimmy.$next).to.eql(yaro)
+      expect(article2.$next).to.eql(article)
+
+      G.swap(jimmy, yaro)
+      expect(jimmy.$previous).to.eql(yaro)
+      expect(article2.$previous).to.eql(article)
     })
   })
   describe('Updating', function() {
