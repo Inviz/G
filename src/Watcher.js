@@ -110,7 +110,7 @@ G.prototype.define = function(key, callback) {
       if (!current.$context) {                          // If Value was not unboxed yet
         var result = G.set(this, key, current);               //   Turn primitive value to G op 
       } else {
-        var result = G.call(current);                  // Re-apply value 
+        var result = G.call(current, null);                  // Re-apply value 
       }
     }
     return result;
@@ -144,7 +144,7 @@ G.prototype.undefine = function(key, callback) {
       for (var i = 0; i < values.length; i++)
         var result = G.call(values[i])
     } else {
-      var result = G.call(current)
+      var result = G.call(current, null)
     }
   } else {
     G.Future.unwatch(this, key, callback);

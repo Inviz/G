@@ -67,7 +67,6 @@ G.affect = function(value, old) {
   for (var after = value; after = after.$after;) {
     if (after.$caller !== value) continue;
     var cause = after.$cause;
-    if (!(cause.$getter || cause).$properties)
     if (observers && observers.indexOf(cause) > -1
     ||  group     &&     group.indexOf(cause) > -1) {
       after.call();

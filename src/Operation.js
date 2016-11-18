@@ -144,8 +144,9 @@ G.prototype.call = function(verb, old) {
           value = result  
       }
     }
-  }
-  if (verb !== false && !G.isLinked(value))           // If operation position in graph needs update
+  } else if (verb !== null && old && (value.$succeeding || value.$preceeding)) {
+    result = G.verbs.restore(result, old)}
+  if (!G.isLinked(value))           // If operation position in graph needs update
     G.record(value, old, verb);                       // Register in graph and remember caller op/callback
 
   if (result !== old)                                 // If value is the new head

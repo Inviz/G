@@ -341,6 +341,41 @@ describe('G.Node', function() {
       expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal', 'best']))
       expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['header']))
     })
+
+    it ('should migrate template created by observer', function() {
+      var context = new G;
+      var yaro = context.set('person', {name: 'Yaro', age: 26});
+
+      var future = context.watch('person', function(person) {
+        return G.Node('article', {class: 'age-' + person.age },
+          G.Node('h1', null, person.name),
+          G.Node('span', null, 'age is ' + person.age))
+      });
+
+      var article = future.$current;
+      var h1 = future.$current.$first;
+      var span = future.$current.$last;
+
+      expect(future.$current.render().outerHTML).to.eql('<article class="age-26"><h1>Yaro</h1><span>age is 26</span></article>')
+
+      context.person.set('age', 27)
+
+      expect(future.$current.render().outerHTML).to.eql('<article class="age-27"><h1>Yaro</h1><span>age is 27</span></article>')
+
+      expect(article).to.eql(future.$current)
+
+      yaro.uncall()
+
+      expect(future.$current).to.eql(undefined)
+
+      debugger
+//      yaro.call()
+
+//      expect(future.$current.render().outerHTML).to.eql('<article class="age-27"><h1>Yaro</h1><span>age is 27</span></article>')
+
+//      expect(article).to.eql(future.$current)
+
+    })
   })
   describe('Updating', function() {
     it ('should be able to set attributes', function() {

@@ -158,10 +158,15 @@ G.analyze = function(fn) {
       var target = args
     }
   }
-  if (string.match(/if\s*\(/))
-    fn.$conditional = true;
-  if (string.match(/return/))
+  //if (string.match(/if\s*\(/))
+  //  fn.$conditional = true;
+  if (string.match(/return/)) {
     fn.$returns = true;
+
+    if (string.match(/G\.Node\s*\(/))
+      fn.$migrator = G.Node; // fast lane recomputation of JSX templates
+  }
+
   fn.$arguments = [] 
   var m = string.match(G.$findProperties);          // find all property accessors
   if (m)

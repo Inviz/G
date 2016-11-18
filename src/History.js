@@ -165,6 +165,40 @@ G.verbs = {
     return false;
   },
 
+
+  // Attempt to place value optimistically where it once belonged
+  restore: function(value, old) {
+    if (value.$multiple)
+      return value;
+    var last = value;
+    for (var succ = value; succ = succ.$succeeding;) {
+      if (succ.$preceeding !== last)
+        break;
+      if (succ === old)
+        return value;
+      last = value;
+    }
+    var last = value;
+    for (var prec = value; prec = prec.$preceeding;) {
+      if (prec.$succeeding !== last)
+        break;
+      if (prec === old)
+        return value;
+      last = value;
+    }
+    if (value.$succeeding) {
+
+      value.$succeeding = old;
+      value.$preceeding = old.$preceeding;
+      old.$preceeding = value;
+      return old
+    } else {
+      value.$preceeding = old;
+      value.$succeeding = old.$succeeding;
+      old.$succeeding = value;
+      return value;
+    }
+  },
   // merge two objects
   merge: function(value, old, meta) {
     if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')

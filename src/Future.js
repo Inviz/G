@@ -73,8 +73,9 @@ G.Future.prepare = function(watcher, trigger) {
 G.Future.invoke = function(watcher, value) {
   watcher.$computing = true;
 
-  if (G.Future.prepare(watcher, value))
+  if (G.Future.prepare(watcher, value)) {
     var computed = G.Future.compute(watcher, value);                //    Invoke computation callback
+  }
   G._observeProperties(value, watcher);
   watcher.$computing = undefined;
   if (computed != null) {                            //    Proceed if value was computed
@@ -137,13 +138,29 @@ G.Future.notify = function(watcher, value, result) {
 }
 
 // Run computed property callback if all properties it uses are set
-G.Future.compute = function(watcher, current) {
-  if (current === undefined)
-    current = G.value.current(watcher);
+G.Future.compute = function(watcher, value) {
+  if (value === undefined)
+    value = G.value.current(watcher);
 
+  var current =  watcher.$current;
+  for (; current; current = current.$previous) {
+    if (current.$caller === G.$caller) {
+      if (current.$record)
+        var migrating = current.migrate(current.$record);
+      break;
+    }
+  }
   var getter = watcher.$getter;
-  if (!getter.$returns || current || !watcher.$getter.length)
-    return getter.call(watcher.$context, current);
+  if (!getter.$returns || value || !watcher.$getter.length) {
+    if (getter.$migrator && !migrating)
+      var recording = getter.$migrator.record();
+    var result = getter.call(watcher.$context, value);
+    if (recording)
+      result.$record = getter.$migrator.stop();
+    else if (migrating)
+      result.$record = result.finalize()
+    return result;
+  }
 }
 
 G.Future.watch = function(context, key, watcher) {
@@ -188,14 +205,21 @@ G.Future.setValue = function(watcher, value, result) {
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
       if (n.$caller === value) {
-        if (n === watcher.$current)
+        if (n === watcher.$current) {
+          if (n === result)
+            return result;
           watcher.$current = n.$previous;
+        }
         var old = n;
         break;
       }
     }
     if (!old || old.valueOf() != result.valueOf()) {
-      watcher.$current = G.verbs.push(result, watcher.$current)
+      if (watcher.$current)
+        watcher.$current = G.verbs.push(result, watcher.$current)
+      else
+        watcher.$current = result;
+
       if (old)
         old.uncall()
     } else {

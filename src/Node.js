@@ -218,6 +218,9 @@ G.Node.prototype.onChange = function(key, value, old) {
         G.Node.deinherit.property(this, prop);
     }
   }
+  var callback = G.Node.callbacks[key];
+  if (callback)
+    callback.call(this, value, old)
 
   if (this.itemprop && G.Node.itemvalues[key] && this.microdata)
     G.Node.updateTrigger(this, 'itemprop');
@@ -354,12 +357,11 @@ G.Node.triggers = {
     if (this.microdata[itemprop] != value){
           this.microdata.push(itemprop, value, this);}
     return 
-  },
+  }
 
-  itemscope: function() {
-    var microdata = this.set('microdata', {}, this);
-    microdata.$composable = true;
-  },
+}
+
+G.Node.callbacks = {
 
   text: function(value) {
     for (var parent = this; parent = parent.$parent;) {
@@ -368,8 +370,12 @@ G.Node.triggers = {
         G.Node.updateTrigger(parent, 'itemprop');
       break;
     }
-  }
+  },
 
+  itemscope: function() {
+    var microdata = this.set('microdata', {}, this);
+    microdata.$composable = true;
+  }
 }
 
 G.Node.attributes = {
@@ -688,6 +694,7 @@ G.Node.unschedule = function(node, target, local, global) {
 G.Node.prototype.migrate = function(record) {
   G.Node.$migration = record;
   G.Node.$migrated = []
+  return this;
 };
 G.Node.prototype.finalize = function() {
   var migrated = G.Node.$migrated;
@@ -700,7 +707,7 @@ G.Node.remember = function(tag, attributes) {
   G.Node.$recording.push(this, attributes);
 }
 G.Node.record = function() {
-  G.Node.$recording = []
+  return G.Node.$recording = []
 };
 G.Node.stop = function() {
   var recording = G.Node.$recording;
@@ -711,16 +718,18 @@ G.Node.migrate = function(tag, attributes) {
   var node = G.Node.$migration[G.Node.$migrated.length];
   var old  = G.Node.$migration[G.Node.$migrated.length + 1];
 
+  if (attributes)
+    attributes = attributes.valueOf();
+
   G.Node.updateAttributes(node, attributes, old);
-  
   G.Node.$migrated.push(node, attributes)
 
-  return this;
+  return node;
 }
 
 G.Node.updateAttributes = function(node, attributes, old) {
   if (typeof attributes == 'string') {
-    node.text = attributes;
+    node.set('text', attributes);
   } else {
     if (attributes)
       for (var key in attributes) {
