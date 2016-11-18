@@ -41,7 +41,7 @@ G.format = function(value, old) {
     G.link(result, after);
     if (multiple) {
       result.$multiple = true;
-      var other = value.$context[value.$key];
+      var other = G.value.current(value);
       if (other && G.Array.contains(other, value))
         G.Array.verbs.replace(result, value, true);
     }
@@ -93,6 +93,15 @@ G.affect = function(value, old) {
       if (!present || present.indexOf(observers[i]) == -1)
         G.callback(value, observers[i], old, true);
   return value;
+}
+
+G.propagate = function(value, old) {
+  G.record.push(value);                              // Put operation onto the caller stack
+  G.affect(value, old);                              // Apply side effects and invoke observers 
+  if (old && old.$iterators)
+    G.Array.iterate(value, old.$iterators)           // Invoke array's active iterators
+  G.notify(value.$context, value.$key, value, old)   // Trigger user callbacks 
+  G.record.pop();  
 }
 
 // Stack of callers (they do not always reference each other)

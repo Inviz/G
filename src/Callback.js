@@ -38,7 +38,7 @@ G.callback.property = function(value, watcher, old) {
 };
 
 G.isUndone = function(value) {
-  if (value.$context[value.$key] === value)
+  if (G.value.current(value) === value)
     return false;
   if (value.$succeeding && value.$succeeding.$preceeding === value)
     return false;
@@ -89,7 +89,7 @@ G.callback.future = function(value, watcher, old) {
   } else {                                             // Side effects are owned by observed value
     if (watcher.$key) {
       var targeting = true;                            // When property used in callback was changed
-      var target = watcher.$context[watcher.$key]      //   trigger callback for each observed value
+      var target = G.value.current(watcher)            //   trigger callback for each observed value
       while (target && target.$previous)               
         target = target.$previous;
     } else {                                           

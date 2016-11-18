@@ -9,7 +9,7 @@ G.Future.prototype.call = function(method) {
   if (this.$future) {
     if (this.$key) {
       G._addWatcher(this.$context, this.$key, this, '$watchers');
-      var value = this.$context[this.$key]
+      var value = G.value.current(this);
     }
 
     var computed = G.Future.invoke(this);                //    Invoke computation callback
@@ -103,7 +103,7 @@ G.Future._callValue = function() {
 }
 
 G.Future.revoke = function(watcher, value) {
-  var current = watcher.$context[watcher.$key];
+  var current = G.value.current(watcher);
   if (current == watcher.$current)
   if (value && !value.$multiple && current && !current.$multiple) {
     G.revoke(current)
@@ -139,7 +139,7 @@ G.Future.notify = function(watcher, value, result) {
 // Run computed property callback if all properties it uses are set
 G.Future.compute = function(watcher, current) {
   if (current === undefined)
-    current = watcher.$context[watcher.$key];
+    current = G.value.current(watcher);
 
   var getter = watcher.$getter;
   if (!getter.$returns || current || !watcher.$getter.length)
@@ -287,7 +287,7 @@ G.Future.subscribe = function(context, key, watcher, meta, method) {
 
   if (typeof method == 'string')
     if (G.verbs[method].multiple)
-      application.$leading = context[key]; // remember last head element for array verbs
+      application.$leading = G.value.current(application); // remember last head element for array verbs
 
   (watcher.$applications || (watcher.$applications = []))
     .push(application)

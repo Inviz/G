@@ -1488,6 +1488,49 @@ describe('Observers', function() {
       expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
     })
 
+    it ('should rearrange effects in chained iterator and effects callback', function() {
+      var context = new G;
+      var A = context.push('letters', 'A');
+      var B = context.push('letters', 'B');
+      var C = context.push('letters', 'C');
+
+      var callback = 0;
+      context.watch('letters', function(letter) {
+        callback++
+        context.push('lowers', letter.toLowerCase())
+      })
+      var iterator = 0;
+      var lowers = context.watch('lowers', function(letter) {
+        iterator++
+        return letter + '!';
+      })
+
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a!', 'b!', 'c!']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+
+      G.swap(A, B);
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'A', 'C']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'a', 'c']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b!', 'a!', 'c!']))
+
+      G.swap(A, C)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['B', 'C', 'A']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['b', 'c', 'a']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['b!', 'c!', 'a!']))
+
+      G.swap(C, B)
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['C', 'B', 'A']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['c', 'b', 'a']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['c!', 'b!', 'a!']))
+
+      G.swap(A, C)
+      expect(iterator).to.eql(3);
+      expect(callback).to.eql(3);
+      expect(G.stringify(ValueGroup(context.letters))).to.eql(G.stringify(['A', 'B', 'C']))
+      expect(G.stringify(ValueGroup(context.lowers))).to.eql(G.stringify(['a', 'b', 'c']))
+      expect(G.stringify(ValueGroup(lowers.$current))).to.eql(G.stringify(['a!', 'b!', 'c!']))
+    })
+
     it ('should watch formatted array values', function() {
       var context = new G;
       var trex = context.push('toys', 'Toy A');

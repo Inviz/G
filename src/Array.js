@@ -1,6 +1,7 @@
 G.Array = function() {
 
 }
+
 G.Array.prototype = new G
 
 // Remove node from tree
@@ -24,7 +25,7 @@ G.Array.prototype.inject = function(verb) {
   if (!this.$parent) {
     if (!this.$context)
       return;
-    var last = this.$cause && this.$cause.$future ? this.$cause.$current : this.$context[this.$key];
+    var last = this.$cause && this.$cause.$future ? this.$cause.$current : G.value.current(this);
     var first = last;
     if (first)
       while (first.$previous)
@@ -257,10 +258,10 @@ G.Array.unlink = function(op, to) {
 }
 
 
-G.Array.cleanup = function(self, value) {
-  if (value.$leading && value.$leading.$context == self.$context && value.$leading.$key == self.$key)
+G.Array.cleanup = function(value) {
+  if (value.$leading && value.$leading.$context == value.$context && value.$leading.$key == value.$key)
     value.$leading = undefined;
-  if (value.$following && value.$following.$context == self.$context && value.$following.$key == self.$key)
+  if (value.$following && value.$following.$context == value.$context && value.$following.$key == value.$key)
     value.$following = undefined;
 }
 
@@ -300,6 +301,19 @@ G.Array.findIterated = function(old, cause) {
     }
   }
 }
+
+// Switch values arraylike flag
+G.Array.mark = function(value, state) {
+  if (state) {                                      // If verb allows arraylike values
+    if (!value.$multiple)
+      value.$multiple = true                        // Set flag on the value
+  } else if (value.$multiple) {
+    G.Array.cleanup(value);
+    if (value.hasOwnProperty('$multiple'))
+      value.$multiple = undefined;                  // Otherwise, reset flag
+  }
+}
+
 G.Array.isAfter = function(value, another) {
   for (var prev = another; prev = prev.$leading;)
     if (prev == value)

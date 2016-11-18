@@ -35,7 +35,7 @@ G.match = function(meta, old) {
 
 // Iterate all values in stack that match meta & value
 G.stack = function(context, key, value, meta, callback) {
-  var current = context[key]
+  var current = G.value.get(context, key);
   if (!current) return;
   
   for (var old = current; old = G.match(meta, old); old = next) {
@@ -45,7 +45,7 @@ G.stack = function(context, key, value, meta, callback) {
     if (head === current
     && (value === undefined || value === old.valueOf())) {      
       var result = callback ? callback(old) : old;
-      current = context[key]
+      current = G.value.get(context, key);
     }
     if (!current || !next) break;
   }
