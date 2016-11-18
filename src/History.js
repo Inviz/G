@@ -165,24 +165,6 @@ G.verbs = {
     return false;
   },
 
-  // Attempt to place value optimistically where it once belonged
-  restore: function(value, old) {
-    if (value.$multiple)
-      return value;
-    if (value.$succeeding) {
-      value.$succeeding = old;
-      value.$preceeding = old.$preceeding;
-      old.$preceeding = value;
-      return false
-    } else {
-      value.$preceeding = old;
-      value.$succeeding = old.$succeeding;
-      old.$succeeding = value;
-      return value;
-    }
-  },
-
-
   // merge two objects
   merge: function(value, old, meta) {
     if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')

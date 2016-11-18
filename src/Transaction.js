@@ -71,7 +71,7 @@ G.affect = function(value, old) {
     if (observers && observers.indexOf(cause) > -1
     ||  group     &&     group.indexOf(cause) > -1) {
       if (!after.ondetach) {
-        after.call('restore');
+        after.call();
         (present || (present = [])).push(cause)
       }
     } else if (!iterators || iterators.indexOf(after) == -1) {

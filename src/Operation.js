@@ -66,7 +66,8 @@ G.create = function(context, key, value) {
         result.$source = value;
     } else {                                          // 3. Applying operation as value
       
-      if (false && value.$key == key && value.$context == context) {
+      if (value.$key == key && value.$context == context) {
+        debugger
         var result = value;
       } else {
         if (value.recall) {
@@ -124,18 +125,26 @@ G.prototype.call = function(verb, old) {
       value = G.reify.reuse(result, value)            // Use it instead of value, if possible
     }
 
-  if (value.$multiple) {                              // If value is marked as multiple previously
-    if (!G.Array.inject(value))                         // Attempt to restore it within collection
-      if (!verb && verb !== null)                     // When not switching values
-        verb = G.verbs.push;                          //   fall back to push verb
-    while (result.$next)                              // Use head of collection as result
-      result = result.$next;
+  if (value.$multiple && !verb) {                     // If value is marked as multiple previously
+    if (G.Array.inject(value)) {                     // Attempt to restore it within collection
+      while (result.$next)                            // Use head of collection as result
+        result = result.$next;
+    } else if (!verb && verb !== null)                // When not switching values
+      verb = G.verbs.push;                            //   fall back to push verb
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
-  if (verb && verb.multiple)                          // If verb allows multiple values by same meta
-    value.$multiple = true                            //   Set flag on the value
-
+  if (verb)                          // If verb allows multiple values by same meta
+    if (verb.multiple)
+      value.$multiple = true                            //   Set flag on the value
+    else if (value.$multiple) {
+      if (value.$leading && value.$leading.$context == this.$context && value.$leading.$key == this.$key)
+        value.$leading = undefined;
+      if (value.$following && value.$following.$context == this.$context && value.$following.$key == this.$key)
+        value.$following = undefined;
+      if (value.hasOwnProperty('$multiple'))
+        value.$multiple = undefined;
+    }
   if (verb && old != null && old.$key) {              // If there was another value by that key
     if (other) {                                      // If history holds a value with same meta
       if (G.equals(other, result))                    //   If it's equal to given value

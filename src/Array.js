@@ -171,6 +171,7 @@ G.Array.register = function(left, right, parent) {
     left.onregister(parent);
   if (right.onregister)
     right.onregister(parent);
+
 }
 
 // Remove element from DOM tree
@@ -332,6 +333,11 @@ G.Array.verbs = {
     if (old.$previous) {
       G.Array.link(old.$previous, value)
       G.Array.register(old.$previous, value, old.$parent)
+    } else {
+      if (!old.$leading || old.$leading === old.$parent)
+        value.$leading = undefined
+      else
+        G.Array.link(old.$leading, value)
     }
     G.Array.link(value, old)
     G.Array.register(value, old, old.$parent)
@@ -367,7 +373,6 @@ G.Array.verbs = {
   },
 
   swap: function(value, old) {
-    debugger
     if (value.$next || value.$previous) {
       return value;
     } else {
