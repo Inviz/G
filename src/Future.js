@@ -130,7 +130,7 @@ G.Future.notify = function(watcher, value, result) {
     }
     G.record.pop(result)
     return true;
-  } else {
+  } else if (called) {
     called.$after = old;
     G.$called = G.last(old);
   }
@@ -142,21 +142,33 @@ G.Future.compute = function(watcher, value) {
   if (value === undefined)
     value = G.value.current(watcher);
 
-  var current =  watcher.$current;
-  for (; current; current = current.$previous) {
-    if (current.$caller === G.$caller) {
-      if (current.$record)
-        var migrating = current.migrate(current.$record);
-      break;
+  var getter = watcher.$getter;
+  var migrator = getter.$migrator;
+  if (migrator) {
+    var current =  watcher.$current;
+    for (; current; current = current.$previous) {
+      if (current.$caller === G.$caller) {
+        if (current.$record)
+          var migrating = current.migrate(current.$record);
+        break;
+      }
+    }
+    if (!current) {
+      for (var after = value; after = after.$after;) {
+        if (after.$record && after.$cause == watcher) {
+          debugger
+          var migrating = after.migrate(after.$record);
+          break;
+        }
+      }
     }
   }
-  var getter = watcher.$getter;
   if (!getter.$returns || value || !watcher.$getter.length) {
-    if (getter.$migrator && !migrating)
-      var recording = getter.$migrator.record();
+    if (migrator && !migrating)
+      var recording = migrator.record();
     var result = getter.call(watcher.$context, value);
     if (recording)
-      result.$record = getter.$migrator.stop();
+      result.$record = migrator.stop();
     else if (migrating)
       result.$record = result.finalize()
     return result;

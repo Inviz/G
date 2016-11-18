@@ -368,13 +368,12 @@ describe('G.Node', function() {
 
       expect(future.$current).to.eql(undefined)
 
-      debugger
-//      yaro.call()
+      yaro.call()
 
-//      expect(future.$current.render().outerHTML).to.eql('<article class="age-27"><h1>Yaro</h1><span>age is 27</span></article>')
+      expect(future.$current.render().outerHTML).to.eql('<article class="age-27"><h1>Yaro</h1><span>age is 27</span></article>')
 
-//      expect(article).to.eql(future.$current)
 
+      expect(article).to.eql(future.$current)
     })
   })
   describe('Updating', function() {

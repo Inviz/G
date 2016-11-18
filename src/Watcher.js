@@ -167,7 +167,7 @@ G.prototype.merge = function(object) {
         G.merge(this, key, object[key], meta);
     return this;
   }
-  return G.prototype.$merge.apply(this, arguments);
+  return G.prototype._merge.apply(this, arguments);
 }
 
 // Merge object underneath (not shadowing original values)
@@ -186,7 +186,7 @@ G.prototype.defaults = function(object) {
         G.defaults(this, key, object[key], meta);
     return this;
   }
-  return G.prototype.$defaults.apply(this, arguments);
+  return G.prototype._defaults.apply(this, arguments);
 }
 
 // Merge two G objects and subscribe for updates

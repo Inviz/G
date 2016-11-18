@@ -267,7 +267,7 @@ G.Array.cleanup = function(value) {
 
 // Find a good place to insert new value
 G.Array.findIterated = function(old, cause) {
-  if (!cause && !(cause = G.$cause)) return;
+  if (!G.$caller || (!cause && !(cause = G.$cause))) return;
 
   // Push where it pushed last time
   if (cause == old.$cause && G.$caller.$multiple) {

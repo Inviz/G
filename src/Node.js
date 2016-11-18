@@ -139,6 +139,7 @@ G.Node.prototype.eject = function() {
 };
 
 G.Node.prototype.setArguments = function(tag, attributes) {
+  G.record.push(null)
   if (tag) {
     this.set('tag', tag);
     var definition = G.Node.tags[tag];
@@ -160,16 +161,18 @@ G.Node.prototype.setArguments = function(tag, attributes) {
     }
   }
 
-  if (attributes)
+  if (attributes) {
     if (typeof attributes.valueOf() == 'object')
       this.merge(attributes);
     else
       this.set('text', attributes); //lazy text content
-
+  }
 
 
   for (var i = 2; i < arguments.length; i++)
     this.appendChild(arguments[i])
+  
+  G.record.pop()
 }
 
 G.Node.prototype.getTextContent = function() {
@@ -728,6 +731,7 @@ G.Node.migrate = function(tag, attributes) {
 }
 
 G.Node.updateAttributes = function(node, attributes, old) {
+  G.record.push()
   if (typeof attributes == 'string') {
     node.set('text', attributes);
   } else {
@@ -743,11 +747,11 @@ G.Node.updateAttributes = function(node, attributes, old) {
       }
     if (old)
       for (var key in old) {
-        if (!attributes || attributes[old] === undefined)
+        if (!attributes || attributes[key] !== old[key])
           node.unset(key, old[key])
       }
   }
-
+  G.record.pop()
 }
 
 

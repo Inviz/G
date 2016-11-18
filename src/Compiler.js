@@ -43,11 +43,11 @@ G.compile.struct = function(struct) {
         G[verb]      = G['$' + verb]      
       if (!struct[verb])
         struct[verb] = G['$' + verb]    
-      struct.prototype['$' + verb] = G.compile.verb(verb)     // Prototype method  `context.set()`
+      struct.prototype['_' + verb] = G.compile.verb(verb)     // Prototype method  `context.set()`
       if (!struct.prototype[verb])  
-        struct.prototype[verb] = struct.prototype['$' + verb];
+        struct.prototype[verb] = struct.prototype['_' + verb];
       if (!G.prototype[verb])
-        G.prototype[verb] = struct.prototype['$' + verb];
+        G.prototype[verb] = struct.prototype['_' + verb];
     }
   }
 

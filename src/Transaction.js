@@ -122,12 +122,20 @@ G.record.sequence = function(value, old, verb) {
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
 
   if (old && old.$caller === G.$caller && !value.$multiple) { //    If new value has the same caller as old
-    G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
+    var before = G.unformatted(old).$before;
+    if (before)
+      G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
     G.link(G.$called, G.unformatted(value), true)     //    Continue writing at parent's point
     G.$called = value;
   } else if (G.$caller){
-    G.link(G.head(G.$caller), G.unformatted(value))
+    var unformatted = G.unformatted(value);
+    for (var op = G.$caller; op; op = op.$after) {
+      if (op === unformatted)                         // 3. Operation is already in record
+        break;
+      if (!op.$after)
+        G.link(op, unformatted)                       // 4. Writing at the end
+    }
   }
   return value;
 }
