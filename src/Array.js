@@ -476,8 +476,14 @@ G.Array.verbs = {
 
   // Nest value into another
   append: function(value, old) {
-    if (value.$next || value.$previous)
+    if (value.$next || value.$previous || value.$parent != old)
       G.Array.eject(value, true);
+
+    var last = value;
+    while (last.$last)
+      last = last.$last;
+    last.$following = undefined;
+    
     G.Array.link(old, value)
     G.Array.register(old.$last, value, old);
     return old;

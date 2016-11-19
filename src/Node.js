@@ -262,6 +262,19 @@ G.Node.prototype.appendChild = function(child) {
     return;
   return G.verbs.append(child, this);
 }
+G.Node.prototype.removeChild = function(child) {
+  return child.uncall()
+}
+G.Node.prototype.prependChild = function(child) {
+  if (!child) return;
+  if (typeof child.valueOf() == 'string') {
+    var text = child;
+    child = new G.Node(null, text)
+  }
+  if (G.Node.$migration)
+    return;
+  return G.verbs.prepend(child, this);
+}
 
 G.Node.inherit = function(node) {
   for (var x = 0; x < G.Node.inheritable.length; x++)
@@ -418,14 +431,30 @@ G.Node.types = {
 }
 
 G.Node.prototype.onregister = function(parent) {
-  var last = this.$last;
-  for (var child = this; child != this.$last; child = child.$following)
+  for (var child = this; child != this.$next; child = child.$following) {
     G.Node.inherit(child);
-  if (this.itemprop && this.$microdata)
-    G.Node.reorderMicrodata(this)
+    if (child.itemprop && child.$microdata) {
+      if (topmost == null)
+        if (!(topmost = this.$microdata))
+          for (var top = parent; top; top = top.$parent) {
+            if (top.$microdata) {
+              var topmost = top.$microdata;
+              break;
+            }
+          }
+      if (topmost && child.$microdata == topmost)
+        G.Node.reorderMicrodata(child)
+    }
+  }
 
 }
 G.Node.reorderMicrodata = function(node) {
+  var own = node.$microdata[node.itemprop];
+  for (; own; own = own.$previous)
+    if (own.$caller === node.itemprop)
+      break;
+  if (own == null) return;
+
   var prop = node.itemprop.valueOf()
   for (var before = node; before = before.$leading;) { // Find nodes in DOM with same itemprop
     if (before.itemscope && 
@@ -436,28 +465,23 @@ G.Node.reorderMicrodata = function(node) {
       for (; current; current = current.$previous) {
         if (current.$caller === before.itemprop 
         || current.$caller == before.itemscope) {
-          if (node.$previous != before)
-            return G.after(node, before); // put value where it should be
+          if (own.$previous != current)
+            return G.after(own, current); // put value where it should be
           return;
         }
       }
     }
   }
-  
-  var current = node.$microdata[node.itemprop];
-  for (; current; current = current.$previous) {
-    if (current.$caller === node.itemprop) {
-      var first = G.Array.first(current);
-      if (first !== current)
-        return G.before(current, first) // put value on top
-      return;
-    }
-  }
+
+  var first = G.Array.first(own);
+  if (first !== own)
+    return G.before(own, first) // put value on top
+  return;
 }
 G.Node.prototype.onunregister = function(parent) {
-  var last = this.$last;
-  for (var child = this; child != this.$last; child = child.$following)
+  for (var child = this; child != this.$next; child = child.$following) {
     G.Node.deinherit(child);
+  }
 }
 G.Node.prototype.decorate = function(value) {
   // format token list

@@ -899,7 +899,6 @@ describe('G.Node', function() {
       submit.set('name', 'submission_button');
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie'}))
 
-      debugger
       var value = submit.set('value', 'the_button');
 
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button'}))
@@ -967,7 +966,6 @@ describe('G.Node', function() {
       expect(form.microdata.your_name).to.eql(undefined)
 
       // make submit provide microdata 
-      debugger
       submit.set('itemprop', 'submission_button');
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
@@ -1025,6 +1023,7 @@ describe('G.Node', function() {
           new G.Node('span', {}, 'Bye')
         )
       );
+      var header = form.$first;
       var first = form.$last.$previous;
       var second = form.$last;
 
@@ -1073,16 +1072,52 @@ describe('G.Node', function() {
 
       second.$parent.appendChild(first)
       expect(String(form.microdata.person.your_name)).to.eql('boris.html')
-      expect(String(form.microdata.person.$previous.your_name)).to.eql('joey.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.$previous.your_name.$previous)).to.eql('joey.html')
       expect(second.$next).to.eql(first)
       expect(first.$previous).to.eql(second);
 
-      debugger
       G.swap(first, second);
       expect(second.$previous).to.eql(first);
       expect(first.$next).to.eql(second);
-      expect(String(form.microdata.person.your_name)).to.eql('joey.html')
+      expect(String(form.microdata.person.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+
+      G.swap(first, second);
+      expect(String(form.microdata.person.your_name)).to.eql('boris.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('Bye')
+      expect(String(form.microdata.person.$previous.your_name.$previous)).to.eql('joey.html')
+      expect(second.$next).to.eql(first)
+      expect(first.$previous).to.eql(second);
+
+      var extra = new G.Node('label', {itemprop: 'header'}, 'Extra header!');
+      form.prependChild(extra)
+
+      expect(String(form.microdata.header)).to.eql('What is your name?')
+      expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
+
+      form.appendChild(extra)
+      expect(String(form.microdata.header)).to.eql('Extra header!')
+      expect(String(form.microdata.header.$previous)).to.eql('What is your name?')
+
+      form.appendChild(header)
+      expect(String(form.microdata.header)).to.eql('What is your name?')
+      expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
+
+      form.removeChild(extra)
+      expect(String(form.microdata.header)).to.eql('What is your name?')
+      expect(form.microdata.header.$previous).to.eql(undefined)
+
+      var wrapper = G.Node('footer', null, extra);
+
+      form.appendChild(wrapper)
+      expect(String(form.microdata.header)).to.eql('Extra header!')
+      expect(String(form.microdata.header.$previous)).to.eql('What is your name?')
+
+      G.swap(wrapper, header)
+      expect(String(form.microdata.header)).to.eql('What is your name?')
+      expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
     })
   })
 })

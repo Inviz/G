@@ -156,7 +156,6 @@ G.Future.compute = function(watcher, value) {
     if (!current) {
       for (var after = value; after = after.$after;) {
         if (after.$record && after.$cause == watcher) {
-          debugger
           var migrating = after.migrate(after.$record);
           break;
         }
