@@ -213,9 +213,11 @@ G.Array.unregister = function(op, soft) {
 
 
 // Connect depth first pointers of two sibling nodes together
-G.Array.link = function(left, right) {
-  for (var last = left; last.$last;)
-    last = last.$last;
+G.Array.link = function(left, right, shallow) {
+  var last = left
+  if (!shallow)
+    while (last.$last)
+      last = last.$last;
   if ((last.$following = right)) {                          // fix $following/$leading refs
     right.$leading = last;
   }
@@ -479,11 +481,7 @@ G.Array.verbs = {
     if (value.$next || value.$previous || value.$parent != old)
       G.Array.eject(value, true);
 
-    var last = value;
-    while (last.$last)
-      last = last.$last;
-    last.$following = undefined;
-    
+    G.Array.link(value, old.$next);
     G.Array.link(old, value)
     G.Array.register(old.$last, value, old);
     return old;
@@ -493,14 +491,15 @@ G.Array.verbs = {
   prepend: function(value, old) {
     if (value.$next || value.$previous)
       G.Array.eject(value, true);
+    G.Array.link(old, value, true);
     if (old.$first) {
       G.Array.link(value, old.$first)
       G.Array.register(value, old.$first, old);
     } else {
-      G.Array.link(old, value)
-      old.$last = old.$first = value;
-      value.$parent = old
+      G.Array.link(value, old.$next);
+      G.Array.register(null, value, old);
     }
+
     return old;
   }
 };

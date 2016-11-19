@@ -252,7 +252,7 @@ G.Node.prototype.onChange = function(key, value, old) {
 
 // Inject node into another
 // If child is a string, creates text node
-G.Node.prototype.appendChild = function(child) {
+G.Node.prototype.appendChild = function(child, verb, old) {
   if (!child) return;
   if (typeof child.valueOf() == 'string') {
     var text = child;
@@ -260,20 +260,19 @@ G.Node.prototype.appendChild = function(child) {
   }
   if (G.Node.$migration)
     return;
-  return G.verbs.append(child, this);
+  return G.verbs[verb || 'append'](child, old || this);
 }
 G.Node.prototype.removeChild = function(child) {
   return child.uncall()
 }
 G.Node.prototype.prependChild = function(child) {
-  if (!child) return;
-  if (typeof child.valueOf() == 'string') {
-    var text = child;
-    child = new G.Node(null, text)
-  }
-  if (G.Node.$migration)
-    return;
-  return G.verbs.prepend(child, this);
+  return this.appendChild(child, 'prepend')
+}
+G.Node.prototype.insertBefore = function(child, anchor) {
+  if (anchor)
+    return this.appendChild(child, 'before', anchor)
+  else
+    return this.appendChild(child, 'append')
 }
 
 G.Node.inherit = function(node) {
