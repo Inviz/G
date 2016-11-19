@@ -834,3 +834,48 @@ G.Node.mapping = {
   'if': G.If,
   'else': G.Else
 }
+
+
+
+
+
+
+
+
+G.Node.Microdata = function() {
+  G.apply(this, arguments);
+}
+G.Node.Microdata.prototype = new G;
+G.Node.Microdata.prototype.constructor = G.Node.Microdata;
+G.Node.Microdata.recursive = true;
+
+G.Node.Values = function() {
+  G.apply(this, arguments);
+}
+G.Node.Values.prototype = new G;
+G.Node.Values.prototype.constructor = G.Node.Values;
+G.Node.Values.recursive = true;
+
+G.Node.Values.prototype.onChange = function(key, value) {
+  var last = 0;
+  var context = this;
+  for (var i = -1; (i = key.indexOf('[', i + 1)) > -1;) {
+    var bit = key.substring(last, i);
+    if (bit.length) {
+      if (context[bit] == null)
+        context.set(bit, {})
+      context = context[bit]
+    }
+    last = i + 1;
+  }
+  if (last) {
+    var bit = key.substring(last, key.length - 1);
+    context.set(bit, value, this);
+  }
+}
+
+
+G.Node.prototype.constructors = {
+  values:    G.Node.Values,
+  microdata: G.Node.Microdata
+}

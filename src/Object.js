@@ -89,7 +89,13 @@ G.reify = function(value, target) {
     && value.$source.$key == target.$key) {                
     return value.$source;                           // Use origin object instead of reference
   } else {
-    var result = new G(value);      
+    var constructors = target.$context.constructors;
+    if (constructors && constructors[target.$key])
+      var result = new constructors[target.$key](value);
+    else if (value.constructor.recursive)
+      var result = new (value.constructor)(value);
+    else
+      var result = new G(value);      
     result.$key = target.$key;
     result.$context = target.$context;
     result.$meta = value.$meta;

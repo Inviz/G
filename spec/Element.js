@@ -1010,6 +1010,35 @@ describe('G.Node', function() {
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
     })
 
+    it ('should register compound fieldnames in forms', function() {
+      var form = new G.Node('form', null, 
+        G.Node('input', {name: 'person[name]', value: 'Oy boi'})
+      )
+
+      expect(String(form.values['person[name]'])).to.eql('Oy boi')
+      expect(String(form.values.person.name)).to.eql('Oy boi')
+
+      form.$first.set('value', 'Ya bwoy')
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+
+      var name = form.$first.uncall()
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person.name).to.eql(undefined)
+
+      name.call()
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+
+      var value = form.$first.value.uncall();
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person.name).to.eql(undefined)
+
+      value.call();
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+    })
+
     it ('should chain microdata scopes', function() {
       var form = new G.Node('article', {itemscope: true},
         new G.Node('label', {itemprop: 'header'}, 'What is your name?'),
