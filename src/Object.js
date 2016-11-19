@@ -89,7 +89,7 @@ G.reify = function(value, target) {
     && value.$source.$key == target.$key) {                
     return value.$source;                           // Use origin object instead of reference
   } else {
-    var result = new G(value);                     
+    var result = new G(value);      
     result.$key = target.$key;
     result.$context = target.$context;
     result.$meta = value.$meta;

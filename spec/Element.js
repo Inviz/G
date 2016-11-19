@@ -1026,37 +1026,37 @@ describe('G.Node', function() {
         )
       );
       var first = form.$last.$previous;
-      var div = form.$last;
+      var second = form.$last;
 
-      expect(form.microdata).to.not.eql(div.microdata)
-      expect(form.microdata.person).to.eql(div.microdata)
+      expect(form.microdata).to.not.eql(second.microdata)
+      expect(form.microdata.person).to.eql(second.microdata)
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
       expect(String(form.microdata.person.your_name)).to.eql('vasya.html')
       expect(String(form.microdata.header)).to.eql('What is your name?')
 
-      div.$first.set('href', 'jackie.html')
+      second.$first.set('href', 'jackie.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
       expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
 
-      div.uncall();
+      second.uncall();
       expect(String(form.microdata.person.your_name)).to.eql('boris.html')
       expect(form.microdata.person.$previous).to.eql(undefined)
       expect(form.microdata.person.$next).to.eql(undefined)
 
-      div.call()
+      second.call()
       expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
 
-      div.$first.set('href', 'joey.html')
+      second.$first.set('href', 'joey.html')
       expect(String(form.microdata.person.your_name)).to.eql('joey.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
 
-      var bye = div.$last.set('itemprop', 'your_name')
+      var bye = second.$last.set('itemprop', 'your_name')
       expect(String(form.microdata.person.your_name)).to.eql('Bye')
       expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
 
-      div.$last.unset('itemprop', 'your_name')
+      second.$last.unset('itemprop', 'your_name')
       expect(String(form.microdata.person.your_name)).to.eql('joey.html')
       expect(form.microdata.person.your_name.$next).to.eql(undefined)
       expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
@@ -1071,9 +1071,18 @@ describe('G.Node', function() {
       expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
       expect(form.microdata.person.$previous).to.eql(undefined)
 
-      div.$parent.appendChild(first)
+      second.$parent.appendChild(first)
       expect(String(form.microdata.person.your_name)).to.eql('boris.html')
       expect(String(form.microdata.person.$previous.your_name)).to.eql('joey.html')
+      expect(second.$next).to.eql(first)
+      expect(first.$previous).to.eql(second);
+
+      debugger
+      G.swap(first, second);
+      expect(second.$previous).to.eql(first);
+      expect(first.$next).to.eql(second);
+      expect(String(form.microdata.person.your_name)).to.eql('joey.html')
+      expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
     })
   })
 })

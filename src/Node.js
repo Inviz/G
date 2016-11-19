@@ -421,6 +421,38 @@ G.Node.prototype.onregister = function(parent) {
   var last = this.$last;
   for (var child = this; child != this.$last; child = child.$following)
     G.Node.inherit(child);
+  if (this.itemprop && this.$microdata)
+    G.Node.reorderMicrodata(this)
+
+}
+G.Node.reorderMicrodata = function(node) {
+  var prop = node.itemprop.valueOf()
+  for (var before = node; before = before.$leading;) { // Find nodes in DOM with same itemprop
+    if (before.itemscope && 
+      before.itemscope.microdata == node.$microdata)
+      break;
+    if (prop == before.itemprop) {
+      var current = node.$microdata[prop];
+      for (; current; current = current.$previous) {
+        if (current.$caller === before.itemprop 
+        || current.$caller == before.itemscope) {
+          if (node.$previous != before)
+            return G.after(node, before); // put value where it should be
+          return;
+        }
+      }
+    }
+  }
+  
+  var current = node.$microdata[node.itemprop];
+  for (; current; current = current.$previous) {
+    if (current.$caller === node.itemprop) {
+      var first = G.Array.first(current);
+      if (first !== current)
+        return G.before(current, first) // put value on top
+      return;
+    }
+  }
 }
 G.Node.prototype.onunregister = function(parent) {
   var last = this.$last;

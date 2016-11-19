@@ -13,10 +13,12 @@ G.Array.prototype.eject = function(soft) {
 
 // Reapply node where it belongs in the tree
 G.Array.extend = G.Array.call;
-G.Array.prototype.call = function() {
+G.Array.prototype.call = function(verb, old) {
   if (this.$context && this.$key) // go through full property pipeline
     return G.prototype.call.apply(this, arguments);
-  if (this.inject) // use subclass inject method
+  if (verb)
+    return G.verbs[verb](this, old)
+  else if (this.inject) // use subclass inject method
     return this.inject.apply(this, arguments);
   else
     return G.Array.prototype.inject.apply(this, arguments);
@@ -345,8 +347,12 @@ G.Array.verbs = {
 
   // place element after another
   after: function(value, old) {
+    if (value === old || value.$previous === old)
+      return value;
+
     if (value.$next || value.$previous)
       G.Array.eject(value, true);
+    
     if (!old.$next){
       if (!old.$following || old.$following.$parent === old)
         G.Array.link(value, null)
@@ -465,7 +471,7 @@ G.Array.verbs = {
       G.Array.link(value, n);
       G.Array.register(value, n, old.$parent)
     }
-    return old;
+    return value;
   },
 
   // Nest value into another

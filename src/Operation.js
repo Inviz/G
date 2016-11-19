@@ -64,7 +64,7 @@ G.create = function(context, key, value) {
     } else if (G.isObject(value)) {                   // 3. Wrapping plain/observable object
       var result = new G()                            //    Create new G wrapper
       result.$context = context;
-      result.$key = key;
+      result.$key = String(key);
       if (value)
         result.$source = value;
     } else {                                          // 4. Applying operation as value
@@ -104,8 +104,9 @@ G.extend = G.call
 G.prototype.call = function(verb, old) {
   if (typeof verb == 'string')
     verb = G.verbs[verb];
+  var current     = G.value.current(this);
   if (old === undefined)
-    var old     = G.value.current(this);
+    old = current;
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
@@ -147,7 +148,7 @@ G.prototype.call = function(verb, old) {
   if (!G.isLinked(value))           // If operation position in graph needs update
     G.record(value, old, verb);                       // Register in graph and remember caller op/callback
 
-  if (result !== old)                                 // If value is the new head
+  if (result !== current)                             // If value is the new head
     G.value.apply(result);                            // Save value in its context
 
   var origin = value.$multiple ? value : result;
