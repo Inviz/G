@@ -58,8 +58,9 @@ G.Array.prototype.inject = function(verb) {
   // check if it matches anything before op
   for (var before = this; before = before.$leading;) {
     for (var item = first; item; item = item.$next) {
-      if (before == this.$parent)
-        break;
+      if (before == this.$parent) {
+        return G.Array.verbs.prepend(this, before)
+      }
       if (before == item) {
         if (before.$next == this)
           return this;

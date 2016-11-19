@@ -856,15 +856,25 @@ G.Node.Values.prototype = new G;
 G.Node.Values.prototype.constructor = G.Node.Values;
 G.Node.Values.recursive = true;
 
+// parse input names like person[friends][n][name]
+// and store values like person.friends[n].name 
 G.Node.Values.prototype.onChange = function(key, value) {
   var last = 0;
   var context = this;
   for (var i = -1; (i = key.indexOf('[', i + 1)) > -1;) {
     var bit = key.substring(last, i);
     if (bit.length) {
-      if (context[bit] == null)
+      if (context[bit] == null) {
+        G.record.push(this);
         context.set(bit, {})
+        G.record.pop()
+      }
+      // if value is removed, clean up objects on its path
+      // which dont have any other sub-keys
       context = context[bit]
+      if (value == null)
+        if (G.getLength(context) == 1)
+          context.uncall()
     }
     last = i + 1;
   }

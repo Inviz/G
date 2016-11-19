@@ -65,6 +65,17 @@ G.prototype.transfer = function(context, key) {
   return this;
 }
 
+G.getLength = function(object) {
+  var length = 0;
+  var keys = Object.keys(object);
+  for (var j = 0; j < keys.length; j++) {
+    if (keys[j].charAt(0) == '$')
+      continue
+    length++;
+  }
+  return length;
+}
+
 G.notify = function(context, key, value, old) {
   if (key) {
     if (context.onChange)                               
