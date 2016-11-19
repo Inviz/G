@@ -104,7 +104,7 @@ G.callback.future = function(value, watcher, old) {
     if (target) {
       G.$caller = target || value;
       G.$called =  G.record.find(target);
-      if (target != old && old && !old.$multiple && !target.$multiple)
+      if (target != old && old && !old.$multiple && !target.$multiple && target.$key == old.$key && target.$context == old.$context)
         effects = G.effects.caused(old, watcher);
       else if (target.$after)
         effects = G.effects.caused(target, watcher);

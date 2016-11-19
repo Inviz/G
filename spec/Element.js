@@ -865,9 +865,12 @@ describe('G.Node', function() {
       expect(input.values).to.eql(form.values)
       expect(String(form.values.your_name)).to.eql('Boris')
 
+      debugger
       input.set('value', 'Vasya')
 
       expect(String(form.values.your_name)).to.eql('Vasya')
+
+      expect(G.stringify(ValueGroup(form.values.your_name))).to.eql(G.stringify(['Vasya']))
 
       input.set('name', 'MY_NAME')
       
@@ -920,6 +923,98 @@ describe('G.Node', function() {
       expect(input3.$watchers.value).to.eql(undefined)
       expect(input3.$watchers.values).to.eql(undefined)
     })
+    
+    it ('should register compound fieldnames in forms', function() {
+      var input = G.Node('input', {name: 'person[name]', value: 'Oy boi'});
+      var form = new G.Node('form');
+      form.appendChild(input)
+
+      expect(String(form.values['person[name]'])).to.eql('Oy boi')
+      expect(String(form.values.person.name)).to.eql('Oy boi')
+
+      input.set('value', 'Ya bwoy')
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+
+      var name = input.uncall()
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person).to.eql(undefined)
+
+      name.call()
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+
+      var value = input.value.uncall();
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person).to.eql(undefined)
+
+      value.call();
+      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.name)).to.eql('Ya bwoy')
+
+      input.set('name', 'person[nickname]')
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person.name).to.eql(undefined)
+      expect(String(form.values['person[nickname]'])).to.eql('Ya bwoy')
+      expect(String(form.values.person.nickname)).to.eql('Ya bwoy')
+
+      input.set('value', 'The Peacemaker')
+      expect(form.values['person[name]']).to.eql(undefined)
+      expect(form.values.person.name).to.eql(undefined)
+      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
+      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
+
+      var age = new G.Node('input', {name: 'person[age]'})
+      form.appendChild(age);
+      expect(form.values['person[age]']).to.eql(undefined)
+      expect(form.values.person.age).to.eql(undefined)
+
+      age.set('value', 27)
+      expect(Number(form.values['person[age]'])).to.eql(27)
+      expect(Number(form.values.person.age)).to.eql(27)
+      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
+      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
+
+
+      input.uncall();
+      expect(Number(form.values['person[age]'])).to.eql(27)
+      expect(Number(form.values.person.age)).to.eql(27)
+      expect(form.values['person[nickname]']).to.eql(undefined)
+      expect(form.values.person.nickname).to.eql(undefined)
+
+      age.uncall()
+      expect(form.values.person).to.eql(undefined)
+
+      input.call();
+      expect(form.values['person[age]']).to.eql(undefined)
+      expect(form.values.person.age).to.eql(undefined)
+      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
+      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
+
+      age.call()
+      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
+      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
+      expect(Number(form.values['person[age]'])).to.eql(27)
+      expect(Number(form.values.person.age)).to.eql(27)
+    })
+    
+    it ('should register arraylike fieldnames in forms', function() {
+      var input1 = G.Node('input', {name: 'person[interests][]', value: 'Books'});
+      var form = new G.Node('form');
+      form.appendChild(input1)
+      expect(String(form.values.person.interests)).to.eql('Books')
+
+      var input2 = G.Node('input', {name: 'person[interests][]', value: 'Vintage Diskettes'});
+      form.appendChild(input2)
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Books', 'Vintage Diskettes']))
+
+      input2.set('value', 'Modern Laser Disks')
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Books', 'Modern Laser Disks']))
+
+      input1.set('value', 'Magazines')
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
+    })
+
 
     it ('should inherit microdata object from parent scope', function() {
       var form = new G.Node('article', {itemscope: true},
@@ -1008,80 +1103,6 @@ describe('G.Node', function() {
 
       submit.href.uncall()
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
-    })
-
-    it ('should register compound fieldnames in forms', function() {
-      var input = G.Node('input', {name: 'person[name]', value: 'Oy boi'});
-      var form = new G.Node('form');
-      form.appendChild(input)
-
-      expect(String(form.values['person[name]'])).to.eql('Oy boi')
-      expect(String(form.values.person.name)).to.eql('Oy boi')
-
-      input.set('value', 'Ya bwoy')
-      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
-      expect(String(form.values.person.name)).to.eql('Ya bwoy')
-
-      var name = input.uncall()
-      expect(form.values['person[name]']).to.eql(undefined)
-      expect(form.values.person).to.eql(undefined)
-
-      name.call()
-      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
-      expect(String(form.values.person.name)).to.eql('Ya bwoy')
-
-      var value = input.value.uncall();
-      expect(form.values['person[name]']).to.eql(undefined)
-      expect(form.values.person).to.eql(undefined)
-
-      value.call();
-      expect(String(form.values['person[name]'])).to.eql('Ya bwoy')
-      expect(String(form.values.person.name)).to.eql('Ya bwoy')
-
-      input.set('name', 'person[nickname]')
-      expect(form.values['person[name]']).to.eql(undefined)
-      expect(form.values.person.name).to.eql(undefined)
-      expect(String(form.values['person[nickname]'])).to.eql('Ya bwoy')
-      expect(String(form.values.person.nickname)).to.eql('Ya bwoy')
-
-      input.set('value', 'The Peacemaker')
-      expect(form.values['person[name]']).to.eql(undefined)
-      expect(form.values.person.name).to.eql(undefined)
-      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
-      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
-
-      var age = new G.Node('input', {name: 'person[age]'})
-      form.appendChild(age);
-      expect(form.values['person[age]']).to.eql(undefined)
-      expect(form.values.person.age).to.eql(undefined)
-
-      age.set('value', 27)
-      expect(Number(form.values['person[age]'])).to.eql(27)
-      expect(Number(form.values.person.age)).to.eql(27)
-      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
-      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
-
-
-      input.uncall();
-      expect(Number(form.values['person[age]'])).to.eql(27)
-      expect(Number(form.values.person.age)).to.eql(27)
-      expect(form.values['person[nickname]']).to.eql(undefined)
-      expect(form.values.person.nickname).to.eql(undefined)
-
-      age.uncall()
-      expect(form.values.person).to.eql(undefined)
-
-      input.call();
-      expect(form.values['person[age]']).to.eql(undefined)
-      expect(form.values.person.age).to.eql(undefined)
-      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
-      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
-
-      age.call()
-      expect(String(form.values['person[nickname]'])).to.eql('The Peacemaker')
-      expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
-      expect(Number(form.values['person[age]'])).to.eql(27)
-      expect(Number(form.values.person.age)).to.eql(27)
     })
 
     it ('should chain microdata scopes', function() {

@@ -208,6 +208,7 @@ G.Node.updateTextContent = function(node) {
 // Apply attribute changes to element
 G.Node.prototype.onChange = function(key, value, old) {
   var trigger = G.Node.triggers[key];
+  var current = this[key]
   if (trigger) {
     var prop = G.Node.inheriting[key];
     if (value && old == null) {
@@ -351,7 +352,7 @@ G.Node.inheritable = Object.keys(G.Node.inherited);
 // if they are expected to observe all properties
 G.Node.triggers = {
   name: function(name) {
-    this.values.set(name, this.value, this);
+    this.values.push(name, this.value, this);
     return
   },
 
@@ -858,29 +859,74 @@ G.Node.Values.recursive = true;
 
 // parse input names like person[friends][n][name]
 // and store values like person.friends[n].name 
-G.Node.Values.prototype.onChange = function(key, value) {
+G.Node.Values.prototype.onChange = function(key, value, old) {
   var last = 0;
   var context = this;
-  for (var i = -1; (i = key.indexOf('[', i + 1)) > -1;) {
-    var bit = key.substring(last, i);
+  var length = key.length;
+  for (var i = -1; (i = key.indexOf('[', last)) > -1;) {
+    var end = i - !!last;
+    var bit = key.substring(last, end);
     if (bit.length) {
-      if (context[bit] == null) {
-        G.record.push(this);
-        context.set(bit, {})
-        G.record.pop()
+      // check if its array accessor following (e.g. [1])
+      inner: for (var letter = end; ++letter != length;) {
+        switch (key.charCodeAt(letter)) {
+          case 48: case 49: case 50: case 51: case 52: case 53:
+          case 54: case 55: case 56: case 57: case 91: case 93:
+            break;
+          default:
+            break inner;
+        }
       }
-      // if value is removed, clean up objects on its path
-      // which dont have any other sub-keys
+      if (letter == length) {
+        length = i;
+        var array = true;
+        break;
+
+      }
+
+      if (context[bit] == null) {
+
+        G.record.push(this);
+        context.set(bit, {}, this)
+        G.record.pop()
+
+      }
       context = context[bit]
-      if (value == null)
-        if (G.getLength(context) == 1)
-          context.uncall()
+      if (value == null) {
+        if (!contexts)
+          var contexts = []
+        contexts.push(context);
+      }
+
     }
     last = i + 1;
   }
   if (last) {
-    var bit = key.substring(last, key.length - 1);
-    context.set(bit, value, this);
+    var bit = key.substring(last, length - 1);
+    if (!array || context[bit] == null || value == null) {
+      if (value)
+        context.push(bit, value, (value || old).$meta);
+      else {
+        context.unset(bit, old.valueOf(), old.$meta)
+      }
+      if (value == null) {
+
+        // if value is removed, clean up objects on its path
+        // which dont have any other sub-keys
+
+        for (var j = contexts.length; j--;)
+          if (G.getLength(context) == 0) {
+            context.uncall()
+          }
+      }
+    } else {
+      for (var other = context[bit]; other; other = other.$previous) {
+        if (other.$meta && G._compareMeta(other.$meta, value.$meta)) {
+          return G.swap(value, other, value.$meta)
+        }
+      }
+      context.push(bit, value, value.$meta)
+    }
   }
 }
 

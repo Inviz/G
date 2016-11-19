@@ -195,16 +195,18 @@ G.prototype.uncall = function(soft, unformatted) {
         current = value.$previous;
         G.value.set(context, this.$key, current);     // reset head pointer
       }
-      if (value.eject)
-        value.eject()
-      else
-        G.Array.eject(value);   
-      G.notify(context, this.$key, current, value)    // Notify 
+      if (value.$next || value.$previous ||           // If currently value is in array
+         value.$parent === value.$leading) {          // or is a single child
+        if (value.eject)
+          value.eject()
+        else
+          G.Array.eject(value);   
+      }
     } else if (current === value) {
       current = undefined
       G.value.clear(this);                            // 4. Removing key from context 
-      G.notify(context, this.$key, current, value)    // Notify 
     }  
+    G.notify(context, this.$key, null, value)         // Notify 
     if (!recalling) G.$recaller = this                //   set global flag to detect recursion
     G.effects(value, G.revoke)                        // Recurse to recall side effects
     if (!recalling) G.$recaller = null;               // Reset recursion pointer
@@ -257,6 +259,8 @@ G.value.current = function(value) {
 
 // Encapsulated method to modify objects
 G.value.set = function(context, key, value) {
+  if (value == null)
+    return G.value.unset(context, key);
   context[key] = value;
 }
 G.value.unset = function(context, key, value) {
@@ -290,7 +294,7 @@ G.isPlainObject = function(value) {
 G.isReplacing = function(self, value, old, verb) {
   if (!verb || !old)
     return;
-  if (verb.multiple || !verb.reifying)
+  if ((verb.multiple || !verb.reifying) && !verb.once)
     return;
   if (self instanceof G || value instanceof G)
     return

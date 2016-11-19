@@ -393,6 +393,10 @@ G.Array.verbs = {
     return G.Array.last(old);
   },
 
+  pushOnce: function(value, old) {
+    return G.Array.verbs.push(value, old);
+  },
+
   // Add value on top of the stack 
   push: function(value, old) {
     if (value.$next || value.$previous)
@@ -509,3 +513,5 @@ G.Array.verbs.before.binary =
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
 G.Array.verbs.replace.binary = true;
+
+G.Array.verbs.pushOnce.once = true;
