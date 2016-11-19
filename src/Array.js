@@ -394,6 +394,13 @@ G.Array.verbs = {
   },
 
   pushOnce: function(value, old) {
+    debugger
+
+    for (var other = old; other; other = other.$previous) {
+      if (other.$meta && G._compareMeta(other.$meta, value.$meta)) {
+        return G.Array.verbs.swap(value, other)
+      }
+    }
     return G.Array.verbs.push(value, old);
   },
 
@@ -483,7 +490,7 @@ G.Array.verbs = {
 
   // Nest value into another
   append: function(value, old) {
-    if (value.$next || value.$previous || value.$parent != old)
+    if (value.$next || value.$previous || (value.$parent && value.$parent != old))
       G.Array.eject(value, true);
 
     G.Array.link(value, old.$next);
@@ -494,7 +501,7 @@ G.Array.verbs = {
 
   // Add element on top
   prepend: function(value, old) {
-    if (value.$next || value.$previous)
+    if (value.$next || value.$previous || (value.$parent && value.$parent != old))
       G.Array.eject(value, true);
     G.Array.link(old, value, true);
     if (old.$first) {
@@ -513,5 +520,3 @@ G.Array.verbs.before.binary =
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
 G.Array.verbs.replace.binary = true;
-
-G.Array.verbs.pushOnce.once = true;

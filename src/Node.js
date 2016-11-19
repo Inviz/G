@@ -352,7 +352,8 @@ G.Node.inheritable = Object.keys(G.Node.inherited);
 // if they are expected to observe all properties
 G.Node.triggers = {
   name: function(name) {
-    this.values.push(name, this.value, this);
+    debugger
+    this.values.pushOnce(name, this.value, this);
     return
   },
 
@@ -906,9 +907,9 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
     if (!array || context[bit] == null || value == null) {
       if (value)
         context.push(bit, value, (value || old).$meta);
-      else {
+      else 
         context.unset(bit, old.valueOf(), old.$meta)
-      }
+
       if (value == null) {
 
         // if value is removed, clean up objects on its path
@@ -920,12 +921,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
           }
       }
     } else {
-      for (var other = context[bit]; other; other = other.$previous) {
-        if (other.$meta && G._compareMeta(other.$meta, value.$meta)) {
-          return G.swap(value, other, value.$meta)
-        }
-      }
-      context.push(bit, value, value.$meta)
+      context.pushOnce(bit, value, value.$meta)
     }
   }
 }
