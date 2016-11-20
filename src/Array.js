@@ -111,11 +111,13 @@ G.prototype.forEach = function(callback) {
 
 }
 
-G.Array.strategy = function(value, verb) {
-  if (!verb)
+G.Array.process = function(value, other, verb) {
+  if (verb)
+    G.Array.mark(value, verb.multiple)                // Update arraylike flag 
+  else if (value.$multiple)                           // When restoring arraylike value
     if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
       if (verb !== null)                              // If that didnt work and if not switching values
-        return G.Array.verbs.push;                    //   fall back to push verb
+        return G.Array.verbs.push;                    // fall back to push verb
   return verb;
 }
 
@@ -406,14 +408,13 @@ G.Array.verbs = {
   },
 
   pushOnce: function(value, old) {
-
-    for (var other = old; other; other = other.$previous) {
-      if (other.$meta && G.meta.equals(other.$meta, value.$meta)) {
-        return G.Array.verbs.swap(value, other)
-      }
-    }
     return G.Array.verbs.push(value, old);
   },
+
+  unshiftOnce: function(value, old) {
+    return G.Array.verbs.push(value, old);
+  },
+
 
   // Add value on top of the stack 
   push: function(value, old) {
@@ -474,7 +475,6 @@ G.Array.verbs = {
           G.Array.register(value, n)
           G.Array.link(value, n);
         }
-        G.value.propagate(old, old)                         // ! Update effects of the swapped value
         return old;
       }
     } else {
@@ -487,7 +487,8 @@ G.Array.verbs = {
       G.Array.eject(value, true);
     var p = old.$previous;
     var n = old.$next;
-    old.uncall(null, arg);
+    if (arg !== undefined)
+      old.uncall(null, arg);
     if (p){
       G.Array.link(p, value);
       G.Array.register(p, value, old.$parent)
@@ -526,3 +527,4 @@ G.Array.verbs.before.binary =
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
 G.Array.verbs.replace.binary = true;
+G.Array.verbs.pushOnce.once = true;

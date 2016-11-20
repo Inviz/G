@@ -68,6 +68,10 @@ G.history.matches = function(context, key, value, meta, callback) {
   return result;
 }
 
+G.history.hasLinks = function(value) {
+  return value.$succeeding || value.$preceeding
+}
+
 
 // Replace one operation in history with another 
 // Removed value keeps its pointers

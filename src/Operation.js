@@ -105,58 +105,45 @@ G.prototype.call = function(verb, old) {
   if (this.$future)
     return G.Future.call(this, old) 
   
-  
   if (typeof verb == 'string')
     verb = G.verbs[verb];
   if (old === undefined)
     old = G.value.current(this);
-  var value   = G.value.format(this, old);                  // Transform value 
-  var result  = value;
 
-  var other = G.history(value, old, verb);
-  
-  if (value.$source)                                  // When value is a shallow reference to object
-    if (G.value.willBeVisible(old, verb, other)) {   
-      result = G.value.reify(value, this);                  // Create a G object subscribed to reference
-      value = G.value.reuse(result, value)            // Use it instead of value, if possible
-    }
-
-  if (value.$multiple)                                // If value is marked as arraylike previously
-    verb = G.Array.strategy(value, verb);             // Attempt to put it back at its place in collection
+  var value, other;
+  value  = G.value.format(this, old);                 // Transform value 
+  other  = G.history(value, old, verb);               // Find value with matching meta in history
+  result = G.value.process(value, old, other, verb)
+  value  = G.value.reuse(result, value)               // Use it instead of value, if possible
+  verb   = G.Array.process(value, other, verb);       // Attempt to put it back at its place in collection
 
   if (verb) {                                         
-    G.Array.mark(value, verb.multiple)                // Mark value as arraylike if verb 
     if (old != null && old.$key) {                    // If there was another value by that key
       if (other) {                                    // If history holds a value with same meta
         if (G.value.equals(other, result))            //   If it's equal to given value
           return G.record.reuse(other);               //     Use that other value instead
-        result = G.history.update(result, old, other);//   Or replace it in stack
+        if (other.$multiple)
+          G.verbs.replace(value, other)
+        else
+          result = G.history.update(result, old, other);//   Or replace it in stack
       } else {
         other = verb(result, old);                    // invoke stack-manipulation method
         if (other === false) {                        // No side effect will be observed
           return G.record.continue(value, old);
-        } else if (other) {
-          if (verb.reifying)
-            value = result = other;
-          else 
-            old = other;
-        } else []
+        } else if (other && verb.reifying) {
+          value = result = other;
+        }
       }
     }
-  } else {
-    if (verb !== null && old && (value.$succeeding || value.$preceeding)) {
-      G.verbs.restore(result, old)}
+  } else if (verb !== null) {
+    if (old && G.history.hasLinks(value))
+      G.verbs.restore(result, old)
   }
 
-  if (!G.record.isLinked(value))           // If operation position in graph needs update
-    G.record(value, old, verb);                       // Register in graph and remember caller op/callback
+  if (!G.record.isLinked(value))                       // If operation position in graph needs update
+    G.record(value, old, verb);                        // Register in graph and remember caller op/callback
 
-  G.value.apply(result);                            // Save value in its context
-
-  var origin = value.$multiple ? value : result;
-  if (origin !== old || origin.$multiple)
-    G.value.propagate(origin, old);                         // Propagate side effects
-  return value;
+  return G.value(value, old, result, other, verb)
 };
 
 G.prototype.recall = function() {
@@ -197,8 +184,7 @@ G.prototype.uncall = function(soft, unformatted) {
         current = value.$previous;
         G.value.set(context, this.$key, current);     // reset head pointer
       }
-      if (value.$next || value.$previous ||           // If currently value is in array
-         value.$parent === value.$leading) {          // or is a single child
+      if (G.Array.isLinked(value)) {          // or is a single child
         if (value.eject)
           value.eject()
         else

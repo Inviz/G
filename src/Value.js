@@ -1,14 +1,34 @@
-G.value = function() {
+G.value = function(value, old, result, other, verb) {
+  G.value.apply(result);                            // Save value in its context
+  if (value.$multiple)
+    result = value;
+  if (result !== old || result.$multiple) {         // Decide if value should be propagated
+    G.record.push(result);                           // Put operation onto the caller stack
+    G.value.affect(result, old);                     // Apply side effects and invoke observers 
+    if (old && old.$iterators)
+      G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
+    G.notify(result.$context, result.$key, result, old)// Trigger user callbacks 
+    G.record.pop();
+  }
 
-}
+  if (result.$multiple && other && verb) {
+    if (G.Array.isLinked(other)) {
+      G.record.push(other);                             // Put operation onto the caller stack
+      G.value.affect(other);                            // Apply side effects and invoke observers 
+      //if (old && old.$iterators)
+      //  G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
+      G.record.pop();
+    } else {
+      other.uncall()
+    }
+    if (other.$context !== result.$context ||
+        other.$key !== result.$key)
+    G.notify(other.$context, other.$key, other)// Trigger user callbacks 
+      
+  }
+        
 
-G.value.propagate = function(value, old) {
-  G.record.push(value);                              // Put operation onto the caller stack
-  G.value.affect(value, old);                              // Apply side effects and invoke observers 
-  if (old && old.$iterators)
-    G.Array.iterate(value, old.$iterators)           // Invoke array's active iterators
-  G.notify(value.$context, value.$key, value, old)   // Trigger user callbacks 
-  G.record.pop();  
+  return value;
 }
 
 // Process pure value transformations 
@@ -134,6 +154,13 @@ G.value.get = function(context, key, result) {
 }
 
 
+G.value.process = function(value, old, other, verb) {
+  if (value.$source)                                // When value is a shallow reference to object
+    if (G.value.willBeVisible(old, verb, other))
+      return G.value.reify(value);                  // Create a G object subscribed to reference
+  return value;
+}
+
 G.value.reify = function(value, target) {
   if (value.$source && value.$source.$composable) { // Composable objects are adopted
     value.$source.$key = value.$key;                // Rewrite object's key/context to new owner
@@ -163,7 +190,9 @@ G.value.reify = function(value, target) {
 }
 
 G.value.reuse = function(target, source) {          // If plain JS object was referenced
-  if (!source.$source.observe) {                    // Use G object as value
+  if (target === source) {
+    return target;
+  } else if (!source.$source.observe) {                    // Use G object as value
     target.$meta = source.$meta;
     return target;
   } else if (target.$key == source.$key && 
