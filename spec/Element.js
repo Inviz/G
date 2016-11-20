@@ -1014,6 +1014,12 @@ describe('G.Node', function() {
       input1.set('value', 'Magazines')
       expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
       expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
+
+      debugger
+      G.swap(input2, input1);
+      expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Modern Laser Disks', 'Magazines']))
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Modern Laser Disks', 'Magazines']))
+
     })
 
 

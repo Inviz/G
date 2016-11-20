@@ -527,4 +527,5 @@ G.Array.verbs.before.binary =
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
 G.Array.verbs.replace.binary = true;
+G.Array.verbs.unshiftOnce.once =
 G.Array.verbs.pushOnce.once = true;

@@ -432,7 +432,6 @@ G.Node.types = {
 
 G.Node.prototype.onregister = function(parent) {
   for (var child = this; child != this.$next; child = child.$following) {
-    G.Node.inherit(child);
     if (child.itemprop && child.$microdata) {
       if (topmost == null)
         if (!(topmost = this.$microdata))
@@ -443,40 +442,19 @@ G.Node.prototype.onregister = function(parent) {
             }
           }
       if (topmost && child.$microdata == topmost)
-        G.Node.reorderMicrodata(child)
+        child.$microdata.reorder(child);
     }
-  }
+    if (child.name && child.$values) {
+      var value = child.$values.reorder(child);
 
-}
-G.Node.reorderMicrodata = function(node) {
-  var own = node.$microdata[node.itemprop];
-  for (; own; own = own.$previous)
-    if (own.$caller === node.itemprop)
-      break;
-  if (own == null) return;
-
-  var prop = node.itemprop.valueOf()
-  for (var before = node; before = before.$leading;) { // Find nodes in DOM with same itemprop
-    if (before.itemscope && 
-      before.itemscope.microdata == node.$microdata)
-      break;
-    if (prop == before.itemprop) {
-      var current = node.$microdata[prop];
-      for (; current; current = current.$previous) {
-        if (current.$caller === before.itemprop 
-        || current.$caller == before.itemscope) {
-          if (own.$previous != current)
-            return G.after(own, current); // put value where it should be
-          return;
+      for (var after = child.name; after = after.$after;) {
+        if (after.$cause == value.$cause && after.$context != child.$values) {
+          child.$values.reorder(after)
         }
       }
     }
+    G.Node.inherit(child);
   }
-
-  var first = G.Array.first(own);
-  if (first !== own)
-    return G.before(own, first) // put value on top
-  return;
 }
 G.Node.prototype.onunregister = function(parent) {
   for (var child = this; child != this.$next; child = child.$following) {
@@ -849,6 +827,53 @@ G.Node.Microdata = function() {
 G.Node.Microdata.prototype = new G;
 G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.recursive = true;
+G.Node.Microdata.prototype.$attribute = 'itemprop';
+G.Node.Microdata.prototype.getValueByNode = function(node, value) {
+  var name = node[this.$attribute];
+  if (value == null) {
+    value = this[name];
+    for (; value; value = value.$previous)
+      if (value.$caller === name)
+        return value
+  } else {
+    while (value.$next)
+      value = value.$next;
+    for (; value; value = value.$previous)
+      if (value.$caller === this[name])
+        return value
+  }
+}
+G.Node.Microdata.prototype.reorder = function(value) {
+  if (value instanceof G.Node) {
+    var node = value;
+    value = this.getValueByNode(node);
+    if (!value) return
+  } else {
+    debugger
+    var node = value.$meta[0]
+    var target = value;
+  }
+  var prop = node[this.$attribute].valueOf()
+  var cause = G.$cause;
+  G.$cause = value.$cause;
+  for (var before = node; before = before.$leading;) { // Find nodes in DOM with same name
+    if (this.$context === node)
+      break;
+    if (prop == before[this.$attribute]) {
+      var other = this.getValueByNode(before, target);
+      if (other) {
+        if (value.$previous != other)
+          G.after(value, other); // put value where it should be
+        return value
+      }
+    }
+  }
+  var first = G.Array.first(value);
+  if (first !== value)
+    G.before(value, first) // put value on top
+  G.$cause = cause;
+  return value;
+}
 
 G.Node.Values = function() {
   G.apply(this, arguments);
@@ -856,7 +881,11 @@ G.Node.Values = function() {
 G.Node.Values.prototype = new G;
 G.Node.Values.prototype.constructor = G.Node.Values;
 G.Node.Values.recursive = true;
-
+G.Node.Values.prototype.$attribute = 'name';
+G.Node.Values.prototype.reorder = 
+  G.Node.Microdata.prototype.reorder;
+G.Node.Values.prototype.getValueByNode = 
+  G.Node.Microdata.prototype.getValueByNode;
 // parse input names like person[friends][n][name]
 // and store values like person.friends[n].name 
 G.Node.Values.prototype.onChange = function(key, value, old) {

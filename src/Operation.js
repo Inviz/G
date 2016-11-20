@@ -110,7 +110,7 @@ G.prototype.call = function(verb, old) {
   if (old === undefined)
     old = G.value.current(this);
 
-  var value, other;
+  var value, other, result;
   value  = G.value.format(this, old);                 // Transform value 
   other  = G.history(value, old, verb);               // Find value with matching meta in history
   result = G.value.process(value, old, other, verb)
