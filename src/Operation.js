@@ -31,7 +31,7 @@ var G = function(context, key, value) {
   if (arguments.length > 3) {                         // Use/merge extra arguments as meta
     for (var args = [], i = 0; i < arguments.length - 3; i++)
       args[i] = arguments[i + 3];
-    G._setMeta(this, args);
+    G.meta.set(this, args);
   }
   if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
     this.call = G.prototype.call;
@@ -91,7 +91,7 @@ G.create = function(context, key, value) {
   if (arguments.length > 3) {                         // Use/merge extra arguments as meta
     for (var args = [], i = 0; i < arguments.length - 3; i++)
       args[i] = arguments[i + 3];
-    G._setMeta(result, args);
+    G.meta.set(result, args);
   }
   return result
 }
@@ -102,16 +102,19 @@ G.create = function(context, key, value) {
 // linked list of effects will not be altered 
 G.extend = G.call
 G.prototype.call = function(verb, old) {
+  if (this.$future)
+    return G.Future.call(this, old) 
+  
+  
   if (typeof verb == 'string')
     verb = G.verbs[verb];
-  var current     = G.value.current(this);
   if (old === undefined)
-    old = current;
+    old = G.value.current(this);
   var value   = G.format(this, old);                  // Transform value 
   var result  = value;
 
   if (G.isReplacing(this, value, old, verb))          // If key is supposed to have singular value
-    var other = G.match(value.$meta, old)             //   Attempt to find value with same meta in history 
+    var other = G.history.match(value.$meta, old)     //   Attempt to find value with same meta in history 
 
   if (value.$source)                                  // When value is a shallow reference to object
     if (G.isChangeVisible(old, verb, other)) {   
@@ -119,22 +122,18 @@ G.prototype.call = function(verb, old) {
       value = G.reify.reuse(result, value)            // Use it instead of value, if possible
     }
 
-  if (value.$multiple && !verb) {                     // If value is marked as arraylike previously
-    if (G.Array.inject(value) !== false) {            // Attempt to put it back at its place in collection
-      while (result.$next)                            // Use head of collection as result
-        result = result.$next;
-    } else if (!verb && verb !== null)                // When not switching values
-      verb = G.Array.verbs.push;                            //   fall back to push verb
-  } else if (value.$future) {
-    return G.Future.call(value, old) 
-  }
+  if (!verb && value.$multiple)                       // If value is marked as arraylike previously
+    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
+      if (verb !== null)                              // If that didnt work and if not switching values
+        verb = G.Array.verbs.push;                    //   fall back to push verb
+
   if (verb) {                                         
     G.Array.mark(value, verb.multiple)                // Mark value as arraylike if verb 
     if (old != null && old.$key) {                    // If there was another value by that key
       if (other) {                                    // If history holds a value with same meta
         if (G.equals(other, result))                  //   If it's equal to given value
           return G.record.reuse(other);               //     Use that other value instead
-        result = G.update(result, old, other);        //   Or replace it in stack
+        result = G.history.update(result, old, other);//   Or replace it in stack
       } else {
         other = verb(result, old);                    // invoke stack-manipulation method
         if (other === false) {                        // No side effect will be observed
@@ -144,20 +143,18 @@ G.prototype.call = function(verb, old) {
             value = result = other;
           else 
             old = other;
-        }
-        if (verb.multiple)
-          while (result.$next)
-            result = result.$next;
-        
+        } else []
       }
     }
-  } else if (verb !== null && old && (value.$succeeding || value.$preceeding)) {
-    G.verbs.restore(result, old)}
-  if (!G.isLinked(value))           // If operation position in graph needs update
+  } else {
+    if (verb !== null && old && (value.$succeeding || value.$preceeding)) {
+      G.verbs.restore(result, old)}
+  }
+
+  if (!G.record.isLinked(value))           // If operation position in graph needs update
     G.record(value, old, verb);                       // Register in graph and remember caller op/callback
 
-  if (result !== current)                             // If value is the new head
-    G.value.apply(result);                            // Save value in its context
+  G.value.apply(result);                            // Save value in its context
 
   var origin = value.$multiple ? value : result;
   if (origin !== old || origin.$multiple)
@@ -170,7 +167,7 @@ G.prototype.recall = function() {
   if (arguments.length > arity)                         // Use/merge extra arguments as meta
     for (var meta = [], i = 0; i < arguments.length - arity; i++)
       meta[i] = arguments[i + arity];
-  G.stack(this.$context, this.$key, undefined, meta, G.uncall);
+  G.history.matches(this.$context, this.$key, undefined, meta, G.uncall);
   return this;
 };
 
@@ -250,7 +247,7 @@ G.prototype.uncall = function(soft, unformatted) {
 // Recall and remove from history
 G.prototype.revoke = function() {
   this.uncall();
-  G.rebase(G.formatted(this), null)
+  G.history.rebase(G.formatted(this), null)
   return this;
 }
 
@@ -259,6 +256,11 @@ G.value.clear = function(value) {
   G.value.unset(value.$context, value.$key);
 }
 G.value.apply = function(value) {
+  while (value.$next && // Use head of collection as result
+         value.$next.$context === value.$context &&
+         value.$next.$key     === value.$key)                            
+      value = value.$next;
+  
   G.value.set(value.$context, value.$key, value);
 }
 G.value.current = function(value) {
@@ -269,7 +271,8 @@ G.value.current = function(value) {
 G.value.set = function(context, key, value) {
   if (value == null)
     return G.value.unset(context, key);
-  context[key] = value;
+  if (context[key] !== value)
+    context[key] = value;
 }
 G.value.unset = function(context, key, value) {
   delete context[key];
@@ -289,7 +292,7 @@ G.fork = function(primitive, value) {
 
 G.equals = function(value, old) {
   return value.valueOf() == old.valueOf() && 
-         G._compareMeta(value.$meta, old.$meta);
+         G.meta.equals(value.$meta, old.$meta);
 }
 G.isObject = function(value) {
   return (value instanceof G && !(value instanceof G.Node)) || 

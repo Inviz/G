@@ -31,7 +31,7 @@ G.prototype.get = function(key, value) {
   var arity = (this.watch ? 1 : 2) + (value == null ? 0 : 1)
   if (arguments.length > arity)
     var meta = Array.prototype.slice.call(arguments, arity);
-  return G.match(meta, this[key]);
+  return G.history.match(meta, this[key]);
 }
 
 // Check if key is enumerable
@@ -50,7 +50,7 @@ G.prototype.unset = function(key, value) {
     for (var meta = [], i = 0; i < arguments.length - arity; i++)
       meta[i] = arguments[i + arity];
 
-  G.stack(this, key, value, meta, G.uncall);
+  G.history.matches(this, key, value, meta, G.uncall);
 }
 
 // Serialize to json

@@ -797,7 +797,7 @@ G.Node.updateAttributes = function(node, attributes, old) {
         var o = (old ? old[key] : undefined);
         
         if (o != v) {
-          if (o == null || G.stack(node, key, o, o && o.$meta)) 
+          if (o == null || G.history.matches(node, key, o, o && o.$meta)) 
             node.push(key, v)
         }
       }

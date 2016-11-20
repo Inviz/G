@@ -400,7 +400,7 @@ G.Array.verbs = {
   pushOnce: function(value, old) {
 
     for (var other = old; other; other = other.$previous) {
-      if (other.$meta && G._compareMeta(other.$meta, value.$meta)) {
+      if (other.$meta && G.meta.equals(other.$meta, value.$meta)) {
         return G.Array.verbs.swap(value, other)
       }
     }

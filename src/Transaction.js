@@ -37,7 +37,7 @@ G.format = function(value, old) {
         result = G.callback(result, group[i], old); //   apply formatters in order
       result.$formatted = group                     //   store formatting configuration
     }
-    G.rebase(value, result);                        // Replace value in the stack of values for key
+    G.history.rebase(value, result);                        // Replace value in the stack of values for key
     G.link(result, after);
     if (multiple) {
       result.$multiple = true;
@@ -318,7 +318,7 @@ G.last = function(value) {
     return last;
 } 
 
-G.isLinked = function(value) {
+G.record.isLinked = function(value) {
   return value.$caller && (!value.$before || value.$before.$after == value);
 }
 

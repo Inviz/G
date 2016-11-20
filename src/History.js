@@ -14,31 +14,36 @@
 */
 
 // Find operation in group or history that matches meta of a given operation 
-G.match = function(meta, old) {
+
+G.history = function() {
+
+};
+
+G.history.match = function(meta, old) {
   // Allow meta to be passed as array
   if (meta && meta.length == 1 && (!meta[0] || meta[0] instanceof Array))
     meta = meta[0];
 
-  if (G._compareMeta(old.$meta, meta))            // 1. Current value matches
+  if (G.meta.equals(old.$meta, meta))            // 1. Current value matches
     return old;
 
   for (var other = old; other = other.$previous;) 
-    if (G._compareMeta(other.$meta, meta))        // 2. Group value matched
+    if (G.meta.equals(other.$meta, meta))        // 2. Group value matched
       return other;
 
   for (other = old; other;) {                     
-    if (G._compareMeta(other.$meta, meta))        // 3. Value in history matched
+    if (G.meta.equals(other.$meta, meta))        // 3. Value in history matched
       return other;
     other = other.$preceeding
   }
 };
 
 // Iterate all values in stack that match meta & value
-G.stack = function(context, key, value, meta, callback) {
+G.history.matches = function(context, key, value, meta, callback) {
   var current = G.value.get(context, key);
   if (!current) return;
   
-  for (var old = current; old = G.match(meta, old); old = next) {
+  for (var old = current; old = G.history.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
     for (var head = old; head != current && head.$next;)
       head = head.$next;
@@ -56,7 +61,7 @@ G.stack = function(context, key, value, meta, callback) {
 // Replace one operation in history with another 
 // Removed value keeps its pointers
 // so it can be re-applied in place in future
-G.rebase = function(old, value) {
+G.history.rebase = function(old, value) {
   if (value) {                                      // 1. Switching value in history
     if (value.$succeeding = old.$succeeding)        //    Steal neighbour pointers
       value.$succeeding.$preceeding = value;        //    Assign foreign pointers
@@ -72,20 +77,24 @@ G.rebase = function(old, value) {
 };
 
 // Attempt to perform soft update, one that only changes references 
-G.update = function(value, old, other) {
+G.history.update = function(value, old, other) {
   if (other === value) {                            // 1. Op is already in history, so it's redo
     return value;                                   //    Not changing history
   } else if (other === old) {                       // 2. New value matches meta of old value 
-    G.rebase(old, value);                           //    Switch in place
+    G.history.rebase(old, value);                           //    Switch in place
     return value;                                   //    Return new value
   } else if (other) {                               // 3. Value matches
-    G.rebase(other, value);                         //    Replace it in history
+    G.history.rebase(other, value);                         //    Replace it in history
     return old;
   }
 };
 
+G.meta = function() {
+
+}
+
 // Compare two arrays of arguments 
-G._compareMeta = function(meta1, meta2) {
+G.meta.equals = function(meta1, meta2) {
   if (meta1 == meta2)
     return true;
   if ((!meta1 && meta2) || (meta1 && !meta2) || meta1.length !== meta2.length)
@@ -96,7 +105,7 @@ G._compareMeta = function(meta1, meta2) {
   return true;
 };
 
-G._setMeta = function(op, meta) {
+G.meta.set = function(op, meta) {
   if (meta) {
     if (meta.length < 2 && (meta[0] == null || meta[0] instanceof Array))
       op.$meta = meta[0] || undefined
@@ -105,7 +114,7 @@ G._setMeta = function(op, meta) {
   }
 }
 
-G._isUserData = function(op) {
+G.meta.isPriority = function(op) {
   return !op.$meta
 };
 
@@ -117,9 +126,9 @@ G.verbs = {
 
   // Reassignment - Sets operation as head of the stack 
   set: function(value, old) {
-
-    if (!G._isUserData(value) && G._isUserData(old))
-      for (var last = old; last.$preceeding && G._isUserData(last);)
+    // values without meta come after ones with meta
+    if (!G.meta.isPriority(value) && G.meta.isPriority(old))
+      for (var last = old; last.$preceeding && G.meta.isPriority(last);)
         last = last.$preceeding
 
     if (last) {
@@ -140,9 +149,9 @@ G.verbs = {
 
   // Preassignment - Puts value at stack bottom, will not fire callbacks 
   preset: function(value, old) {
-
-    if (G._isUserData(value))
-      for (var last = old; last.$preceeding && G._isUserData(last);)
+    // values without meta come after ones with meta
+    if (G.meta.isPriority(value))
+      for (var last = old; last.$preceeding && G.meta.isPriority(last);)
         last = last.$preceeding
 
     if (last) {

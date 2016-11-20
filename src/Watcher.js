@@ -206,12 +206,12 @@ G.prototype.observe = function(source, preset, meta, method) {
         return this.merge(source, meta);
     }
     var target = source;
-    G._setMeta(target, meta);
+    G.meta.set(target, meta);
     target.$method = method;
     target.$target = this;
   } else if (meta != null) {
     var target = new G.Future;
-    G._setMeta(target, meta);
+    G.meta.set(target, meta);
     target.$method = method;
     target.$target = this;
   } else {
