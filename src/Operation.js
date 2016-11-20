@@ -120,11 +120,11 @@ G.prototype.call = function(verb, old) {
     }
 
   if (value.$multiple && !verb) {                     // If value is marked as arraylike previously
-    if (G.Array.inject(value)) {                      // Attempt to put it back at its place in collection
+    if (G.Array.inject(value) !== false) {            // Attempt to put it back at its place in collection
       while (result.$next)                            // Use head of collection as result
         result = result.$next;
     } else if (!verb && verb !== null)                // When not switching values
-      verb = G.verbs.push;                            //   fall back to push verb
+      verb = G.Array.verbs.push;                            //   fall back to push verb
   } else if (value.$future) {
     return G.Future.call(value, old) 
   }
@@ -136,15 +136,23 @@ G.prototype.call = function(verb, old) {
           return G.record.reuse(other);               //     Use that other value instead
         result = G.update(result, old, other);        //   Or replace it in stack
       } else {
-        result = verb(result, old);                   // invoke stack-manipulation method
-        if (result === false)                         // No side effect will be observed
+        other = verb(result, old);                    // invoke stack-manipulation method
+        if (other === false) {                        // No side effect will be observed
           return G.record.continue(value, old);
-        if (value.$source && result !== old)
-          value = result  
+        } else if (other) {
+          if (verb.reifying)
+            value = result = other;
+          else 
+            old = other;
+        }
+        if (verb.multiple)
+          while (result.$next)
+            result = result.$next;
+        
       }
     }
   } else if (verb !== null && old && (value.$succeeding || value.$preceeding)) {
-    result = G.verbs.restore(result, old)}
+    G.verbs.restore(result, old)}
   if (!G.isLinked(value))           // If operation position in graph needs update
     G.record(value, old, verb);                       // Register in graph and remember caller op/callback
 

@@ -126,7 +126,7 @@ G.verbs = {
       value.$preceeding = last.$preceeding;
       last.$preceeding = value;
       value.$succeeding = last;
-      return old;
+      return false;
     } else {
       if (value.$source)
         value = G.reify(value)
@@ -134,7 +134,7 @@ G.verbs = {
         value.$succeeding.$preceeding = value
       old.$succeeding = value;
       value.$preceeding = old;
-      return value;
+      return value
     }
   },
 
@@ -151,18 +151,17 @@ G.verbs = {
       value.$succeeding = last.$succeeding;
       last.$succeeding = value;
       value.$preceeding = last;
-      if (last == old)
-        return value
-      else
-        return old;
+      if (last !== old)
+        return false;
+      return value;
     } else {
       for (var first = old; first.$preceeding;)
         first = first.$preceeding;
       first.$preceeding = value;
       value.$succeeding = first;
       value.$preceeding = undefined;
+      return false;
     }
-    return false;
   },
 
 
@@ -191,13 +190,12 @@ G.verbs = {
       value.$succeeding = old;
       value.$preceeding = old.$preceeding;
       old.$preceeding = value;
-      return old
     } else {
       value.$preceeding = old;
       value.$succeeding = old.$succeeding;
       old.$succeeding = value;
-      return value;
     }
+    return value;
   },
   // merge two objects
   merge: function(value, old, meta) {
@@ -208,7 +206,7 @@ G.verbs = {
     } else {
       old.merge(value, meta)
     }
-    return old;
+    return false;
   },
 
   // merge object underneath another
@@ -220,7 +218,7 @@ G.verbs = {
     } else {
       old.defaults(value, meta)
     }
-    return old;
+    return false;
   }
 
 };

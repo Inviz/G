@@ -352,7 +352,6 @@ G.Node.inheritable = Object.keys(G.Node.inherited);
 // if they are expected to observe all properties
 G.Node.triggers = {
   name: function(name) {
-    debugger
     this.values.pushOnce(name, this.value, this);
     return
   },

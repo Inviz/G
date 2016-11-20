@@ -226,9 +226,10 @@ G.Future.setValue = function(watcher, value, result) {
       }
     }
     if (!old || old.valueOf() != result.valueOf()) {
-      if (watcher.$current)
-        watcher.$current = G.verbs.push(result, watcher.$current)
-      else
+      if (watcher.$current) {
+        G.Array.verbs.push(result, watcher.$current)
+        watcher.$current = G.Array.last(watcher.$current);
+      } else
         watcher.$current = result;
 
       if (old)

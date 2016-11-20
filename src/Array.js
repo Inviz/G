@@ -345,6 +345,10 @@ G.Array.last = function(array) {
   return array;
 }
 
+G.Array.isLinked = function(value) {
+  return value.$next   || value.$previous || 
+        (value.$parent && value.$parent.$first === value)
+}
 G.Array.multiple = true
 G.Array.verbs = {
 
@@ -370,7 +374,7 @@ G.Array.verbs = {
     if (old.$next)
       G.Array.register(value, old.$next, value.$parent)
     G.Array.register(old, value, value.$parent)
-    return G.Array.last(old);
+
   },
 
   // place element before another
@@ -390,11 +394,10 @@ G.Array.verbs = {
     }
     G.Array.link(value, old)
     G.Array.register(value, old, old.$parent);
-    return G.Array.last(old);
+
   },
 
   pushOnce: function(value, old) {
-    debugger
 
     for (var other = old; other; other = other.$previous) {
       if (other.$meta && G._compareMeta(other.$meta, value.$meta)) {
@@ -406,14 +409,14 @@ G.Array.verbs = {
 
   // Add value on top of the stack 
   push: function(value, old) {
-    if (value.$next || value.$previous)
+    if (G.Array.isLinked(value))
       G.Array.eject(value, true);
     // if push() was inside iterator
     var after = G.Array.findIterated(old);
     if (after === false) { 
-      return G.Array.verbs.before(value, G.Array.first(old)); // place as tail
+      G.Array.verbs.before(value, G.Array.first(old)); // place as tail
     } else {
-      return G.Array.verbs.after(value, after || old);   // place as head
+      G.Array.verbs.after(value, after || old);   // place as head
     }
   },
 
@@ -422,10 +425,10 @@ G.Array.verbs = {
     for (var other = old; other; other = other.$previous) {
       if (other.valueOf() == value.valueOf()) {
         G.verbs.preset(value, old);
-        return old;
+        return false;
       }
     }
-    return G.Array.verbs.push(value, old);
+    G.Array.verbs.push(value, old);
   },
 
   // Add value to the bottom of the stack 
@@ -464,7 +467,7 @@ G.Array.verbs = {
           G.Array.link(value, n);
         }
         G.propagate(old, old)                         // ! Update effects of the swapped value
-        return value;
+        return old;
       }
     } else {
       return G.Array.verbs.replace(value, old)
@@ -472,7 +475,7 @@ G.Array.verbs = {
   },
 
   replace: function(value, old, arg) {
-    if (value.$next || value.$previous)
+    if (G.Array.isLinked(value))
       G.Array.eject(value, true);
     var p = old.$previous;
     var n = old.$next;
@@ -485,24 +488,21 @@ G.Array.verbs = {
       G.Array.link(value, n);
       G.Array.register(value, n, old.$parent)
     }
-    return value;
+    return old;
   },
 
   // Nest value into another
   append: function(value, old) {
-    if (value.$next || value.$previous || (value.$parent && value.$parent != old))
+    if (G.Array.isLinked(value))
       G.Array.eject(value, true);
 
     G.Array.link(value, old.$next);
     G.Array.link(old, value)
     G.Array.register(old.$last, value, old);
-    return old;
   },
 
   // Add element on top
   prepend: function(value, old) {
-    if (value.$next || value.$previous || (value.$parent && value.$parent != old))
-      G.Array.eject(value, true);
     G.Array.link(old, value, true);
     if (old.$first) {
       G.Array.link(value, old.$first)
@@ -511,8 +511,6 @@ G.Array.verbs = {
       G.Array.link(value, old.$next);
       G.Array.register(null, value, old);
     }
-
-    return old;
   }
 };
 
