@@ -15,9 +15,20 @@
 
 // Find operation in group or history that matches meta of a given operation 
 
-G.history = function() {
-
+G.history = function(value, old, verb) {
+  if (G.history.isReplacing(value, old, verb))    // If key is supposed to have singular value
+    return G.history.match(value.$meta, old)      //   Attempt to find value with same meta in history 
 };
+
+G.history.isReplacing = function(value, old, verb) {
+  if (!verb || !old)
+    return;
+  if ((verb.multiple || !verb.reifying) && !verb.once)
+    return;
+  if (value instanceof G)
+    return
+  return true;
+}
 
 G.history.match = function(meta, old) {
   // Allow meta to be passed as array
@@ -138,7 +149,7 @@ G.verbs = {
       return false;
     } else {
       if (value.$source)
-        value = G.reify(value)
+        value = G.value.reify(value)
       if (value.$succeeding = old.$succeeding)
         value.$succeeding.$preceeding = value
       old.$succeeding = value;
@@ -156,7 +167,7 @@ G.verbs = {
 
     if (last) {
       if (last == old && value.$source)
-        value = G.reify(value)
+        value = G.value.reify(value)
       value.$succeeding = last.$succeeding;
       last.$succeeding = value;
       value.$preceeding = last;

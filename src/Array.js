@@ -111,6 +111,14 @@ G.prototype.forEach = function(callback) {
 
 }
 
+G.Array.strategy = function(value, verb) {
+  if (!verb)
+    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
+      if (verb !== null)                              // If that didnt work and if not switching values
+        return G.Array.verbs.push;                    //   fall back to push verb
+  return verb;
+}
+
 G.Array.iterate = function(array, iterators) {
   for (var i = 0; i < iterators.length; i++) {
     var callback = iterators[i];
@@ -466,7 +474,7 @@ G.Array.verbs = {
           G.Array.register(value, n)
           G.Array.link(value, n);
         }
-        G.propagate(old, old)                         // ! Update effects of the swapped value
+        G.value.propagate(old, old)                         // ! Update effects of the swapped value
         return old;
       }
     } else {

@@ -61,7 +61,7 @@ G.create = function(context, key, value) {
     } else if (value.$key == key                      // 2. Reusing previously set value
             && value.$context == context) {
       var result = value;
-    } else if (G.isObject(value)) {                   // 3. Wrapping plain/observable object
+    } else if (G.value.isObject(value)) {             // 3. Wrapping plain/observable object
       var result = new G()                            //    Create new G wrapper
       result.$context = context;
       result.$key = String(key);
@@ -110,28 +110,25 @@ G.prototype.call = function(verb, old) {
     verb = G.verbs[verb];
   if (old === undefined)
     old = G.value.current(this);
-  var value   = G.format(this, old);                  // Transform value 
+  var value   = G.value.format(this, old);                  // Transform value 
   var result  = value;
 
-  if (G.isReplacing(this, value, old, verb))          // If key is supposed to have singular value
-    var other = G.history.match(value.$meta, old)     //   Attempt to find value with same meta in history 
-
+  var other = G.history(value, old, verb);
+  
   if (value.$source)                                  // When value is a shallow reference to object
-    if (G.isChangeVisible(old, verb, other)) {   
-      result = G.reify(value, this);                  // Create a G object subscribed to reference
-      value = G.reify.reuse(result, value)            // Use it instead of value, if possible
+    if (G.value.willBeVisible(old, verb, other)) {   
+      result = G.value.reify(value, this);                  // Create a G object subscribed to reference
+      value = G.value.reuse(result, value)            // Use it instead of value, if possible
     }
 
-  if (!verb && value.$multiple)                       // If value is marked as arraylike previously
-    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
-      if (verb !== null)                              // If that didnt work and if not switching values
-        verb = G.Array.verbs.push;                    //   fall back to push verb
+  if (value.$multiple)                                // If value is marked as arraylike previously
+    verb = G.Array.strategy(value, verb);             // Attempt to put it back at its place in collection
 
   if (verb) {                                         
     G.Array.mark(value, verb.multiple)                // Mark value as arraylike if verb 
     if (old != null && old.$key) {                    // If there was another value by that key
       if (other) {                                    // If history holds a value with same meta
-        if (G.equals(other, result))                  //   If it's equal to given value
+        if (G.value.equals(other, result))            //   If it's equal to given value
           return G.record.reuse(other);               //     Use that other value instead
         result = G.history.update(result, old, other);//   Or replace it in stack
       } else {
@@ -158,7 +155,7 @@ G.prototype.call = function(verb, old) {
 
   var origin = value.$multiple ? value : result;
   if (origin !== old || origin.$multiple)
-    G.propagate(origin, old);                         // Propagate side effects
+    G.value.propagate(origin, old);                         // Propagate side effects
   return value;
 };
 
@@ -251,36 +248,6 @@ G.prototype.revoke = function() {
   return this;
 }
 
-G.value = {};
-G.value.clear = function(value) {
-  G.value.unset(value.$context, value.$key);
-}
-G.value.apply = function(value) {
-  while (value.$next && // Use head of collection as result
-         value.$next.$context === value.$context &&
-         value.$next.$key     === value.$key)                            
-      value = value.$next;
-  
-  G.value.set(value.$context, value.$key, value);
-}
-G.value.current = function(value) {
-  return G.value.get(value.$context, value.$key);
-}
-
-// Encapsulated method to modify objects
-G.value.set = function(context, key, value) {
-  if (value == null)
-    return G.value.unset(context, key);
-  if (context[key] !== value)
-    context[key] = value;
-}
-G.value.unset = function(context, key, value) {
-  delete context[key];
-}
-G.value.get = function(context, key, result) {
-  return context[key];
-}
-
 // Clone operation from primitive and another operation 
 G.fork = function(primitive, value) {
   if (value == null)
@@ -290,28 +257,3 @@ G.fork = function(primitive, value) {
   return op;
 };
 
-G.equals = function(value, old) {
-  return value.valueOf() == old.valueOf() && 
-         G.meta.equals(value.$meta, old.$meta);
-}
-G.isObject = function(value) {
-  return (value instanceof G && !(value instanceof G.Node)) || 
-         (!value.recall && G.isPlainObject(value))
-}
-G.isPlainObject = function(value) {
-  return Object.prototype.toString.call(value) == '[object Object]';
-}
-
-G.isReplacing = function(self, value, old, verb) {
-  if (!verb || !old)
-    return;
-  if ((verb.multiple || !verb.reifying) && !verb.once)
-    return;
-  if (self instanceof G || value instanceof G)
-    return
-  return true;
-}
-
-G.isChangeVisible = function(old, verb, other) {
-  return !old || !verb || !verb.reifying || other
-}
