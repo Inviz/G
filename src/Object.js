@@ -26,9 +26,9 @@ G.prototype.clean = function() {
 
 // Get value that matches meta arguments
 G.prototype.get = function(key, value) {
-  if (this[key] == null || !this[key].$context)
+  if (!this.hasOwnProperty(key) || this[key] == null || !this[key].$context)
     return this[key];
-  var arity = (this.watch ? 1 : 2) + (value == null ? 0 : 1)
+  var arity = (this.watch ? 1 : 2) + (value == null ? 1 : 0)
   if (arguments.length > arity)
     var meta = Array.prototype.slice.call(arguments, arity);
   return G.history.match(meta, this[key]);

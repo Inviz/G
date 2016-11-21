@@ -283,6 +283,86 @@ describe('Operations', function() {
       expect(context.key.$previous.valueOf()).to.eql('value1');
       return expect(context.key.$previous.$next.valueOf()).to.eql('value2');
     });
+    it ('should sort items by meta', function() {
+      var context = {};
+      G.push(context, 'key', 'value2', 2);
+      var value1 = G.push(context, 'key', 'value1', 1);
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value2']))
+
+      var value1_5 = G.push(context, 'key', 'value1.5', 1.5)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value1.5', 'value2']))
+
+      var value0 = G.push(context, 'key', 'value0', 0)
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value0.uncall()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value1.5', 'value2']))
+
+      value0.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value1_5.uncall()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value2']))
+
+      value1_5.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value1.uncall()
+      value0.uncall()
+      value1_5.uncall()
+      value1.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value2']))
+
+    })
+
+    it ('should sort items by comparable meta object', function() {
+      var Num = function(number) {
+        this.number = number
+      }
+      Num.prototype.comparePosition = function(num) {
+        return this.number > num.number ? -1 : this.number == num.number ? 0 : 1;
+      }
+      var context = {};
+      G.push(context, 'key', 'value2', new Num(2));
+      var value1 = G.push(context, 'key', 'value1', new Num(1));
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value2']))
+
+      var value1_5 = G.push(context, 'key', 'value1.5', new Num(1.5))
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value1.5', 'value2']))
+
+      var value0 = G.push(context, 'key', 'value0', new Num(0))
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value0.uncall()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value1.5', 'value2']))
+
+      value0.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value1_5.uncall()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value2']))
+
+      value1_5.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value0', 'value1', 'value1.5', 'value2']))
+
+      value1.uncall()
+      value0.uncall()
+      value1_5.uncall()
+      value1.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value2']))
+
+      // update value
+      Num.call(value1.$meta[0], 11);
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value1', 'value2']))
+
+      context.key.$previous.call()
+
+      // manually re-call property to resort
+      context.key.$previous.call()
+      expect(G.stringify(ValueGroup(context.key))).to.eql(G.stringify(['value2', 'value1']))
+
+    })
+
     it('should add items on bottom of the stack', function() {
       var context = {};
       G.unshift(context, 'key', 'value1', 'meta1', 'scope1');

@@ -95,7 +95,7 @@ G.Future.invoke = function(watcher, value) {
 
 G.Future._callValue = function() {
   if (this.$multiple) {
-    G.Array.inject(this)
+    G.Array.inject(this, true)
     G.effects(this, G.call)
   } else {
 

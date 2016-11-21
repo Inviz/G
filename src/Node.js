@@ -286,12 +286,14 @@ G.Node.inherit.property = function(node, property) {
     return;
   var $prop = G.Node.$inherited[property];
   for (var parent = node; parent = parent.$parent;) {
-    if (parent[property] && node[$prop] != parent[property]) {
-      if (!node[property]) {
-        node[property] = parent[property];
+    if (parent[property]) {
+      if (node[$prop] != parent[property]) {
+        if (!node[property]) {
+          node[property] = parent[property];
+        }
+        node[$prop] = parent[property]
+        G.Node.updateTrigger(node, G.Node.inherited[property])
       }
-      node[$prop] = parent[property]
-      G.Node.updateTrigger(node, G.Node.inherited[property])
       break;
     }
   }
@@ -430,33 +432,38 @@ G.Node.types = {
   }
 }
 
-G.Node.prototype.onregister = function(parent) {
+G.Node.prototype.onregister = function() {
   for (var child = this; child != this.$next; child = child.$following) {
+    G.Node.inherit(child);
     if (child.itemprop && child.$microdata) {
       if (topmost == null)
         if (!(topmost = this.$microdata))
-          for (var top = parent; top; top = top.$parent) {
+          for (var top = this.$parent; top; top = top.$parent) {
             if (top.$microdata) {
               var topmost = top.$microdata;
               break;
             }
           }
-      if (topmost && child.$microdata == topmost)
-        child.$microdata.reorder(child);
+      if (topmost && child.$microdata == topmost) {
+        var val = child.$microdata.getValueByNode(child);
+        if (val) val.call()
+      }
     }
     if (child.name && child.$values) {
-      var value = child.$values.reorder(child);
-
+      var val = child.$values.getValueByNode(child);
+      if (val) 
+        val.call()
+      else
+        debugger
       for (var after = child.name; after = after.$after;) {
-        if (after.$cause == value.$cause && after.$context != child.$values) {
-          child.$values.reorder(after)
+        if (after.$cause == val.$cause && after.$context != child.$values) {
+          after.call()
         }
       }
     }
-    G.Node.inherit(child);
   }
 }
-G.Node.prototype.onunregister = function(parent) {
+G.Node.prototype.onunregister = function() {
   for (var child = this; child != this.$next; child = child.$following) {
     G.Node.deinherit(child);
   }
@@ -583,6 +590,26 @@ G.Node.prototype.commit = function(soft) {
       break;
     transaction = transaction.$transaction
   }
+}
+
+G.Node.prototype.comparePosition = function(other) {
+  if (this == other)
+    return 0;
+  for (var parent = this; parent; parent = parent.$parent) {
+    for (var p = other; p; p = p.$parent) {
+      if (p.$parent == parent.$parent) {
+        if (p == this)
+          return 1;
+        if (parent == other)
+          return -1;
+        for (var n = p; n = n.$next;)
+          if (n == parent)
+            return -1;
+        return 1;
+      }
+    }
+  }
+  return -1;
 }
 
 // Render descendant nodes
@@ -829,50 +856,13 @@ G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.recursive = true;
 G.Node.Microdata.prototype.$attribute = 'itemprop';
 G.Node.Microdata.prototype.getValueByNode = function(node, value) {
-  var name = node[this.$attribute];
-  if (value == null) {
-    value = this[name];
-    for (; value; value = value.$previous)
-      if (value.$caller === name)
-        return value
-  } else {
-    while (value.$next)
-      value = value.$next;
-    for (; value; value = value.$previous)
-      if (value.$caller === this[name])
-        return value
-  }
-}
-G.Node.Microdata.prototype.reorder = function(value) {
-  if (value instanceof G.Node) {
-    var node = value;
-    value = this.getValueByNode(node);
-    if (!value) return
-  } else {
-    debugger
-    var node = value.$meta[0]
-    var target = value;
-  }
-  var prop = node[this.$attribute].valueOf()
-  var cause = G.$cause;
-  G.$cause = value.$cause;
-  for (var before = node; before = before.$leading;) { // Find nodes in DOM with same name
-    if (this.$context === node)
-      break;
-    if (prop == before[this.$attribute]) {
-      var other = this.getValueByNode(before, target);
-      if (other) {
-        if (value.$previous != other)
-          G.after(value, other); // put value where it should be
-        return value
-      }
-    }
-  }
-  var first = G.Array.first(value);
-  if (first !== value)
-    G.before(value, first) // put value on top
-  G.$cause = cause;
-  return value;
+  if (value == null)
+    value = this[node[this.$attribute]]
+  while (value && value.$next)
+    value = value.$next;
+  for (; value; value = value.$previous)
+    if (value.$meta[0] == node)
+      return value
 }
 
 G.Node.Values = function() {
@@ -882,8 +872,6 @@ G.Node.Values.prototype = new G;
 G.Node.Values.prototype.constructor = G.Node.Values;
 G.Node.Values.recursive = true;
 G.Node.Values.prototype.$attribute = 'name';
-G.Node.Values.prototype.reorder = 
-  G.Node.Microdata.prototype.reorder;
 G.Node.Values.prototype.getValueByNode = 
   G.Node.Microdata.prototype.getValueByNode;
 // parse input names like person[friends][n][name]

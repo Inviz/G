@@ -1,5 +1,13 @@
-G.Array = function() {
+G.Array = function() {}
 
+G.Array.process = function(value, other, verb) {
+  if (verb)
+    G.Array.mark(value, verb.multiple)                // Update arraylike flag 
+  else if (value.$multiple)                           // When restoring arraylike value
+    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
+      if (verb !== null)                              // If that didnt work and if not switching values
+        return G.Array.verbs.push;                    // fall back to push verb
+  return verb;
 }
 
 G.Array.prototype = new G
@@ -45,13 +53,12 @@ G.Array.prototype.inject = function(verb) {
 
   for (var el = first; el; el = el.$next)
     if (el === this){
-      if (this.$cause) {
-        var before = G.Array.findIterated(this, this.$cause)
-        if (before === false)
-          return G.Array.verbs.unshift(this, this);
+      var before = G.Array.guessPosition(this, this, this.$cause)
+      if (before === false)
+        return G.Array.verbs.unshift(this, this);
+      if (before)
         if (this.$previous != before)
           return G.Array.verbs.after(this, before);
-      }
       return this;
     }
   // for each node in the remembered parent
@@ -110,17 +117,6 @@ G.prototype.forEach = function(callback) {
     G.Array.iterate(first, iterators);
 
 }
-
-G.Array.process = function(value, other, verb) {
-  if (verb)
-    G.Array.mark(value, verb.multiple)                // Update arraylike flag 
-  else if (value.$multiple)                           // When restoring arraylike value
-    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
-      if (verb !== null)                              // If that didnt work and if not switching values
-        return G.Array.verbs.push;                    // fall back to push verb
-  return verb;
-}
-
 G.Array.iterate = function(array, iterators) {
   for (var i = 0; i < iterators.length; i++) {
     var callback = iterators[i];
@@ -281,38 +277,64 @@ G.Array.cleanup = function(value) {
 }
 
 // Find a good place to insert new value
-G.Array.findIterated = function(old, cause) {
-  if (!G.$caller || (!cause && !(cause = G.$cause))) return;
+G.Array.guessPosition = function(value, old, cause) {
+  while (old.$next)
+    old = old.$next;
+  if (G.$caller && (cause || (cause = G.$cause)))  {
 
-  // Push where it pushed last time
-  if (cause == old.$cause && G.$caller.$multiple) {
-    var prev = G.$caller.$previous
-    for (; prev; prev = prev.$previous)
-      for (var after = prev; after = after.$after;)
-        if (after.$context == old.$context)
-          if (after.$key == old.$key)
-            if (after.$cause == cause && after.$caller == prev)
-              return after;
+    // Push where it pushed last time
+    if (cause == old.$cause && G.$caller.$multiple) {
+      var prev = G.$caller.$previous
+      for (; prev; prev = prev.$previous)
+        for (var after = prev; after = after.$after;)
+          if (after.$context == old.$context)
+            if (after.$key == old.$key)
+              if (after.$cause == cause && after.$caller == prev)
+                return after;
 
-    var next = G.$caller.$next
-    for (; next; next = next.$next)
-      for (var after = next; after = after.$after;)
-        if (after.$context == old.$context)
-          if (after.$key == old.$key)
-            if (after.$cause == cause && after.$caller == next)
-              return after.$previous || false;
-  // Future binds to specific place in array
-  } else if (cause.$leading !== undefined) {
-    for (var prev = old; prev; prev = prev.$previous) {
-      if (prev == cause.$leading) {                              // find hook element remembered by future
-        for (var next = prev; next = next.$next;) 
-          if (next.$cause && next.$cause.$cause == cause.$cause
-          && G.Array.isAfter(next.$caller, G.$caller)) // next element is added by same future
-            prev = next;
-          else
-            break
-        return prev;
+      var next = G.$caller.$next
+      for (; next; next = next.$next)
+        for (var after = next; after = after.$after;)
+          if (after.$context == old.$context)
+            if (after.$key == old.$key)
+              if (after.$cause == cause && after.$caller == next)
+                return after.$previous || false;
+    // Future binds to specific place in array
+    } else if (cause.$leading !== undefined) {
+      for (var prev = old; prev; prev = prev.$previous) {
+        if (prev == cause.$leading) {                              // find hook element remembered by future
+          for (var next = prev; next = next.$next;) 
+            if (next.$cause && next.$cause.$cause == cause.$cause
+            && G.Array.isAfter(next.$caller, G.$caller)) // next element is added by same future
+              prev = next;
+            else
+              break
+          return prev;
+        }
       }
+    }
+  }
+  // first meta argument is number
+  if (value.$meta) {
+    var id = value.$meta[0];
+    if (typeof id == 'number') {
+      for (var prev = old; prev; prev = prev.$previous) {
+        if (prev.$meta && typeof prev.$meta[0] == 'number') {
+          if (prev.$meta[0] <= id)
+            return prev
+        }
+      }
+      return false;
+    }
+    // comparable objects, like nodes
+    if (id && id.comparePosition) {
+      for (var prev = old; prev; prev = prev.$previous) {
+        if (prev != value)
+          if (prev.$meta && prev.$meta[0] && prev.$meta[0].comparePosition)
+            if (id.comparePosition(prev.$meta[0]) == -1)
+              return prev
+      }
+      return false;
     }
   }
 }
@@ -365,7 +387,7 @@ G.Array.verbs = {
   // place element after another
   after: function(value, old) {
     if (value === old || value.$previous === old)
-      return value;
+      return;
 
     if (value.$next || value.$previous)
       G.Array.eject(value, true);
@@ -389,6 +411,9 @@ G.Array.verbs = {
 
   // place element before another
   before: function(value, old) {
+    if (value === old || value.$next === old)
+      return value;
+
     if (value.$next || value.$previous)
       G.Array.eject(value, true);
     if (old.$previous) {
@@ -418,10 +443,8 @@ G.Array.verbs = {
 
   // Add value on top of the stack 
   push: function(value, old) {
-    if (G.Array.isLinked(value))
-      G.Array.eject(value, true);
     // if push() was inside iterator
-    var after = G.Array.findIterated(old);
+    var after = G.Array.guessPosition(value, old);
     if (after === false) { 
       G.Array.verbs.before(value, G.Array.first(old)); // place as tail
     } else {
@@ -442,7 +465,7 @@ G.Array.verbs = {
 
   // Add value to the bottom of the stack 
   unshift: function(value, old) {
-    var before = G.Array.findIterated(old) || G.Array.first(old);
+    var before = G.Array.guessPosition(value, old) || G.Array.first(old);
     return G.verbs.before(value, before);
   },
 

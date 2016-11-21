@@ -850,6 +850,35 @@ describe('G.Node', function() {
   })
 
   describe('Composing', function() {
+    it ('should compare positions of nodes', function() {
+      var parent = new G.Node('parent', null,
+        new G.Node('child', null),
+        new G.Node('child', null, 
+          new G.Node('child', null, 
+            new G.Node('child', null, 
+              new G.Node('grandchild'),
+              new G.Node('grandchild')),
+            new G.Node('grandchild')),
+          new G.Node('grandchild')),
+        new G.Node('child', null,
+          new G.Node('child', null, 
+            new G.Node('grandchild'),
+            new G.Node('grandchild'))
+        )
+      );
+      var i = 0;
+      var els = [];
+      for (var n = parent; n; n = n.$following) {
+        n.$index = i++;
+        els.push(n)
+      }
+      for (var a, j = 0; a = els[j++];) {
+        for (var b, k = 0; b = els[k++];) {
+          var result = a.$index == b.$index ? 0 : a.$index > b.$index ? -1 : 1;
+          expect(a.comparePosition(b)).to.eql(result)
+        }
+      }
+    })
     it ('should inherit values object from parent form', function() {
       var form = new G.Node('form', {method: 'post', action: '/whatever.html'},
         new G.Node('label', null, 'What is your name?'),
@@ -1015,10 +1044,23 @@ describe('G.Node', function() {
       expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
       expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
 
-      debugger
       G.swap(input2, input1);
       expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Modern Laser Disks', 'Magazines']))
       expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Modern Laser Disks', 'Magazines']))
+
+      G.swap(input2, input1);
+      expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks']))
+
+      var input3 = G.Node('input', {name: 'person[interests][]', value: 'Ubuquitous Morality'});
+      form.prependChild(input3)
+      expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Ubuquitous Morality', 'Magazines', 'Modern Laser Disks']))
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Ubuquitous Morality', 'Magazines', 'Modern Laser Disks']))
+
+      form.appendChild(input3)
+      expect(G.stringify(ValueGroup(form.values['person[interests][]']))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks', 'Ubuquitous Morality']))
+      expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks', 'Ubuquitous Morality']))
+
 
     })
 
