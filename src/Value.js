@@ -11,7 +11,7 @@ G.value = function(value, old, result, other, verb) {
     G.record.pop();
   }
 
-  if (result.$multiple && other && verb) {
+  if (result.$multiple && other && verb.multiple) {
     if (G.Array.isLinked(other)) {
       G.record.push(other);                             // Put operation onto the caller stack
       G.value.affect(other);                            // Apply side effects and invoke observers 

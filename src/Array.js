@@ -167,9 +167,10 @@ G.Array.register = function(left, right, parent) {
       right.onregister(parent)
     return;
   }
+  if (left.$next == right)
+    return;
   left.$next = right;
   right.$previous = left;
-  
   if (!left.$multiple)
     left.$multiple = true;
   if (!right.$multiple)
@@ -342,8 +343,9 @@ G.Array.guessPosition = function(value, old, cause) {
 // Switch values arraylike flag
 G.Array.mark = function(value, state) {
   if (state) {                                      // If verb allows arraylike values
-    if (!value.$multiple)
+    if (!value.$multiple) {
       value.$multiple = true                        // Set flag on the value
+    }
   } else if (value.$multiple) {
     G.Array.cleanup(value);
     if (value.hasOwnProperty('$multiple'))
@@ -387,7 +389,7 @@ G.Array.verbs = {
   // place element after another
   after: function(value, old) {
     if (value === old || value.$previous === old)
-      return;
+      return false;
 
     if (value.$next || value.$previous)
       G.Array.eject(value, true);
@@ -412,7 +414,7 @@ G.Array.verbs = {
   // place element before another
   before: function(value, old) {
     if (value === old || value.$next === old)
-      return value;
+      return false;
 
     if (value.$next || value.$previous)
       G.Array.eject(value, true);

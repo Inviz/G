@@ -60,12 +60,15 @@ G.Node = function(tag, attributes) {
 
 
 G.Node.fromElement = function(element, mapping) {
-  if (arguments.length == 1)
+  if (mapping === undefined)
     mapping = G.Node.mapping;
   switch (element.nodeType) {
     case 1:
       var tag = element.tagName && element.tagName.toLowerCase();
       var self = G.Node(mapping[tag] || tag);
+      for (var i = 0; i < element.attributes.length; i++) {
+        self.set(element.attributes[i].name, element.attributes[i].value, self)
+      }
       break;
     case 3:
       var self = new G.Node(null, element.textContent);
@@ -163,9 +166,9 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 
   if (attributes) {
     if (typeof attributes.valueOf() == 'object')
-      this.merge(attributes);
+      this.merge(attributes, this);
     else
-      this.set('text', attributes); //lazy text content
+      this.set('text', attributes, this); //lazy text content
   }
 
 
@@ -373,6 +376,7 @@ G.Node.triggers = {
       var value = this.getTextContent()
 
     if (this.microdata[itemprop] != value){
+      if (value == null || !value.$meta || value.$meta[1] !== 'microdata')
           this.microdata.push(itemprop, value, this);}
     return 
   }
@@ -445,16 +449,15 @@ G.Node.prototype.onregister = function() {
             }
           }
       if (topmost && child.$microdata == topmost) {
-        var val = child.$microdata.getValueByNode(child);
+        var val = child.$microdata.get(child.itemprop, child);
         if (val) val.call()
       }
     }
     if (child.name && child.$values) {
-      var val = child.$values.getValueByNode(child);
+      var val = child.$values.get(child.name, child);
       if (val) 
         val.call()
       else
-        debugger
       for (var after = child.name; after = after.$after;) {
         if (after.$cause == val.$cause && after.$context != child.$values) {
           after.call()
@@ -794,22 +797,23 @@ G.Node.migrate = function(tag, attributes) {
 G.Node.updateAttributes = function(node, attributes, old) {
   G.record.push()
   if (typeof attributes == 'string') {
-    node.set('text', attributes);
+    node.set('text', attributes, node);
   } else {
+    var meta = [node]
     if (attributes)
       for (var key in attributes) {
         var v = attributes[key];
         var o = (old ? old[key] : undefined);
         
         if (o != v) {
-          if (o == null || G.history.matches(node, key, o, o && o.$meta)) 
-            node.push(key, v)
+          if (o == null || G.history.matches(node, key, o, meta)) 
+            node.push(key, v, node)
         }
       }
     if (old)
       for (var key in old) {
         if (!attributes || attributes[key] !== old[key])
-          node.unset(key, old[key])
+          node.unset(key, old[key], meta)
       }
   }
   G.record.pop()
@@ -854,26 +858,36 @@ G.Node.Microdata = function() {
 G.Node.Microdata.prototype = new G;
 G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.recursive = true;
-G.Node.Microdata.prototype.$attribute = 'itemprop';
-G.Node.Microdata.prototype.getValueByNode = function(node, value) {
-  if (value == null)
-    value = this[node[this.$attribute]]
-  while (value && value.$next)
-    value = value.$next;
-  for (; value; value = value.$previous)
-    if (value.$meta[0] == node)
-      return value
-}
+G.Node.Microdata.prototype.onChange = function(key, value, old) {
+  var current = G.value.current(value || old);
+  var target = value || old;
+  if (!target || !target.$meta || !target.$meta[0] || !target.$meta[0].itemprop)
+    for (var other = current; other; other = other.$preceeding) {
+      if (other === value)
+        continue;
+      if (other.$meta && other.$meta[0].itemprop) {
+        var node = other.$meta[0];
 
+        var cause = G.$cause;
+        G.$cause = other.$cause;
+
+        switch (node.tag.valueOf()) {
+          case 'a':
+            node.set('href', value, node, 'microdata')
+            break;
+        }
+        G.$cause = cause;
+
+      }
+    }
+}
 G.Node.Values = function() {
   G.apply(this, arguments);
 }
 G.Node.Values.prototype = new G;
 G.Node.Values.prototype.constructor = G.Node.Values;
 G.Node.Values.recursive = true;
-G.Node.Values.prototype.$attribute = 'name';
-G.Node.Values.prototype.getValueByNode = 
-  G.Node.Microdata.prototype.getValueByNode;
+
 // parse input names like person[friends][n][name]
 // and store values like person.friends[n].name 
 G.Node.Values.prototype.onChange = function(key, value, old) {

@@ -18,6 +18,7 @@ as `G.extend('Hello world', context, key)`
  * @constructor
  */
 var G = function(context, key, value) {
+  G.built = (G.built || (G.built = 0)) + 1;
   if (context && this instanceof G) {
     this.observe.apply(this, arguments);
   } else if (key != null) {
@@ -43,6 +44,7 @@ var G = function(context, key, value) {
 
 // Create operation - one property changed value 
 G.create = function(context, key, value) {
+  G.created = (G.created || (G.created = 0)) + 1;
   switch (typeof value) {
   case 'object': case 'function':
     if (value.$getter) {                              // 1. Computed property value
@@ -195,10 +197,10 @@ G.prototype.uncall = function(soft, unformatted) {
       G.value.clear(this);                            // 4. Removing key from context 
     }  
     G.notify(context, this.$key, null, value)         // Notify 
-    if (!recalling) G.$recaller = this                //   set global flag to detect recursion
-    G.effects(value, G.revoke)                        // Recurse to recall side effects
-    if (!recalling) G.$recaller = null;               // Reset recursion pointer
   }
+  if (!recalling) G.$recaller = this                //   set global flag to detect recursion
+  G.effects(value, G.revoke)                        // Recurse to recall side effects
+  if (!recalling) G.$recaller = null;               // Reset recursion pointer
   if (this.$computed) {
     for (var i = 0; i < this.$computed.length; i++) {
       if (this.$computed[i].$current)

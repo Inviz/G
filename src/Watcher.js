@@ -156,7 +156,7 @@ G.prototype.merge = function(object) {
   if (typeof object != 'string') {
     var meta;
     for (var i = 0; i < arguments.length - 1; i++)
-      (meta || (meta = []))[i] = arguments[i];
+      (meta || (meta = []))[i] = arguments[i + 1];
 
     if (object.watch)
       return G.verbs.merge(object, this, meta);
@@ -174,9 +174,9 @@ G.prototype.merge = function(object) {
 G.prototype.defaults = function(object) {
   if (typeof object != 'string') {
     var meta
-    var arity = 1;
-    for (var i = 0; i < arguments.length - arity; i++)
-      (meta || (meta = []))[i] = arguments[i + arity];
+    for (var i = 0; i < arguments.length - 1; i++)
+      (meta || (meta = []))[i] = arguments[i + 1];
+
     if (object.watch)
       return G.verbs.defaults(object, this, meta);
 

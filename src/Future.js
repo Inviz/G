@@ -211,8 +211,9 @@ G.Future.setValue = function(watcher, value, result) {
     if (watcher.$current)                               // uncall state changes made on future directly
       G.Future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
     watcher.$current = result;
-    if ((value || G.$caller).$multiple)
+    if ((value || G.$caller).$multiple) {
       result.$multiple = true;
+    }
   } else {
     for (var n = watcher.$current; n; n = n.$previous) {
       if (n.$caller === value) {

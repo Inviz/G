@@ -329,7 +329,7 @@ describe('G.Node', function() {
 
       expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
       expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal']))
-      expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['header', 'tight']))
+      expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['tight', 'header']))
 
       article.migrate(record)
       G.Node('article', {}, 
@@ -338,7 +338,7 @@ describe('G.Node', function() {
       article.finalize()
 
       expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
-      expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal', 'best']))
+      expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['best', 'deal']))
       expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['header']))
     })
 
@@ -575,7 +575,7 @@ describe('G.Node', function() {
         ['div', {}, 
           ['h1', {}, 
             ' Hello guys'],
-          ['if', {}, 
+          ['if', {a: 'b'}, 
             'This ', 
             ['p', {},
               'is'],
@@ -894,7 +894,6 @@ describe('G.Node', function() {
       expect(input.values).to.eql(form.values)
       expect(String(form.values.your_name)).to.eql('Boris')
 
-      debugger
       input.set('value', 'Vasya')
 
       expect(String(form.values.your_name)).to.eql('Vasya')
@@ -1064,6 +1063,23 @@ describe('G.Node', function() {
 
     })
 
+    it ('should change microdata values', function() {
+      var form = new G.Node('article', {itemscope: true},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('a', {itemprop: 'url', href: 'boris.html'}),
+          new G.Node('span', {}, 'Hello')
+        )
+      );
+
+      form.microdata.set('url', 'horror.html')
+
+      expect(String(form.$last.$first.href)).to.eql('horror.html')
+
+      form.microdata.url.uncall()
+
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+    })
 
     it ('should inherit microdata object from parent scope', function() {
       var form = new G.Node('article', {itemscope: true},

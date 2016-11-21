@@ -30,7 +30,8 @@ G.prototype.get = function(key, value) {
     return this[key];
   var arity = (this.watch ? 1 : 2) + (value == null ? 1 : 0)
   if (arguments.length > arity)
-    var meta = Array.prototype.slice.call(arguments, arity);
+    for (var meta = [], i = 0; i < arguments.length - arity; i++)
+      meta[i] = arguments[i + arity];
   return G.history.match(meta, this[key]);
 }
 

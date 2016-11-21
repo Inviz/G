@@ -93,6 +93,7 @@ G.record.reuse = function(value) {
   if (value.$caller != G.$caller) {
     G.link(value.$before, last.$after);               // detach effect from old graph
     G.record.causation(value);                        // set new caller
+    debugger
     last.$after = undefined
   }
   G.record.sequence(value);                           // rewrite left side
