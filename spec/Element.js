@@ -1028,6 +1028,25 @@ describe('G.Node', function() {
       expect(String(form.values.person.nickname)).to.eql('The Peacemaker')
       expect(Number(form.values['person[age]'])).to.eql(27)
       expect(Number(form.values.person.age)).to.eql(27)
+
+      form.values.person.set('age', 28)
+      expect(Number(form.values.person.age)).to.eql(28)
+      expect(Number(age.value)).to.eql(27)
+
+      var age27 = age.value.uncall()
+      expect(Number(age.value)).to.eql(28)
+      expect(Number(form.values.person.age)).to.eql(28)
+      expect(Number(form.values['person[age]'])).to.eql(28)
+
+      age27.call()
+      expect(Number(form.values.person.age)).to.eql(28)
+      expect(Number(age.value)).to.eql(27)
+      expect(Number(form.values['person[age]'])).to.eql(27)
+
+      form.values.person.age.uncall()
+      expect(Number(form.values.person.age)).to.eql(27)
+      expect(Number(age.value)).to.eql(27)
+      expect(Number(form.values['person[age]'])).to.eql(27)
     })
     
     it ('should register arraylike fieldnames in forms', function() {
@@ -1076,7 +1095,7 @@ describe('G.Node', function() {
         )
       );
 
-      form.microdata.set('url', 'horror.html')
+      form.microdata.set('url', 'horror.html', 'zug')
 
       expect(String(form.$last.$first.href)).to.eql('horror.html')
 
@@ -1086,6 +1105,32 @@ describe('G.Node', function() {
 
       form.microdata.preset('url', 'zorro.html', 'xoxo')
       expect(String(form.$last.$first.href)).to.eql('boris.html')
+
+      form.$last.$last.set('itemprop', 'url')
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+
+      form.microdata.overlay('url', 'Gomes', 'hulk')
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
+      expect(G.stringify(ValueStack(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Gomes']))
+
+      form.microdata.url.uncall()
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
+      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
+
+      var gomes = form.microdata.overlay(form.microdata.url.$previous, 'Gomes', 'hulk')
+
+      expect(G.stringify(ValueStack(form.microdata.url.$previous))).to.eql(G.stringify(['zorro.html', 'Gomes', 'horror.html']))
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Gomes', 'Hello']))
+      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['Gomes']))
+      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
+
+      gomes.uncall()
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes', 'Hello']))
+      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
+      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
+
     })
 
     it ('should change form values', function() {
@@ -1101,15 +1146,13 @@ describe('G.Node', function() {
       expect(String(form.$last.$last.value)).to.eql('eldar.html')
       expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['eldar.html']))
 
-      debugger
-      form.values.assign('url', 'horror.html', 'secret world')
+      form.values.overlay('url', 'horror.html', 'secret world')
       expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
       expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['horror.html']))
       expect(G.stringify(ValueStack(form.$last.$first.value))).to.eql(G.stringify(['boris.html']))
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'horror.html']))
 
 
-      debugger
       var horror = form.values.url.uncall()
 
       expect(String(form.$last.$first.value)).to.eql('boris.html')

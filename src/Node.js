@@ -123,7 +123,7 @@ G.Node.prototype.inject   = function() {
     if (this.$node)
       G.Node.place(this)
     else
-      G.children(this, G.Node.place)
+      G.Array.children(this, G.Node.place)
   }
   if (this.text != null)
     G.Node.updateTextContent(this);
@@ -358,7 +358,9 @@ G.Node.inheritable = Object.keys(G.Node.inherited);
 G.Node.triggers = {
   name: function(name) {
     var value = this.value;
-    if (value == null || !value.$meta || value.$meta[1] !== 'values')
+    var last = G.$callers[G.$callers.length - 1];
+    // hack? :(
+    if (!last || !(last.$context instanceof G.Node.Values))
       this.values.pushOnce(name, value, this);
     return
   },
@@ -377,9 +379,12 @@ G.Node.triggers = {
     else
       var value = this.getTextContent()
 
-    if (this.microdata[itemprop] != value)
-      if (value == null || !value.$meta || value.$meta[1] !== 'microdata')
+    if (this.microdata[itemprop] != value) {
+      var last = G.$callers[G.$callers.length - 1];
+      // hack? :(
+      if (!last || !(last.$context instanceof G.Node.Microdata))
         this.microdata.pushOnce(itemprop, value, this);
+    }
     return 
   }
 
@@ -711,7 +716,7 @@ G.Node.prototype.detach = function(force) {
     if (this.$node.parentNode)
       this.$node.parentNode.removeChild(this.$node)
   } else 
-    G.children(this, G.Node.detach, force)
+    G.Array.children(this, G.Node.detach, force)
 }
 
 G.Node.isScheduled = function(node, target, local) {
@@ -857,23 +862,26 @@ G.Node.Microdata.recursive = true;
 G.Node.Microdata.prototype.onChange = function(key, value, old) {
   var current = G.value.current(value || old);
   var target = value || old;
-  if (!target || !target.$meta || !target.$meta[0] || !target.$meta[0].itemprop)
-    for (var other = current; other; other = other.$preceeding) {
-      if (other === value)
-        continue;
-      if (other.$meta && other.$meta[0].itemprop) {
-        var node = other.$meta[0];
-        var tag = node.tag.valueOf();
-        var cause = G.$cause;
-        G.$cause = null;
-        if (tag == 'a' || node.href) {
-          node.set('href', value, node, 'microdata')
-        } else if (node.src || tag == 'script' || tag == 'image') {
-          node.set('src', value, node, 'microdata')
-        }
-        G.$cause = cause;
-      }
+  if (value && !value.$representation) {
+    if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node)
+      value.$representation = value.$meta[0]
+    else if (old && old.$representation)
+      value.$representation = old.$representation;
+  }
+  if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation)) {
+    var node = target.$representation;
+    var tag = node.tag.valueOf();
+    var cause = G.$cause;
+    G.$cause = null;
+    if (tag == 'a' || node.href) {
+      node.set('href', value, node, 'microdata')
+    } else if (node.src || tag == 'script' || tag == 'image') {
+      node.set('src', value, node, 'microdata')
+    } else if (node.$first && !node.$first.tag) {
+      node.$first.set('text', value, node, 'microdata')
     }
+    G.$cause = cause;
+  }
 }
 G.Node.Values = function() {
   G.apply(this, arguments);
@@ -958,8 +966,9 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   } else {
     var current = G.value.current(value || old);
     var target = value || old;
-    if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation))
+    if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation)) {
       target.$representation.set('value', value, target.$representation, 'values')
+    }
   }
   G.$cause = cause;
 }

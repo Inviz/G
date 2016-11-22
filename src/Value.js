@@ -164,6 +164,19 @@ G.value.process = function(value, old, other, verb) {
   return value;
 }
 
+G.value.construct = function(context, key, value) {
+  var constructors = context.constructors;
+  if (constructors && constructors[key])
+    var result = new constructors[key](value);
+  else if (context.constructor.recursive)
+    var result = new (context.constructor)(value);
+  else
+    var result = new G(value);  
+  result.$key = key;
+  result.$context = context;
+  result.$meta = value.$meta;
+  return result;
+}
 G.value.reify = function(value, target) {
   if (value.$source && value.$source.$composable) { // Composable objects are adopted
     value.$source.$key = value.$key;                // Rewrite object's key/context to new owner
@@ -177,16 +190,7 @@ G.value.reify = function(value, target) {
     && value.$source.$key == target.$key) {                
     return value.$source;                           // Use origin object instead of reference
   } else {
-    var constructors = target.$context.constructors;
-    if (constructors && constructors[target.$key])
-      var result = new constructors[target.$key](value);
-    else if (value.constructor.recursive)
-      var result = new (value.constructor)(value);
-    else
-      var result = new G(value);      
-    result.$key = target.$key;
-    result.$context = target.$context;
-    result.$meta = value.$meta;
+    var result = G.value.construct(target.$context, target.$key, value);      
     value.$target = result;
     return result;
   }

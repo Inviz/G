@@ -88,21 +88,9 @@ G.Array.prototype.inject = function(verb) {
 };
 
 
-// Iterate children
-G.prototype.children = function(callback, argument) {
-  for (var last = this; last.$last;)
-    last = last.$last
-  
-  for (var after = this; after.$following;) {
-    if (after.$following.$leading !== after)
-      break;
-    after = after.$following
-    if (!after.$parent || after.$parent === this)
-      callback(after, argument);
-    if (after == last)
-      break;
-  }
-  return last;
+G.Array.children = function(parent, callback, argument) {
+  for (var after = parent.$first; after; after = after.$next)
+    callback(after, argument);
 }
 
 G.prototype.forEach = function(callback) {
@@ -508,8 +496,13 @@ G.Array.verbs = {
   },
 
   // Bypass stack of values and write over 
+  overlay: function(value, old) {
+    return G.Array.verbs.assign(value, old)
+  },
+
   assign: function(value, old) {
-    var other = G.verbs.replace(value, old)
+    if (old.$next || old.$previous)
+      var other = G.verbs.replace(value, old)
     G.verbs.set(value, old)
 
     return other;
@@ -560,10 +553,23 @@ G.Array.verbs = {
     }
   }
 };
+G.prototype.overlay = function(key, value) {
+  for (var meta, i = 0; i < arguments.length - 2; i++)
+    (meta || []).push(arguments[i + 2]);
+  if (typeof key == 'object' && key.$key == value.$key && key.$context == value.$context) {
+    return G.$overlay(key, value, meta)
+  } else if (typeof key == 'string'){
+    return G.$overlay(this, key, value, this[key], meta)
+  } else {
+    return G.$overlay(this, key.$key, value, key, meta)
+  }
+
+}
 
 G.Array.verbs.before.binary = 
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
+G.Array.verbs.overlay.binary = 
 G.Array.verbs.replace.binary = true;
 G.Array.verbs.unshiftOnce.once =
 G.Array.verbs.pushOnce.once = true;
