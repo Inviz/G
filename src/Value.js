@@ -4,17 +4,19 @@ G.value = function(value, old, result, other, verb) {
     result = value;
   if (result !== old || result.$multiple) {         // Decide if value should be propagated
     G.record.push(result);                           // Put operation onto the caller stack
-    G.value.affect(result, old);                     // Apply side effects and invoke observers 
+    G.value.propagate(result, old);                     // Apply side effects and invoke observers 
     if (old && old.$iterators)
       G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
-    G.notify(result.$context, result.$key, result, old)// Trigger user callbacks 
+    if (result !== old) {
+      G.notify(result.$context, result.$key, result, old)// Trigger user callbacks 
+    }
     G.record.pop();
   }
 
   if (result.$multiple && other && verb.multiple) {
     if (G.Array.isLinked(other)) {
       G.record.push(other);                             // Put operation onto the caller stack
-      G.value.affect(other);                            // Apply side effects and invoke observers 
+      G.value.propagate(other);                            // Apply side effects and invoke observers 
       //if (old && old.$iterators)
       //  G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
       G.record.pop();
@@ -66,7 +68,7 @@ G.value.format = function(value, old) {
 // Process all side effects for the value. 
 // When value is applied initially, it invokes all observers
 // When value is re-applied, it attempts to reuse effects
-G.value.affect = function(value, old) {
+G.value.propagate = function(value, old) {
   var watchers = value.$context.$watchers;        // Watchers configuration for whole context
   if (watchers)                                   // is stored in sub-object
     var group = watchers[value.$key]
@@ -80,7 +82,8 @@ G.value.affect = function(value, old) {
     if (after.$caller !== value) continue;
     var cause = after.$cause;
     if (observers && observers.indexOf(cause) > -1
-    ||  group     &&     group.indexOf(cause) > -1) {
+    ||  group     &&     group.indexOf(cause) > -1
+    || cause == null) {
       after.call();
       (present || (present = [])).push(cause)
     } else if (!iterators || iterators.indexOf(after) == -1) {

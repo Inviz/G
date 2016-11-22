@@ -56,7 +56,7 @@ G.create = function(context, key, value) {
           return
 
         var result = G.extend(computed, context, key);//    Enrich primitive value
-        result.$cause = value
+        //result.$cause = value
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
 

@@ -93,7 +93,6 @@ G.record.reuse = function(value) {
   if (value.$caller != G.$caller) {
     G.link(value.$before, last.$after);               // detach effect from old graph
     G.record.causation(value);                        // set new caller
-    debugger
     last.$after = undefined
   }
   G.record.sequence(value);                           // rewrite left side
@@ -125,8 +124,10 @@ G.record.find = function(value, cause) {
 
 // Make a two-way connection between two operations in graph
 G.link = function(old, value) {
-  if (old == value)
-    throw new Error('Cant link to itself')
+  if (old == value) {
+    return
+    //throw new Error('Cant link to itself')
+  }
   if ((old.$after = value)){
     old.$after.$before = old;
   }

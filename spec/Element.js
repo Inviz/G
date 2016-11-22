@@ -1079,6 +1079,42 @@ describe('G.Node', function() {
       form.microdata.url.uncall()
 
       expect(String(form.$last.$first.href)).to.eql('boris.html')
+
+      form.microdata.preset('url', 'zorro.html', 'xoxo')
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+    })
+
+    it ('should change form values', function() {
+      var form = new G.Node('form',
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('input', {name: 'url', value: 'boris.html'}),
+          new G.Node('span',  {name: 'url', value: 'eldar.html'})
+        )
+      );
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
+      expect(String(form.$last.$last.value)).to.eql('eldar.html')
+
+      form.values.set('url', 'horror.html')
+
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
+      expect(String(form.$last.$last.value)).to.eql('horror.html')
+
+
+      var horror = form.values.url.uncall()
+
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
+      expect(String(form.$last.$last.value)).to.eql('eldar.html')
+
+      form.values.preset('url', 'zorro.html', 'xoxo')
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
+      expect(String(form.$last.$last.value)).to.eql('eldar.html')
+
+      horror.call()
+      debugger
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
+      expect(String(form.$last.$last.value)).to.eql('horror.html')
+
     })
 
     it ('should inherit microdata object from parent scope', function() {

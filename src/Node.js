@@ -357,14 +357,16 @@ G.Node.inheritable = Object.keys(G.Node.inherited);
 // if they are expected to observe all properties
 G.Node.triggers = {
   name: function(name) {
-    this.values.pushOnce(name, this.value, this);
+    var value = this.value;
+    if (value == null || !value.$meta || value.$meta[1] !== 'values')
+      this.values.pushOnce(name, value, this);
     return
   },
 
   itemprop: function(itemprop) { // itemprop future is optimized to
     if (this['itemscope']) {
       if (this.$microdata)
-        this.$microdata.push(itemprop, this.microdata)
+        this.$microdata.pushOnce(itemprop, this.microdata)
       return;
     } else if (this['href'] != null)    // be triggered by any possible
       var value = this['href'];  // source of itemvalue without 
@@ -375,9 +377,9 @@ G.Node.triggers = {
     else
       var value = this.getTextContent()
 
-    if (this.microdata[itemprop] != value){
+    if (this.microdata[itemprop] != value)
       if (value == null || !value.$meta || value.$meta[1] !== 'microdata')
-          this.microdata.push(itemprop, value, this);}
+        this.microdata.pushOnce(itemprop, value, this);
     return 
   }
 
@@ -457,12 +459,6 @@ G.Node.prototype.onregister = function() {
       var val = child.$values.get(child.name, child);
       if (val) 
         val.call()
-      else
-      for (var after = child.name; after = after.$after;) {
-        if (after.$cause == val.$cause && after.$context != child.$values) {
-          after.call()
-        }
-      }
     }
   }
 }
@@ -867,17 +863,15 @@ G.Node.Microdata.prototype.onChange = function(key, value, old) {
         continue;
       if (other.$meta && other.$meta[0].itemprop) {
         var node = other.$meta[0];
-
+        var tag = node.tag.valueOf();
         var cause = G.$cause;
-        G.$cause = other.$cause;
-
-        switch (node.tag.valueOf()) {
-          case 'a':
-            node.set('href', value, node, 'microdata')
-            break;
+        G.$cause = null;
+        if (tag == 'a' || node.href) {
+          node.set('href', value, node, 'microdata')
+        } else if (node.src || tag == 'script' || tag == 'image') {
+          node.set('src', value, node, 'microdata')
         }
         G.$cause = cause;
-
       }
     }
 }
@@ -932,6 +926,8 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
     }
     last = i + 1;
   }
+  var cause = G.$cause;
+  G.$cause = null;
   if (last) {
     var bit = key.substring(last, length - 1);
     if (!array || context[bit] == null || value == null) {
@@ -953,7 +949,21 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
     } else {
       context.pushOnce(bit, value, value.$meta)
     }
+  } else {
+    var current = G.value.current(value || old);
+    var target = value || old;
+    if (!target || !target.$meta || !target.$meta[0] || !target.$meta[0].name)
+      for (var other = current; other; other = other.$preceeding) {
+        if (other === value)
+          continue;
+        if (other.$meta && other.$meta[0].name) {
+          var node = other.$meta[0];
+          var tag = node.tag.valueOf();
+          node.set('value', value, node, 'values')
+        }
+      }
   }
+  G.$cause = cause;
 }
 
 

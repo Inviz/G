@@ -512,8 +512,13 @@ G.Array.verbs = {
       G.Array.eject(value, true);
     var p = old.$previous;
     var n = old.$next;
-    if (arg !== undefined)
+    if (arg !== undefined) {
       old.uncall(null, arg);
+    } else {
+      G.Array.unlink(old)
+      G.Array.unregister(old)
+    }
+
     if (p){
       G.Array.link(p, value);
       G.Array.register(p, value, old.$parent)
