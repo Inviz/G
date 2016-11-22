@@ -888,6 +888,12 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   var last = 0;
   var context = this;
   var length = key.length;
+  if (value && !value.$representation) {
+    if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node)
+      value.$representation = value.$meta[0]
+    else if (old && old.$representation)
+      value.$representation = old.$representation;
+  }
   for (var i = -1; (i = key.indexOf('[', last)) > -1;) {
     var end = i - !!last;
     var bit = key.substring(last, end);
@@ -952,16 +958,8 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   } else {
     var current = G.value.current(value || old);
     var target = value || old;
-    if (!target || !target.$meta || !target.$meta[0] || !target.$meta[0].name)
-      for (var other = current; other; other = other.$preceeding) {
-        if (other === value)
-          continue;
-        if (other.$meta && other.$meta[0].name) {
-          var node = other.$meta[0];
-          var tag = node.tag.valueOf();
-          node.set('value', value, node, 'values')
-        }
-      }
+    if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation))
+      target.$representation.set('value', value, target.$representation, 'values')
   }
   G.$cause = cause;
 }

@@ -134,10 +134,6 @@ G.meta.isPriority = function(op) {
 };
 
 G.verbs = {
-  // Bypass stack of values and write over 
-  assign: function(value, old) {
-    return value;
-  },
 
   // Reassignment - Sets operation as head of the stack 
   set: function(value, old) {

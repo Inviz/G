@@ -507,6 +507,14 @@ G.Array.verbs = {
     }
   },
 
+  // Bypass stack of values and write over 
+  assign: function(value, old) {
+    var other = G.verbs.replace(value, old)
+    G.verbs.set(value, old)
+
+    return other;
+  },
+
   replace: function(value, old, arg) {
     if (G.Array.isLinked(value))
       G.Array.eject(value, true);

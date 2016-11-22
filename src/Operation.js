@@ -179,7 +179,10 @@ G.prototype.uncall = function(soft, unformatted) {
   var prec = value.$preceeding;  
   if (prec && prec.$succeeding == value) {            // If stack holds values before given
     if (value == current && !value.$succeeding)       // And value is current and on top of history
-      G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
+      if (value.$multiple)
+        return G.swap(value.$preceeding, value)
+      else
+        G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
   } else {  
     if (value.$multiple) {                            // 3. Removing value from group 
       if (value == current) {  
@@ -206,7 +209,8 @@ G.prototype.uncall = function(soft, unformatted) {
       if (this.$computed[i].$current)
         G.revoke(this.$computed[i].$current);
 
-      else// undo side effects in futures that observe the value as a property
+      else if (!G.value.current(this))
+        // undo side effects in futures that observe the value as a property
         G.Future.revokeCalls(G.value.current(this.$computed[i]), this.$computed[i]);
 
     }

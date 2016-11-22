@@ -21,7 +21,7 @@ G.value = function(value, old, result, other, verb) {
       //  G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
       G.record.pop();
     } else {
-      other.uncall()
+      G.revoke(other)
     }
     if (other.$context !== result.$context ||
         other.$key !== result.$key)
