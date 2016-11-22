@@ -553,18 +553,6 @@ G.Array.verbs = {
     }
   }
 };
-G.prototype.overlay = function(key, value) {
-  for (var meta, i = 0; i < arguments.length - 2; i++)
-    (meta || []).push(arguments[i + 2]);
-  if (typeof key == 'object' && key.$key == value.$key && key.$context == value.$context) {
-    return G.$overlay(key, value, meta)
-  } else if (typeof key == 'string'){
-    return G.$overlay(this, key, value, this[key], meta)
-  } else {
-    return G.$overlay(this, key.$key, value, key, meta)
-  }
-
-}
 
 G.Array.verbs.before.binary = 
 G.Array.verbs.after.binary = 
