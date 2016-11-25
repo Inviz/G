@@ -1165,7 +1165,6 @@ describe('G.Node', function() {
       expect(String(form.$last.$first.href)).to.eql('boris.html')
       expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
-
       var holmes = form.microdata.overlay(boris, 'Holmes', 'hulk')
       expect(G.stringify(ValueStack(holmes))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
       expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Holmes', 'Gomes']))
@@ -1186,7 +1185,7 @@ describe('G.Node', function() {
         new G.Node('label', null, 'What is your name?'),
         new G.Node('div', null, 
           new G.Node('input', {name: 'url', value: 'boris.html'}),
-          new G.Node('span',  {name: 'url', value: 'eldar.html'})
+          new G.Node('input',  {name: 'url', value: 'eldar.html'})
         )
       );
       expect(String(form.$last.$first.value)).to.eql('boris.html')
@@ -1243,6 +1242,30 @@ describe('G.Node', function() {
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'Hello world']))
       expect(G.stringify(ValueStack(form.$last.$first.value))).to.eql(G.stringify(['boris.html']))
       
+      form.values.push('url', 'Hello')
+      expect(G.stringify(ValueGroup(form.values.url))).to.eql(G.stringify(['boris.html', 'eldar.html', 'Hello']))
+      expect(G.stringify(ValueGroup(form.$first).map(function(node) {
+        return [node.tag, node.name, node.value];
+      }))).to.eql(G.stringify([
+        ['form', null,null], 
+        ['div', null,null],
+        ['input', 'url','boris.html'],
+        ['input', 'url','eldar.html'],
+        ['input', 'url','Hello']
+      ]))
+
+      var hi = form.values.unshift('url', 'Hi')
+      expect(G.stringify(ValueGroup(form.values.url))).to.eql(G.stringify(['Hi', 'boris.html', 'eldar.html', 'Hello']))
+      expect(G.stringify(ValueGroup(form.$first).map(function(node) {
+        return [node.tag, node.name, node.value];
+      }))).to.eql(G.stringify([
+        ['form', null,null], 
+        ['div', null,null],
+        ['input', 'url','Hi'],
+        ['input', 'url','boris.html'],
+        ['input', 'url','eldar.html'],
+        ['input', 'url','Hello']
+      ]))
     })
     it ('should inherit microdata object from parent scope', function() {
       var form = new G.Node('article', {itemscope: true},

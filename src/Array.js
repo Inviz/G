@@ -210,6 +210,10 @@ G.Array.unregister = function(op, soft) {
 
 // Connect depth first pointers of two sibling nodes together
 G.Array.link = function(left, right, shallow) {
+  if (!left) {
+    right.$leading = undefined;
+    return;
+  }
   var last = left
   if (!shallow)
     while (last.$last)
@@ -404,8 +408,8 @@ G.Array.verbs = {
     G.Array.link(old, value)
 
     if (old.$next)
-      G.Array.register(value, old.$next, value.$parent)
-    G.Array.register(old, value, value.$parent)
+      G.Array.register(value, old.$next, old.$parent)
+    G.Array.register(old, value, old.$parent)
 
   },
 
@@ -420,12 +424,7 @@ G.Array.verbs = {
       G.Array.link(old.$previous, value)
       G.Array.register(old.$previous, value, old.$parent)
     } else {
-      if (value.$following && value.$following.$parent == value.$parent)
-        value.$following = undefined;
-      if (!old.$leading || old.$leading === old.$parent)
-        value.$leading = undefined
-      else
-        G.Array.link(old.$leading, value)
+      G.Array.link(old.$leading, value, true)
     }
     G.Array.link(value, old)
     G.Array.register(value, old, old.$parent);
@@ -568,6 +567,8 @@ G.Array.verbs.before.binary =
 G.Array.verbs.after.binary = 
 G.Array.verbs.swap.binary = 
 G.Array.verbs.overlay.binary = 
-G.Array.verbs.replace.binary = true;
+G.Array.verbs.replace.binary =
+G.Array.verbs.push.binary = true;
+G.Array.verbs.unshift.binary = true;
 G.Array.verbs.unshiftOnce.once =
 G.Array.verbs.pushOnce.once = true;

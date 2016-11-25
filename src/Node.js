@@ -235,7 +235,7 @@ G.Node.prototype.onChange = function(key, value, old) {
   if (this.itemprop && G.Node.itemvalues[key] && this.microdata)
     G.Node.updateTrigger(this, 'itemprop');
 
-  if (!this.$node || !(value || old).$context || key == 'tag')
+  if (!this.$node || !(value || old).$context || key == 'tag' || G.Node.inherited[key])
     return;
 
 
@@ -946,20 +946,23 @@ G.Node.Microdata.prototype.callNode = function(value) {
 }
 
 G.Node.Microdata.prototype.cloneNode = function(value, old) {
-  var method = 'before';
-  for (var head = old; head; head = head.$previous) {
-    if (head === value) {
-      method = 'after';
-      continue;
-    }
-    if (head.$) {
-      value.$ = head.$.cloneNode(true);
-      value.$.setMicrodata(value);
-      value.$.itemprop.$subscription.$computing = true;
-      G[method](value.$, head.$)
-      value.$.itemprop.$subscription.$computing = false;
-      return value.$
-    }
+  for (var prev = value; prev = prev.$previous;) {
+    if (!prev.$) continue;
+    value.$ = prev.$.cloneNode(true);
+    value.$.setMicrodata(value);
+    value.$.itemprop.$subscription.$computing = true;
+    G.after(value.$, prev.$)
+    value.$.itemprop.$subscription.$computing = false;
+    return value.$
+  }
+  for (var next = value; next = next.$next;) {
+    if (!next.$) continue;
+    value.$ = next.$.cloneNode(true);
+    value.$.setMicrodata(value);
+    value.$.itemprop.$subscription.$computing = true;
+    G.before(value.$, next.$)
+    value.$.itemprop.$subscription.$computing = false;
+    return value.$
   }
 }
 G.Node.Microdata.prototype.updateNode = function(value, target) {
@@ -989,6 +992,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   var last = 0;
   var context = this;
   var length = key.length;
+  var current = this[key]
   if (value && !value.$)
     if (!this.adoptNode(value, old))
       this.cloneNode(value, current);
@@ -1069,20 +1073,23 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
 
 
 G.Node.Values.prototype.cloneNode = function(value, old) {
-  var method = 'before';
-  for (var head = old; head; head = head.$previous) {
-    if (head === value) {
-      method = 'after';
-      continue;
-    }
-    if (head.$) {
-      value.$ = head.$.cloneNode(true);
-      value.$.set('value', value, [value.$, 'values']);
-      value.$.name.$subscription.$computing = true;
-      G[method](value.$, head.$)
-      value.$.name.$subscription.$computing = false;
-      return value.$
-    }
+  for (var prev = value; prev = prev.$previous;) {
+    if (!prev.$) continue;
+    value.$ = prev.$.cloneNode(true);
+    value.$.set('value', value, [value.$, 'values']);
+    value.$.name.$subscription.$computing = true;
+    G.after(value.$, prev.$)
+    value.$.name.$subscription.$computing = false;
+    return value.$
+  }
+  for (var next = value; next = next.$next;) {
+    if (!next.$) continue;
+    value.$ = next.$.cloneNode(true);
+    value.$.set('value', value, [value.$, 'values']);
+    value.$.name.$subscription.$computing = true;
+    G.before(value.$, next.$)
+    value.$.name.$subscription.$computing = false;
+    return value.$
   }
 }
 G.Node.Values.prototype.updateNode = function(value, target) {

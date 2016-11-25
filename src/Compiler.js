@@ -137,19 +137,38 @@ G.compile.generic = function(verb) {
 // G.before(value, anchor)
 G.compile.generic.binary = function(verb) {
   return function(c, k, v, o) {
-    if (arguments.length < 3 ||  o == null || o.$context !== c ||  o.$key != k) {
-      switch (arguments.length) {
-        case 2:  return G.create(k.$context, k.$key, c).call(verb, k);
-        case 3:  return G.create(k.$context, k.$key, c, o).call(verb, k);
-        case 4:  return G.create(k.$context, k.$key, c, o, arguments[4]).call(verb, k);
-        default: return G.create(k.$context, k.$key, c, o, arguments[4], arguments[5]).call(verb, k);
+    if (typeof k == 'string') {
+      if (v != null) {
+        switch (arguments.length) {
+          case 3:  return G.create(c, k, v).call(verb);
+          case 4:  return G.create(c, k, v, arguments[3]).call(verb);
+          case 5:  return G.create(c, k, v, arguments[3], arguments[4]).call(verb);
+          default: return G.create(c, k, v, arguments[3], arguments[4], arguments[5]).call(verb);
+        }
+      } else if (this[k] != null) {
+        switch (arguments.length) {
+          case 2:
+          case 3:  return context[k].recall();
+          case 4:  return context[k].recall(arguments[3]);
+          case 5:  return context[k].recall(arguments[3], arguments[4]);
+          default: return context[k].recall(arguments[3], arguments[4], arguments[5]);
+        }
       }
     } else {
-      switch (arguments.length) {
-        case 3:  return G.create(c, k, v).call(verb, o);
-        case 4:  return G.create(c, k, v, arguments[4]).call(verb, o);
-        case 5:  return G.create(c, k, v, arguments[4], arguments[5]).call(verb, o);
-        default: return G.create(c, k, v, arguments[4], arguments[5], arguments[6]).call(verb, o);
+      if (o && o.$context) {
+        switch (arguments.length) {
+          case 3:  return G.create(c, k, v).call(verb, o);
+          case 4:  return G.create(c, k, v, arguments[4]).call(verb, o);
+          case 5:  return G.create(c, k, v, arguments[4], arguments[5]).call(verb, o);
+          default: return G.create(c, k, v, arguments[4], arguments[5], arguments[6]).call(verb, o);
+        }
+      } else {
+        switch (arguments.length) {
+          case 2:  return G.create(k.$context, k.$key, c).call(verb, k);
+          case 3:  return G.create(k.$context, k.$key, c, o).call(verb, k);
+          case 4:  return G.create(k.$context, k.$key, c, o, arguments[4]).call(verb, k);
+          default: return G.create(k.$context, k.$key, c, o, arguments[4], arguments[5]).call(verb, k);
+        }
       }
     }
   };
