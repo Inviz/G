@@ -131,12 +131,14 @@ G.Node.prototype.inject   = function() {
   return called
 }
 G.Node.prototype.eject = function() {
+  G.Node.$ejecting = true;
   this.detach()
   var uncalled =  G.Array.eject(this)
 
   if (this.text != null)
     G.Node.updateTextContent(this);
   
+  G.Node.$ejecting = false;
   return uncalled;
 
 };
@@ -215,12 +217,13 @@ G.Node.prototype.onChange = function(key, value, old) {
   if (trigger) {
     var prop = G.Node.inheriting[key];
     if (value && old == null) {
-      this.watch(key, trigger)
+      current.$subscription = this.watch(key, trigger)
       if (prop)
         G.Node.inherit.property(this, prop);
 
     } else if (old && value == null) {
       this.unwatch(key, trigger)
+      old.$subscription = undefined;
       if (prop)
         G.Node.deinherit.property(this, prop);
     }
@@ -366,24 +369,13 @@ G.Node.triggers = {
   },
 
   itemprop: function(itemprop) { // itemprop future is optimized to
-    if (this['itemscope']) {
-      if (this.$microdata)
-        this.$microdata.pushOnce(itemprop, this.microdata)
-      return;
-    } else if (this['href'] != null)    // be triggered by any possible
-      var value = this['href'];  // source of itemvalue without 
-    else if (this['src'] != null)// individual subscription
-      var value = this['src'];
-    else if (this['content'] != null)
-      var value = this['content'];
-    else
-      var value = this.getTextContent()
+    var value = this.getMicrodata()
 
     if (this.microdata[itemprop] != value) {
       var last = G.$callers[G.$callers.length - 1];
       // hack? :(
       if (!last || !(last.$context instanceof G.Node.Microdata))
-        this.microdata.pushOnce(itemprop, value, this);
+        this.$microdata.pushOnce(itemprop, value, this);
     }
     return 
   }
@@ -755,6 +747,21 @@ G.Node.unschedule = function(node, target, local, global) {
   }
 }
 
+G.Node.prototype.cloneNode = function(deep) {
+  var node = new G.Node(this.tag);
+  var keys = Object.keys(this);
+  for (var i = 0, key; key = keys[i++];)
+    if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) // '$'
+
+      node.set(key, this[key], node)
+
+  if (deep) {
+    for (var child = this.$first; child; child = child.$next) {
+      node.appendChild(child.cloneNode(true))
+    }
+  }
+  return node
+}
 
 
 
@@ -848,11 +855,6 @@ G.Node.mapping = {
 
 
 
-
-
-
-
-
 G.Node.Microdata = function() {
   G.apply(this, arguments);
 }
@@ -862,32 +864,123 @@ G.Node.Microdata.recursive = true;
 G.Node.Microdata.prototype.onChange = function(key, value, old) {
   var current = G.value.current(value || old);
   var target = value || old;
-  if (value && !value.$representation) {
-    if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node)
-      value.$representation = value.$meta[0]
-    else if (old && old.$representation)
-      value.$representation = old.$representation;
-  }
-  if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation)) {
-    var node = target.$representation;
-    var tag = node.tag.valueOf();
-    var cause = G.$cause;
-    G.$cause = null;
-    if (tag == 'a' || node.href) {
-      node.set('href', value, node, 'microdata')
-    } else if (node.src || tag == 'script' || tag == 'image') {
-      node.set('src', value, node, 'microdata')
-    } else if (node.$first && !node.$first.tag) {
-      node.$first.set('text', value, node, 'microdata')
+  if (value && !value.$)
+    if (!this.adoptNode(value, old))
+      this.cloneNode(value, current);
+
+  if (old && old.$)
+    this.cleanNode(key, value, old, current);
+
+  this.callNode(value)
+  this.updateNode(value, target)
+}
+
+G.Node.prototype.getMicrodata = function() {
+  if (this.itemscope) {
+    if (this.$microdata) {
+      return this.microdata
     }
-    G.$cause = cause;
+  } else if (this.href != null)    // be triggered by any possible
+    return this.href;              // source of itemvalue without 
+  else if (this.src != null)       // individual subscription
+    return this.src;
+  else if (this.content != null)
+    return this.content;
+  else
+    return this.getTextContent()
+
+}
+G.Node.prototype.setMicrodata = function(value, meta) {
+  if (meta == null)
+    meta = [this, 'microdata']
+  var cause = G.$cause;
+  G.$cause = null;
+  var tag = this.tag.valueOf();
+
+  if (tag == 'a' || this.href) {
+    this.set('href', value, meta)
+  } else if (this.src || tag == 'script' || tag == 'image') {
+    this.set('src', value, meta)
+  } else if (this.$first && !this.$first.tag) {
+    this.$first.set('text', value, meta)
+  }
+
+  G.$cause = cause;
+}
+
+
+G.Node.Microdata.prototype.adoptNode = function(value, old) {
+  if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node) {
+    value.$ = value.$meta[0]
+    value.$.$origin = value;
+  } else if (old && old.$) {
+    value.$ = old.$;
+    value.$.$origin = value;
+  } else if (old && old.$meta && old.$meta[0] && old.$meta[0] instanceof G.Node) {
+    value.$ = old.$meta[0];
+    value.$.$origin = value;
+  }
+  return value.$
+}
+
+
+G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
+
+  if (old.$.$origin == old) {
+    old.$.$origin = null
+  } else if (old.$.itemprop == key && 
+    (!current || current.$ != old.$) &&
+    (!value || value.$ != old.$)) {
+    if (!G.Node.$ejecting && !old.$.$origin) {
+      old.$.uncall()
+    }
   }
 }
+
+G.Node.Microdata.prototype.callNode = function(value) {
+  if (value && value.$) {
+    if (!G.Array.isLinked(value.$))
+      value.$.call()
+    return value;
+  }
+}
+
+G.Node.Microdata.prototype.cloneNode = function(value, old) {
+  var method = 'before';
+  for (var head = old; head; head = head.$previous) {
+    if (head === value) {
+      method = 'after';
+      continue;
+    }
+    if (head.$) {
+      value.$ = head.$.cloneNode(true);
+      value.$.setMicrodata(value);
+      value.$.itemprop.$subscription.$computing = true;
+      G[method](value.$, head.$)
+      value.$.itemprop.$subscription.$computing = false;
+      return value.$
+    }
+  }
+}
+G.Node.Microdata.prototype.updateNode = function(value, target) {
+  if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
+    target.$.itemprop.$subscription.$computing = true;
+    target.$.setMicrodata(value, value.$meta);
+    target.$.itemprop.$subscription.$computing = null
+  }
+}
+
+
+
 G.Node.Values = function() {
   G.apply(this, arguments);
 }
 G.Node.Values.prototype = new G;
 G.Node.Values.prototype.constructor = G.Node.Values;
+G.Node.Values.prototype.adoptNode = G.Node.Microdata.prototype.adoptNode;
+G.Node.Values.prototype.cloneNode = G.Node.Microdata.prototype.cloneNode;
+G.Node.Values.prototype.cleanNode = G.Node.Microdata.prototype.cleanNode;
+G.Node.Values.prototype.callNode  = G.Node.Microdata.prototype.callNode;
 G.Node.Values.recursive = true;
 
 // parse input names like person[friends][n][name]
@@ -896,12 +989,13 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   var last = 0;
   var context = this;
   var length = key.length;
-  if (value && !value.$representation) {
-    if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node)
-      value.$representation = value.$meta[0]
-    else if (old && old.$representation)
-      value.$representation = old.$representation;
-  }
+  if (value && !value.$)
+    if (!this.adoptNode(value, old))
+      this.cloneNode(value, current);
+
+  if (old && old.$)
+    this.cleanNode(key, value, old, current);
+
   for (var i = -1; (i = key.indexOf('[', last)) > -1;) {
     var end = i - !!last;
     var bit = key.substring(last, end);
@@ -966,14 +1060,38 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   } else {
     var current = G.value.current(value || old);
     var target = value || old;
-    if (value && value.$representation && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$representation)) {
-      target.$representation.set('value', value, target.$representation, 'values')
-    }
+
+    this.callNode(value)
+    this.updateNode(value, target)
   }
   G.$cause = cause;
 }
 
 
+G.Node.Values.prototype.cloneNode = function(value, old) {
+  var method = 'before';
+  for (var head = old; head; head = head.$previous) {
+    if (head === value) {
+      method = 'after';
+      continue;
+    }
+    if (head.$) {
+      value.$ = head.$.cloneNode(true);
+      value.$.set('value', value, [value.$, 'values']);
+      value.$.name.$subscription.$computing = true;
+      G[method](value.$, head.$)
+      value.$.name.$subscription.$computing = false;
+      return value.$
+    }
+  }
+}
+G.Node.Values.prototype.updateNode = function(value, target) {
+  if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
+    target.$.name.$subscription.$computing = true;
+    value.$.set('value', value, value.$meta || [value.$, 'values']);
+    target.$.name.$subscription.$computing = null
+  }
+}
 G.Node.prototype.constructors = {
   values:    G.Node.Values,
   microdata: G.Node.Microdata

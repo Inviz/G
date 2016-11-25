@@ -1086,6 +1086,35 @@ describe('G.Node', function() {
 
     })
 
+    it ('should clone elements when adding new microdata values', function() {
+      var form = new G.Node('article', {itemscope: true},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('a', {itemprop: 'url', href: 'boris.html'}),
+          new G.Node('span', {}, 'Hello')
+        )
+      );
+
+      form.microdata.push('url', 'gunslinger.html');
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(String(form.$last.$first.$next.href)).to.eql('gunslinger.html')
+
+      form.$last.$last.set('itemprop', 'greeting')
+      expect(String(form.microdata.greeting)).to.eql('Hello')
+
+      form.microdata.unshift('greeting', 'Bonjour')
+      expect(String(form.microdata.greeting)).to.eql('Hello')
+      expect(String(form.microdata.greeting.$previous)).to.eql('Bonjour')
+      expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
+      expect(String(form.$last.$last.$previous.getTextContent())).to.eql('Bonjour')
+      
+      form.microdata.unset('greeting', 'Bonjour')
+      expect(String(form.microdata.greeting)).to.eql('Hello')
+      expect(form.microdata.greeting.$previous).to.eql(undefined)
+      expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
+      expect(String(form.$last.$last.$previous.href)).to.eql('gunslinger.html')
+    })
+
     it ('should change microdata values', function() {
       var form = new G.Node('article', {itemscope: true},
         new G.Node('label', null, 'What is your name?'),
@@ -1096,40 +1125,59 @@ describe('G.Node', function() {
       );
 
       form.microdata.set('url', 'horror.html', 'zug')
-
       expect(String(form.$last.$first.href)).to.eql('horror.html')
 
       form.microdata.url.uncall()
-
       expect(String(form.$last.$first.href)).to.eql('boris.html')
+
+      var boris = form.microdata.url.uncall();
+      expect(String(form.$last.$first.tag)).to.eql('span')
+
+      boris.call()
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['boris.html', 'horror.html']))
 
       form.microdata.preset('url', 'zorro.html', 'xoxo')
       expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
 
       form.$last.$last.set('itemprop', 'url')
+      expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
+      expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello']))
       expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
-
-      form.microdata.overlay('url', 'Gomes', 'hulk')
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
+      
+      var gomes = form.microdata.overlay('url', 'Gomes', 'hulk')
+      expect(G.stringify(ValueStack(gomes))).to.eql(G.stringify(['Hello', 'Gomes']))
       expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
-      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
-      expect(G.stringify(ValueStack(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Gomes']))
-
-      form.microdata.url.uncall()
-      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
-      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
-      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
-
-      var gomes = form.microdata.overlay(form.microdata.url.$previous, 'Gomes', 'hulk')
-
-      expect(G.stringify(ValueStack(form.microdata.url.$previous))).to.eql(G.stringify(['zorro.html', 'Gomes', 'horror.html']))
-      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Gomes', 'Hello']))
-      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['Gomes']))
-      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
       gomes.uncall()
-      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes', 'Hello']))
-      expect(G.stringify(ValueGroup(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
-      expect(G.stringify(ValueGroup(form.$last.$last.getTextContent()))).to.eql(G.stringify(['Hello']))
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(G.stringify(ValueStack(form.$last.$last.$first.text))).to.eql(G.stringify(['Hello']))
+      expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
+
+      gomes.call()
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+      expect(String(form.$last.$first.href)).to.eql('boris.html')
+      expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
+
+
+      var holmes = form.microdata.overlay(boris, 'Holmes', 'hulk')
+      expect(G.stringify(ValueStack(holmes))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Holmes', 'Gomes']))
+      expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html', 'Holmes']))
+      expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
+
+      holmes.uncall()
+      expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+      expect(G.stringify(ValueStack(form.microdata.url.$previous))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
+      expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+      expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
+      expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
     })
 
@@ -1146,38 +1194,53 @@ describe('G.Node', function() {
       expect(String(form.$last.$last.value)).to.eql('eldar.html')
       expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['eldar.html']))
 
-      form.values.overlay('url', 'horror.html', 'secret world')
+      var horror = form.values.overlay('url', 'horror.html', 'secret world')
       expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
-      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['horror.html']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['eldar.html', 'horror.html']))
       expect(G.stringify(ValueStack(form.$last.$first.value))).to.eql(G.stringify(['boris.html']))
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'horror.html']))
 
 
-      var horror = form.values.url.uncall()
+      form.values.url.uncall()
 
       expect(String(form.$last.$first.value)).to.eql('boris.html')
       expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
       expect(String(form.$last.$last.value)).to.eql('eldar.html')
       expect(G.stringify(ValueGroup(form.values.url))).to.eql(G.stringify(['boris.html', 'eldar.html']))
-      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['eldar.html']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['eldar.html', 'horror.html']))
+      expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html']))
 
       form.values.preset('url', 'zorro.html', 'xoxo')
-      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'eldar.html']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'eldar.html', 'horror.html']))
       expect(String(form.$last.$first.value)).to.eql('boris.html')
       expect(String(form.$last.$last.value)).to.eql('eldar.html')
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html']))
 
       horror.call()
+      expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'eldar.html', 'horror.html']))
+      expect(String(form.$last.$first.value)).to.eql('boris.html')
       expect(G.stringify(ValueStack(form.$last.$first.value))).to.eql(G.stringify(['boris.html']))
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'horror.html']))
 
       form.$last.$last.set('value', 'Hello world')
+      expect(String(form.values.url)).to.eql('horror.html')
+      expect(String(form.$last.$last.value)).to.eql('Hello world')
       expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'horror.html', 'Hello world']))
-      expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['Hello world']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'Hello world', 'horror.html']))
+      expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
 
+      horror.uncall()
+      expect(String(form.values.url)).to.eql('Hello world')
+      expect(String(form.$last.$last.value)).to.eql('Hello world')
+      expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'Hello world']))
+      expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'Hello world', 'horror.html']))
+      expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
 
       form.$last.$last.value.uncall()
-      expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'horror.html', 'Hello world']))
+      expect(String(form.values.url)).to.eql('eldar.html')
+      expect(String(form.$last.$last.value)).to.eql('eldar.html')
+      expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html', 'Hello world']))
       expect(G.stringify(ValueStack(form.$last.$first.value))).to.eql(G.stringify(['boris.html']))
       
     })

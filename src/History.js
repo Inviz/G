@@ -16,6 +16,11 @@
 // Find operation in group or history that matches meta of a given operation 
 
 G.history = function(value, old, verb) {
+  if (!verb && value.$multiple)
+    for (var prec = value; prec = prec.$preceeding;) 
+      if (G.Array.contains(old, prec)) 
+        return prec;
+
   if (G.history.isReplacing(value, old, verb))    // If key is supposed to have singular value
     return G.history.match(value.$meta, old)      //   Attempt to find value with same meta in history 
 };

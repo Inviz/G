@@ -28,7 +28,6 @@ var G = function(context, key, value) {
     if (value)                                        // If value is given to constructor, it's object
       this.$source = value;                           // Keep reference to original object to reify later
   }
-
   if (arguments.length > 3) {                         // Use/merge extra arguments as meta
     for (var args = [], i = 0; i < arguments.length - 3; i++)
       args[i] = arguments[i + 3];
@@ -124,7 +123,7 @@ G.prototype.call = function(verb, old) {
       if (other) {                                    // If history holds a value with same meta
         if (G.value.equals(other, result))            //   If it's equal to given value
           return G.record.reuse(other);               //     Use that other value instead
-        if (other.$multiple)
+        if (other.$multiple && G.Array.isLinked(other))
           G.verbs.replace(value, other)
         else
           result = G.history.update(result, old, other);//   Or replace it in stack
@@ -134,6 +133,7 @@ G.prototype.call = function(verb, old) {
           return G.record.continue(value, old);
         } else if (other && verb.reifying) {
           value = result = other;
+          other = undefined;
         }
       }
     }
@@ -178,11 +178,14 @@ G.prototype.uncall = function(soft, unformatted) {
   
   var prec = value.$preceeding;  
   if (prec && prec.$succeeding == value) {            // If stack holds values before given
-    if (value == current && !value.$succeeding)       // And value is current and on top of history
-      if (value.$multiple)
-        return G.swap(value.$preceeding, value)
-      else
-        G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
+    if (value.$multiple) {
+      if (value == current || G.Array.isLinked(value)) {
+        G.replace(value.$preceeding, value)
+        return value
+      }
+    } else if (value == current && !value.$succeeding) {      // And value is current and on top of history
+      G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
+    }
   } else {  
     if (value.$multiple) {                            // 3. Removing value from group 
       if (value == current) {  

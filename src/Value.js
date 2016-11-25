@@ -1,19 +1,21 @@
 G.value = function(value, old, result, other, verb) {
-  G.value.apply(result);                            // Save value in its context
+  G.value.apply(result);           
   if (value.$multiple)
     result = value;
-  if (result !== old || result.$multiple) {         // Decide if value should be propagated
+
+  var replacing = result.$multiple && (!old || old.$preceeding != result);
+  if (result !== old || result.$multiple) {         // Decide if value should be propagated                 // Save value in its context
     G.record.push(result);                           // Put operation onto the caller stack
-    G.value.propagate(result, old);                     // Apply side effects and invoke observers 
+    G.value.propagate(result, replacing ? other : old);                     // Apply side effects and invoke observers 
     if (old && old.$iterators)
       G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
     if (result !== old) {
-      G.notify(result.$context, result.$key, result, old)// Trigger user callbacks 
+      G.notify(result.$context, result.$key, result, replacing ? other : old)// Trigger user callbacks 
     }
     G.record.pop();
   }
 
-  if (result.$multiple && other && verb.multiple) {
+  if (result.$multiple  && other  && (!verb || verb.multiple)) {
     if (G.Array.isLinked(other)) {
       G.record.push(other);                             // Put operation onto the caller stack
       G.value.propagate(other);                            // Apply side effects and invoke observers 
@@ -21,7 +23,7 @@ G.value = function(value, old, result, other, verb) {
       //  G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
       G.record.pop();
     } else {
-      G.revoke(other)
+      G.uncall(other)
     }
     if (other.$context !== result.$context ||
         other.$key !== result.$key)

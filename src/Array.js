@@ -4,7 +4,7 @@ G.Array.process = function(value, other, verb) {
   if (verb)
     G.Array.mark(value, verb.multiple)                // Update arraylike flag 
   else if (value.$multiple)                           // When restoring arraylike value
-    if (G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
+    if (other || G.Array.inject(value) === false)              // Attempt to put it back at its place in collection
       if (verb !== null)                              // If that didnt work and if not switching values
         return G.Array.verbs.push;                    // fall back to push verb
   return verb;
@@ -304,8 +304,8 @@ G.Array.guessPosition = function(value, old, cause) {
     }
   }
   // first meta argument is number
-  if (value.$meta) {
-    var id = value.$meta[0];
+  if (value.$meta || value.$representation) {
+    var id = value.$representation || value.$meta[0];
     if (typeof id == 'number') {
       for (var prev = old; prev; prev = prev.$previous) {
         if (prev.$meta && typeof prev.$meta[0] == 'number') {
@@ -319,12 +319,22 @@ G.Array.guessPosition = function(value, old, cause) {
     if (id && id.comparePosition) {
       for (var prev = old; prev; prev = prev.$previous) {
         if (prev != value)
-          if (prev.$meta && prev.$meta[0] && prev.$meta[0].comparePosition)
+          if (prev.$meta && prev.$meta[0] && prev.$meta[0].comparePosition) {
             if (id.comparePosition(prev.$meta[0]) == -1)
               return prev
+            else 
+              var last = prev;
+          }
+        else
+          var self = value;
       }
-      return false;
+      if (!last || G.Array.isAfter(value, last))
+        return value.$previous || false;
+      else
+        return false;
     }
+  } else {
+
   }
 }
 
@@ -341,8 +351,8 @@ G.Array.mark = function(value, state) {
   }
 }
 
-G.Array.isAfter = function(value, another) {
-  for (var prev = another; prev = prev.$leading;)
+G.Array.isAfter = function(value, another, property) {
+  for (var prev = another; prev = prev[property || '$leading'];)
     if (prev == value)
       return true;
 }

@@ -72,6 +72,8 @@ G.callback.getter = function(value, watcher) {
 }
 
 G.callback.future = function(value, watcher, old) {
+  if (watcher.$computing)
+    return;
   var props = (watcher.$getter || watcher).$properties
   var called = G.$called;
   var caller = G.$caller;
