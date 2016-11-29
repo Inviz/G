@@ -1,7 +1,4 @@
-G.value = function(value, old, result, other, verb) {
-  G.value.apply(result);           
-  if (value.$multiple)
-    result = value;
+G.value = function(result, old, other, verb) {
 
   var replacing = result.$multiple && (!old || old.$preceeding != result);
   if (result !== old || result.$multiple) {         // Decide if value should be propagated                 // Save value in its context
@@ -28,11 +25,7 @@ G.value = function(value, old, result, other, verb) {
     if (other.$context !== result.$context ||
         other.$key !== result.$key)
     G.notify(other.$context, other.$key, other)// Trigger user callbacks 
-      
   }
-        
-
-  return value;
 }
 
 // Process pure value transformations 
@@ -133,6 +126,8 @@ G.value.clear = function(value) {
   G.value.unset(value.$context, value.$key);
 }
 G.value.apply = function(value) {
+  if (value == null)
+    return;
   while (value.$next && // Use head of collection as result
          value.$next.$context === value.$context &&
          value.$next.$key     === value.$key)                            
@@ -201,7 +196,9 @@ G.value.reify = function(value, target) {
 G.value.reuse = function(target, source) {          // If plain JS object was referenced
   if (target === source) {
     return target;
-  } else if (!source.$source.observe) {                    // Use G object as value
+  } else if (target.$composable) {                  // Return value if it allows changing ownership
+    return target;                                  
+  } else if (!source.$source.observe) {             // Use G object as value
     target.$meta = source.$meta;
     return target;
   } else if (target.$key == source.$key && 

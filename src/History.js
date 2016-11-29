@@ -64,7 +64,7 @@ G.history.matches = function(context, key, value, meta, callback) {
     for (var head = old; head != current && head.$next;)
       head = head.$next;
     if (head === current
-    && (value === undefined || value === old.valueOf())) {      
+    && (value === undefined || value == old.valueOf())) {      
       var result = callback ? callback(old) : old;
       current = G.value.get(context, key);
     }
@@ -104,8 +104,8 @@ G.history.update = function(value, old, other) {
     G.history.rebase(old, value);                           //    Switch in place
     return value;                                   //    Return new value
   } else if (other) {                               // 3. Value matches
-    G.history.rebase(other, value);                         //    Replace it in history
-    return old;
+    G.history.rebase(other, value);                 //    Replace it in history
+    return undefined;                               //    Keep old value assigned
   }
 };
 
@@ -126,12 +126,10 @@ G.meta.equals = function(meta1, meta2) {
 };
 
 G.meta.set = function(op, meta) {
-  if (meta) {
-    if (meta.length < 2 && (meta[0] == null || meta[0] instanceof Array))
-      op.$meta = meta[0] || undefined
-    else
-      op.$meta = meta
-  }
+  while (meta && meta.length < 2 && (meta[0] == null || meta[0] instanceof Array))
+    meta = meta[0] || undefined
+  if (meta)
+    op.$meta = meta
 }
 
 G.meta.isPriority = function(op) {

@@ -1165,7 +1165,7 @@ describe('Observers', function() {
       expect(String(post.author.name)).to.eql('George')
       expect(String(defaults.author.title)).to.eql('Writer')
 
-      post.defaults(defaults)
+      post.defaults(defaults, 'default values')
 
       expect(String(post.author.name)).to.eql('George')
       expect(String(post.author.title)).to.eql('Writer')
@@ -1236,7 +1236,7 @@ describe('Observers', function() {
         video: {
           src: 'file.mp4'
         }
-      });
+      }, 'own');
 
       var defaults = new G({
         title: 'Untitled',

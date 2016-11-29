@@ -198,13 +198,16 @@ G.prototype.observe = function(source, preset, meta, method) {
       return this.merge.apply(this, arguments);
   } else if (source.$source) {
     if (!meta) meta = source.$meta;
-    source = source.$source;
-    if (!source.watch) {
+    if (!source.$source.watch) {
+      source.$method = method;
+      source.$target = this;
+      G.meta.set(source, meta);
       if (preset)
-        return this.defaults(source, meta)
+        return this.defaults(source.$source, meta)
       else
-        return this.merge(source, meta);
+        return this.merge(source.$source, meta);
     }
+    source = source.$source;
     var target = source;
     G.meta.set(target, meta);
     target.$method = method;
@@ -249,31 +252,38 @@ G.prototype.observe = function(source, preset, meta, method) {
 G.prototype.unobserve = function(source) {
   if (source.$source) {
     var target = source.$target || source;
+    var meta = source.$meta;
     source = source.$source;
   } else {
     var target = this;
   }
-  var i = this.$chain.indexOf(source);
-  if (i > -1)
-    this.$chain.splice(i, 1)
-  for (var i = 0; i < source.$observers.length; i++) {
-    if (source.$observers[i] == target ||
-        source.$observers[i].$target == target)
-      break;
+  if (source.$observers) {
+    var i = this.$chain.indexOf(source);
+    if (i > -1)
+      this.$chain.splice(i, 1)
+    for (var i = 0; i < source.$observers.length; i++) {
+      if (source.$observers[i] == target ||
+          source.$observers[i].$target == target)
+        break;
 
+    }
+    if (i == source.$observers.length)
+      return this;
+    source.$observers.splice(i, 1);
   }
-  if (i == source.$observers.length)
-    return this;
-  source.$observers.splice(i, 1);
   var keys = Object.keys(source);
   var called = G.$called;
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
-      G.record.push(source[key]);
+      var issuer = source.watch ? source[key] : target;
+      G.record.push(issuer);
       if (source[key] instanceof G && this[key] instanceof G && this[key] != source[key]) {
         this[key].unobserve(source[key])
       } else {
-        G.callback.revoke(source[key], target)
+        if (source.watch)
+          G.callback.revoke(source[key], target)
+        else
+          target.unset(key, source[key], meta)
       }
       G.record.pop()
     }

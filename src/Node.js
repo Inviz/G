@@ -181,11 +181,11 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 }
 
 G.Node.prototype.getTextContent = function() {
-  var result;
+  var result = '';
   if (this.$first)
     for (var lead = this; lead = lead.$following;) {
       if (lead && !lead.tag && lead.text) {
-        result = (result || '') + lead.text;
+        result = result + lead.text;
       }
       if (lead == this.$last)
         break;
@@ -371,10 +371,10 @@ G.Node.triggers = {
   itemprop: function(itemprop) { // itemprop future is optimized to
     var value = this.getMicrodata()
 
-    if (this.microdata[itemprop] != value) {
+    if (this.microdata && this.$microdata) {
       var last = G.$callers[G.$callers.length - 1];
       // hack? :(
-      if (!last || !(last.$context instanceof G.Node.Microdata))
+      if (!last || !(last.$context instanceof G.Node.Microdata) || last.$key != itemprop)
         this.$microdata.pushOnce(itemprop, value, this);
     }
     return 
@@ -751,13 +751,15 @@ G.Node.prototype.cloneNode = function(deep) {
   var node = new G.Node(this.tag);
   var keys = Object.keys(this);
   for (var i = 0, key; key = keys[i++];)
-    if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) // '$'
-
+    if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) {// '$'
+      G.record.push();
       node.set(key, this[key], node)
+      G.record.pop()
+    }
 
   if (deep) {
     for (var child = this.$first; child; child = child.$next) {
-      node.appendChild(child.cloneNode(true))
+      node.appendChild(child.cloneNode(deep))
     }
   }
   return node
@@ -892,17 +894,26 @@ G.Node.prototype.getMicrodata = function() {
 }
 G.Node.prototype.setMicrodata = function(value, meta) {
   if (meta == null)
-    meta = [this, 'microdata']
+    meta = [this, 'microdata'] // if metadata is false, it falls back 
   var cause = G.$cause;
   G.$cause = null;
   var tag = this.tag.valueOf();
-
-  if (tag == 'a' || this.href) {
-    this.set('href', value, meta)
+  if (value && G.value.isObject(value)) {
+    for (var next = this; next = next.$following;) {
+      if (next == this.$next)
+        break;
+      if (next.itemprop) {
+        next.setMicrodata(value[next.itemprop] || '', false)
+        if (next.$next)
+          next = next.$next.$leading;
+      }
+    }
+  } else if (tag == 'a' || this.href) {
+    this.set('href', value, meta || this)
   } else if (this.src || tag == 'script' || tag == 'image') {
-    this.set('src', value, meta)
+    this.set('src', value, meta || this)
   } else if (this.$first && !this.$first.tag) {
-    this.$first.set('text', value, meta)
+    this.$first.set('text', value, meta || this.$first)
   }
 
   G.$cause = cause;
@@ -939,8 +950,11 @@ G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
 
 G.Node.Microdata.prototype.callNode = function(value) {
   if (value && value.$) {
-    if (!G.Array.isLinked(value.$))
+    if (!G.Array.isLinked(value.$)) {
+      G.record.push();
       value.$.call()
+      G.record.pop()
+    }
     return value;
   }
 }
@@ -948,8 +962,8 @@ G.Node.Microdata.prototype.callNode = function(value) {
 G.Node.Microdata.prototype.cloneNode = function(value, old) {
   for (var prev = value; prev = prev.$previous;) {
     if (!prev.$) continue;
-    value.$ = prev.$.cloneNode(true);
-    value.$.setMicrodata(value);
+    value.$ = prev.$.cloneNode(value);
+    value.$.setMicrodata(value, value.$);
     value.$.itemprop.$subscription.$computing = true;
     G.after(value.$, prev.$)
     value.$.itemprop.$subscription.$computing = false;
@@ -957,8 +971,8 @@ G.Node.Microdata.prototype.cloneNode = function(value, old) {
   }
   for (var next = value; next = next.$next;) {
     if (!next.$) continue;
-    value.$ = next.$.cloneNode(true);
-    value.$.setMicrodata(value);
+    value.$ = next.$.cloneNode(value);
+    value.$.setMicrodata(value, value.$);
     value.$.itemprop.$subscription.$computing = true;
     G.before(value.$, next.$)
     value.$.itemprop.$subscription.$computing = false;
@@ -966,6 +980,10 @@ G.Node.Microdata.prototype.cloneNode = function(value, old) {
   }
 }
 G.Node.Microdata.prototype.updateNode = function(value, target) {
+
+  var last = G.$callers[G.$callers.length - 1];
+  // hack? :(
+  if (!last || (last.$context != this.$context))
   if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
     target.$.itemprop.$subscription.$computing = true;
     target.$.setMicrodata(value, value.$meta);
@@ -1022,11 +1040,9 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
       }
 
       if (context[bit] == null) {
-
         G.record.push(this);
         context.set(bit, {}, this)
         G.record.pop()
-
       }
       context = context[bit]
       if (value == null) {

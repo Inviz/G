@@ -10,15 +10,31 @@ G.prototype.each = function(callback) {
 };
 
 // Export to clean javascript object
-G.prototype.clean = function() {
+G.prototype.clean = function(shallow) {
   var result = {}
   var keys = Object.keys(this);
+  if (this instanceof Array)
+    shallow = true;
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$') {
-      if (this[key] && this[key] instanceof G) {
-        result[key] = this[key].clean()
+      if (this[key] && this[key].$previous && !shallow) {
+        var first = this[key]
+        while (first.$previous)
+          first = first.$previous;
+        result[key] = [];
+        for (var next = first; next; next = next.$next) {
+          if (next && next instanceof G) {
+            result[key].push(next.clean())
+          } else {
+            result[key].push(next)
+          }
+        }
       } else {
-        result[key] = this[key]
+        if (this[key] && this[key] instanceof G) {
+          result[key] = this[key].clean()
+        } else {
+          result[key] = this[key]
+        }
       }
     }
   return result
@@ -66,13 +82,25 @@ G.prototype.transfer = function(context, key) {
   return this;
 }
 
-G.getLength = function(object) {
+G.getLength = function(object, own) {
   var length = 0;
   var keys = Object.keys(object);
   for (var j = 0; j < keys.length; j++) {
     if (keys[j].charAt(0) == '$')
       continue
-    length++;
+    /* Properties set explicitly (not within callback)
+      will be discarded when all objects are unmerged 
+
+      Example:
+      var data = {title: 'author'};
+      context.person                              // null
+      var person = context.merge('person', data); // {title: 'author'}
+      context.person.set('name', 'Bob');          // {title: 'author', name: 'Bob'}
+      context.unmerge('person', person)           
+      context.person                              // null (not {name: 123})
+    */
+    if (!own || object[keys[j]] == null || object[keys[j]].$cause)
+      length++;
   }
   return length;
 }

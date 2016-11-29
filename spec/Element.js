@@ -1180,6 +1180,63 @@ describe('G.Node', function() {
 
     })
 
+
+    it ('should clone elements when sets of microdata values', function() {
+      var form = new G.Node('article', {itemscope: true},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', {itemprop: 'person', itemscope: true}, 
+          new G.Node('h1', {itemprop: 'name'}, 'John Johnson'),
+          new G.Node('a', {itemprop: 'url', href: 'john.html'})
+        )
+      );
+      var john = form.$last;
+      expect(G.stringify(form.microdata.clean())).to.eql(G.stringify({person: {name: 'John Johnson', url: 'john.html'}}))
+      
+      form.microdata.push('person', {name: 'Ivan Ivanov', url: 'ivan.html'})
+      expect(G.stringify(form.microdata.clean())).to.eql(G.stringify({person: [{name: 'John Johnson', url: 'john.html'}, {name: 'Ivan Ivanov', url: 'ivan.html'}]}))
+      
+      var ivan = form.$last;
+      expect(john).to.not.eql(ivan)
+      expect(ivan.$first.getTextContent()).to.eql('Ivan Ivanov')
+      expect(String(ivan.$last.href)).to.eql('ivan.html')
+
+
+      form.microdata.unshift('person', {url: 'anonymous.html'})
+      var anon = john.$previous;
+      expect(anon).to.not.eql(john)
+      expect(anon.$first.getTextContent()).to.eql('')
+      expect(String(anon.$last.href)).to.eql('anonymous.html')
+      expect(String(anon.microdata.name)).to.eql('')
+      
+      anon.microdata.set('name', 'Anonymous')
+      expect(anon.$first.getTextContent()).to.eql('Anonymous')
+
+      var name = anon.microdata.name.uncall();
+      expect(anon.$first.getTextContent()).to.eql('')
+      expect(String(anon.microdata.name)).to.eql('')
+
+      name.call()
+      expect(anon.$first.getTextContent()).to.eql('Anonymous')
+      expect(String(anon.microdata.name)).to.eql('Anonymous')
+
+      name.uncall()
+      expect(anon.$first.getTextContent()).to.eql('')
+      expect(String(anon.microdata.name)).to.eql('')
+
+      debugger
+      var merged = anon.merge('microdata', {
+        name: 'Vasya',
+        url: 'vasya.html'
+      })
+      expect(String(anon.microdata.name)).to.eql('Vasya')
+      expect(anon.$first.getTextContent()).to.eql('Vasya')
+
+      merged.uncall()
+      expect(anon.$first.getTextContent()).to.eql('')
+      expect(String(anon.microdata.name)).to.eql('')
+
+    })
+
     it ('should change form values', function() {
       var form = new G.Node('form',
         new G.Node('label', null, 'What is your name?'),
@@ -1340,7 +1397,7 @@ describe('G.Node', function() {
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
 
       var textnode = submit.$first.uncall()
-      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
 
       textnode.call()
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
@@ -1353,7 +1410,7 @@ describe('G.Node', function() {
       expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
 
       submit.href.uncall()
-      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html'}))
+      expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
     })
 
     it ('should chain microdata scopes', function() {

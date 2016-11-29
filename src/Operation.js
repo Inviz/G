@@ -111,12 +111,11 @@ G.prototype.call = function(verb, old) {
   if (old === undefined)
     old = G.value.current(this);
 
-  var value, other, result;
-  value  = G.value.format(this, old);                 // Transform value 
-  other  = G.history(value, old, verb);               // Find value with matching meta in history
-  result = G.value.process(value, old, other, verb)
-  value  = G.value.reuse(result, value)               // Use it instead of value, if possible
-  verb   = G.Array.process(value, other, verb);       // Attempt to put it back at its place in collection
+  var value  = G.value.format(this, old);             // Transform value 
+  var other  = G.history(value, old, verb);           // Find value with matching meta in history
+  var result = G.value.process(value, old, other, verb)
+  value = G.value.reuse(result, value)                // Use it instead of value, if possible
+  verb  = G.Array.process(result, other, verb);       // Attempt to put it back at its place in collection
 
   if (verb) {                                         
     if (old != null && old.$key) {                    // If there was another value by that key
@@ -124,16 +123,16 @@ G.prototype.call = function(verb, old) {
         if (G.value.equals(other, result))            //   If it's equal to given value
           return G.record.reuse(other);               //     Use that other value instead
         if (other.$multiple && G.Array.isLinked(other))
-          G.verbs.replace(value, other)
+          G.verbs.replace(result, other)
         else
-          result = G.history.update(result, old, other);//   Or replace it in stack
+          result = G.history.update(result, old, other);//   Or replace it in history
       } else {
         other = verb(result, old);                    // invoke stack-manipulation method
-        if (other === false) {                        // No side effect will be observed
-          return G.record.continue(value, old);
-        } else if (other && verb.reifying) {
-          value = result = other;
-          other = undefined;
+        if (other === false) {                        
+          return G.record.continue(value, old);       // No side effect will be observed
+        } else if (other && verb.reifying) {          
+          value = result = other;                     // use reified object returned by the verb
+          other = undefined; 
         }
       }
     }
@@ -145,7 +144,9 @@ G.prototype.call = function(verb, old) {
   if (!G.record.isLinked(value))                       // If operation position in graph needs update
     G.record(value, old, verb);                        // Register in graph and remember caller op/callback
 
-  return G.value(value, old, result, other, verb)
+  G.value.apply(result);   
+  G.value(result || value, old, other, verb)
+  return value;
 };
 
 G.prototype.recall = function() {
@@ -161,8 +162,9 @@ G.prototype.recall = function() {
 G.prototype.uncall = function(soft, unformatted) {
   if (this.$target) {                                 // 1. Unmerging object
     this.$target.unobserve(this)  
-    if (this.$target.$chain.length == 0)              // todo check no extra keys
-      return this.$target.uncall();   
+    if ((!this.$target.$chain || this.$target.$chain.length == 0)
+        && G.getLength(this.$target, true) == 0)        //fixme: tests have incorrect expectations        
+      return this.$target.uncall();                   
     return this;  
   } else if (this.$future) {  
     return G.Future.uncall(this)  
@@ -183,7 +185,7 @@ G.prototype.uncall = function(soft, unformatted) {
         G.replace(value.$preceeding, value)
         return value
       }
-    } else if (value == current && !value.$succeeding) {      // And value is current and on top of history
+    } else if (value == current) {      // And value is current and on top of history
       G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
     }
   } else {  
