@@ -1181,7 +1181,7 @@ describe('G.Node', function() {
     })
 
 
-    it ('should clone elements when sets of microdata values', function() {
+    it ('should clone microdata scopes', function() {
       var form = new G.Node('article', {itemscope: true},
         new G.Node('label', null, 'What is your name?'),
         new G.Node('div', {itemprop: 'person', itemscope: true}, 
@@ -1235,6 +1235,36 @@ describe('G.Node', function() {
       expect(anon.$first.getTextContent()).to.eql('')
       expect(String(anon.microdata.name)).to.eql('')
 
+    })
+
+
+
+    it ('should clone fieldsets in proper order', function() {
+      var form = new G.Node('form', {},
+        new G.Node('label', null, 'What is your name?'),
+
+        new G.Node('input', {name: 'person[name]', value: 'John Johnson'}),
+        new G.Node('input', {name: 'person[url]', value: 'john.html'})
+      );
+
+      form.values.push('person', {name: 'Ivan Ivanov', url: 'ivan.html'});
+
+      expect(String(form.$last.$previous.value)).to.eql('Ivan Ivanov')
+      expect(String(form.$last.value)).to.eql('ivan.html')
+    })
+
+    it ('should clone fieldsets in reverse order', function() {
+      var form = new G.Node('form', {},
+        new G.Node('label', null, 'What is your name?'),
+
+        new G.Node('input', {name: 'person[name]', value: 'John Johnson'}),
+        new G.Node('input', {name: 'person[url]', value: 'john.html'})
+      );
+
+      form.values.push('person', {url: 'ivan.html', name: 'Ivan Ivanov'});
+
+      expect(String(form.$last.$previous.value)).to.eql('Ivan Ivanov')
+      expect(String(form.$last.value)).to.eql('ivan.html')
     })
 
     it ('should change form values', function() {

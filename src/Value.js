@@ -164,14 +164,15 @@ G.value.process = function(value, old, other, verb) {
 G.value.construct = function(context, key, value) {
   var constructors = context.constructors;
   if (constructors && constructors[key])
-    var result = new constructors[key](value);
+    var result = new constructors[key];
   else if (context.constructor.recursive)
-    var result = new (context.constructor)(value);
+    var result = new (context.constructor);
   else
-    var result = new G(value);  
+    var result = new G;  
   result.$key = key;
   result.$context = context;
   result.$meta = value.$meta;
+  result.observe(value)
   return result;
 }
 G.value.reify = function(value, target) {
