@@ -1,5 +1,8 @@
 G.value = function(result, old, other, verb) {
-
+  if (result && result.$merging) {
+    result.observe(result.$merging)
+    result.$merging = undefined;
+  }
   var replacing = result.$multiple && (!old || old.$preceeding != result);
   if (result !== old || result.$multiple) {         // Decide if value should be propagated                 // Save value in its context
     G.record.push(result);                           // Put operation onto the caller stack
@@ -171,8 +174,10 @@ G.value.construct = function(context, key, value) {
     var result = new G;  
   result.$key = key;
   result.$context = context;
-  result.$meta = value.$meta;
-  result.observe(value)
+  if (value) {
+    result.$meta = value.$meta;
+    result.observe(value)
+  }
   return result;
 }
 G.value.reify = function(value, target) {
@@ -188,7 +193,9 @@ G.value.reify = function(value, target) {
     && value.$source.$key == target.$key) {                
     return value.$source;                           // Use origin object instead of reference
   } else {
-    var result = G.value.construct(target.$context, target.$key, value);      
+    var result = G.value.construct(target.$context, target.$key);
+    result.$merging = value;
+    result.$meta = value.$meta;      
     value.$target = result;
     return result;
   }

@@ -766,6 +766,48 @@ G.Node.prototype.cloneNode = function(deep) {
 }
 
 
+G.Node.prototype.getMicrodata = function() {
+  if (this.itemscope) {
+    if (this.$microdata) {
+      return this.microdata
+    }
+  } else if (this.href != null)    // be triggered by any possible
+    return this.href;              // source of itemvalue without 
+  else if (this.src != null)       // individual subscription
+    return this.src;
+  else if (this.content != null)
+    return this.content;
+  else
+    return this.getTextContent()
+
+}
+G.Node.prototype.setMicrodata = function(value, meta) {
+  if (meta == null)
+    meta = [this, 'microdata'] // if metadata is false, it falls back 
+  var cause = G.$cause;
+  G.$cause = null;
+  var tag = this.tag.valueOf();
+  if (value && G.value.isObject(value)) {
+    for (var next = this; next = next.$following;) {
+      if (next == this.$next)
+        break;
+      if (next.itemprop) {
+        next.setMicrodata(value[next.itemprop] || '', false)
+        if (next.$next)
+          next = next.$next.$leading;
+      }
+    }
+  } else if (tag == 'a' || this.href) {
+    this.set('href', value, meta || this)
+  } else if (this.src || tag == 'script' || tag == 'image') {
+    this.set('src', value, meta || this)
+  } else if (this.$first && !this.$first.tag) {
+    this.$first.set('text', value, meta || this.$first)
+  }
+
+  G.$cause = cause;
+}
+
 
 
 G.Node.prototype.migrate = function(record) {
@@ -877,48 +919,6 @@ G.Node.Microdata.prototype.onChange = function(key, value, old) {
   this.updateNode(value, target)
 }
 
-G.Node.prototype.getMicrodata = function() {
-  if (this.itemscope) {
-    if (this.$microdata) {
-      return this.microdata
-    }
-  } else if (this.href != null)    // be triggered by any possible
-    return this.href;              // source of itemvalue without 
-  else if (this.src != null)       // individual subscription
-    return this.src;
-  else if (this.content != null)
-    return this.content;
-  else
-    return this.getTextContent()
-
-}
-G.Node.prototype.setMicrodata = function(value, meta) {
-  if (meta == null)
-    meta = [this, 'microdata'] // if metadata is false, it falls back 
-  var cause = G.$cause;
-  G.$cause = null;
-  var tag = this.tag.valueOf();
-  if (value && G.value.isObject(value)) {
-    for (var next = this; next = next.$following;) {
-      if (next == this.$next)
-        break;
-      if (next.itemprop) {
-        next.setMicrodata(value[next.itemprop] || '', false)
-        if (next.$next)
-          next = next.$next.$leading;
-      }
-    }
-  } else if (tag == 'a' || this.href) {
-    this.set('href', value, meta || this)
-  } else if (this.src || tag == 'script' || tag == 'image') {
-    this.set('src', value, meta || this)
-  } else if (this.$first && !this.$first.tag) {
-    this.$first.set('text', value, meta || this.$first)
-  }
-
-  G.$cause = cause;
-}
-
 
 G.Node.Microdata.prototype.adoptNode = function(value, old) {
   if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node) {
@@ -940,7 +940,7 @@ G.Node.Microdata.prototype.ownNode = function(value, other, method) {
 
   if (other) {
     value.$.name.$subscription.$computing = true;
-    G[method](value.$, other.$)
+    G[method](value.$, other)
     value.$.name.$subscription.$computing = false;
   }
 
@@ -949,7 +949,6 @@ G.Node.Microdata.prototype.ownNode = function(value, other, method) {
 
 
 G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
-
   if (old.$.$origin == old) {
     old.$.$origin = null
   } else if (old.$.itemprop == key && 
@@ -1040,25 +1039,45 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
       inner: for (var letter = end; ++letter != length;) {
         switch (key.charCodeAt(letter)) {
           case 48: case 49: case 50: case 51: case 52: case 53:
-          case 54: case 55: case 56: case 57: case 91: case 93:
+          case 54: case 55: case 56: case 57: case 91:
             break;
           default:
             break inner;
         }
       }
-      if (letter == length) {
+      // [] or [1] at the end of key
+      if (letter == length - 1) {
         length = i;
         var array = true;
         break;
 
+      // [] or [1] in the middle of key
+      } else if (key.charCodeAt(letter) == 93) { // ]
+        var subkey = key.substring(0, letter + 1);
+        i = letter + 1;
+        for (var current = context[bit]; current; current = current.$previous) {
+          if (current.$index == subkey) {
+            var match = current;
+            break;
+          }
+        }
+        if (!match) {
+          G.record.push(this);
+          match = context.push(bit, {}, value.$meta)
+          match.$index = subkey;
+          G.record.pop()
+        }
+        context = match;
+      } else {
+
+        if (context[bit] == null) {
+          G.record.push(this);
+          context.set(bit, {}, this)
+          G.record.pop()
+        }
+        context = context[bit]
       }
 
-      if (context[bit] == null) {
-        G.record.push(this);
-        context.set(bit, {}, this)
-        G.record.pop()
-      }
-      context = context[bit]
       if (value == null) {
         if (!contexts)
           var contexts = []
@@ -1070,8 +1089,8 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   }
   var cause = G.$cause;
   G.$cause = null;
-  if (last) {
-    var bit = key.substring(last, length - 1);
+  if (last || array) {
+    var bit = key.substring(last, length - (!!last));
     if (!array || context[bit] == null || value == null) {
       if (value)
         context.push(bit, value, (value || old).$meta);
@@ -1106,13 +1125,13 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
     if (!prev.$) continue;
     value.$ = prev.$.cloneNode(true);
     value.$.set('value', value, value.$);
-    return this.ownNode(value, prev, 'after')
+    return this.ownNode(value, prev.$, 'after')
   }
   for (var next = value; next = next.$next;) {
     if (!next.$) continue;
     value.$ = next.$.cloneNode(true);
     value.$.set('value', value, value.$);
-    return this.ownNode(value, next, 'before')
+    return this.ownNode(value, next.$, 'before')
   }
   var context = this.$context;
   while (!(context instanceof G.Node))
@@ -1123,35 +1142,56 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
     if (el.name == name) {
       value.$ = el.cloneNode(true);
       value.$.set('value', value, value.$);
-      value.$.name.$subscription.$computing = true;
       
       this.ownNode(value)
       var pos = 0;
 
-      // find last input in the scope, remember its relative position
-      if (el.$scope) {
-        // compute inputs order in the form
+      if (!el.$scope) continue;
+
+    
+      if (G.Array.isAfter(value.$context, el.$scope)) {
+        // find position of input within its scope
+        for (var after = el; (after = after.$following) != last;) 
+          if (after.$scope == el.$scope)
+            pos++;
+
+        // find first input in the scope
+        for (var before = el; (before = before.$leading) != context;) 
+          if (el.$scope && before.$scope == el.$scope)
+            el = before;
+
+        // attempt to place cloned span in a similar position
+        if (pos) {
+          for (var before = el; (before = before.$leading) != context;) 
+            if (before.$scope == value.$context) {
+              el = before;
+              if (--pos == 0)
+                break;
+            }
+        }
+        return this.ownNode(value, el, 'before')
+      } else {
+        // find position of input within its scope
         for (var before = el; (before = before.$leading) != context;) 
           if (before.$scope == el.$scope)
             pos++;
+
+        // find last input in the scope
         for (var after = el; (after = after.$following) != last;) 
           if (el.$scope && after.$scope == el.$scope)
             el = after;
 
+        // attempt to place cloned span in a similar position
+        if (pos) {
+          for (var after = el; (after = after.$following) != last;) 
+            if (after.$scope == value.$context) {
+              el = after;
+              if (--pos == 0)
+                break;
+            }
+        }
+        return this.ownNode(value, el, 'after')
       }
-      // attempt to respect that position in a cloned span
-      if (pos) {
-        for (var after = el; (after = after.$following) != last;) 
-          if (after.$scope == value.$context) {
-            el = after;
-            if (--pos == 0)
-              break;
-          }
-      }
-
-      G.after(value.$, el)
-      value.$.name.$subscription.$computing = false;
-      return value.$
     }
   }
 }
@@ -1165,7 +1205,13 @@ G.Node.Values.prototype.updateNode = function(value, target) {
 G.Node.Values.prototype.getName = function(value) {
   var key = ''
   while (value) {
+    for (var before = value, i = 0; before = before.$previous; )
+      i++;
+    if (i)
+      key = '[' + i + ']' + key
+
     key = '[' + value.$key + ']' + key
+
     if (value.$context.$context instanceof G.Node)
       break;
     value = value.$context

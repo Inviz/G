@@ -1237,6 +1237,44 @@ describe('G.Node', function() {
 
     })
 
+    it ('should parse numeric indecies', function() {
+
+      var form = new G.Node('form', {},
+        new G.Node('label', null, 'What is your name?'),
+
+        new G.Node('input', {name: 'tags[0]', value: 'Alfa'}),
+        new G.Node('input', {name: 'tags[1]', value: 'Bravo'})
+      );
+
+      expect(G.stringify(ValueGroup(form.values.tags))).to.eql(G.stringify(['Alfa', 'Bravo']))
+      
+      form.prependChild(new G.Node('input', {name: 'tags[2]', value: 'Charlie'}))
+      expect(G.stringify(ValueGroup(form.values.tags))).to.eql(G.stringify(['Charlie', 'Alfa', 'Bravo']))
+      
+      form.appendChild(new G.Node('input', {name: 'tags[3]', value: 'Delta'}))
+      expect(G.stringify(ValueGroup(form.values.tags))).to.eql(G.stringify(['Charlie', 'Alfa', 'Bravo', 'Delta']))
+
+    })
+
+    it ('should parse numeric indecies of objects', function() {
+
+      var form = new G.Node('form', {},
+        new G.Node('label', null, 'What is your name?'),
+
+        new G.Node('input', {name: 'person[0][name]', value: 'Alfa'}),
+        new G.Node('input', {name: 'person[1][name]', value: 'Bravo'})
+      );
+
+      expect(G.stringify(ValueGroup(form.values.person))).to.eql(G.stringify([{name: 'Alfa'}, {name: 'Bravo'}]))
+
+      form.prependChild(new G.Node('input', {name: 'person[2][name]', value: 'Charlie'}))
+      expect(G.stringify(ValueGroup(form.values.person))).to.eql(G.stringify([{name: 'Charlie'}, {name: 'Alfa'}, {name: 'Bravo'}]))
+      
+      form.appendChild(new G.Node('input', {name: 'person[3][name]', value: 'Delta'}))
+      expect(G.stringify(ValueGroup(form.values.person))).to.eql(G.stringify([{name: 'Charlie'}, {name: 'Alfa'}, {name: 'Bravo'}, {name: 'Delta'}]))
+
+      debugger
+    })
 
 
     it ('should clone fieldsets in proper order', function() {
@@ -1265,6 +1303,11 @@ describe('G.Node', function() {
 
       expect(String(form.$last.$previous.value)).to.eql('Ivan Ivanov')
       expect(String(form.$last.value)).to.eql('ivan.html')
+
+      form.values.unshift('person', {url: 'goga.html', name: 'Goga Georgiev'});
+
+      expect(String(form.$first.$next.value)).to.eql('Goga Georgiev')
+      expect(String(form.$first.$next.$next.value)).to.eql('goga.html')
     })
 
     it ('should change form values', function() {
