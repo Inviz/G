@@ -18,6 +18,9 @@
 // `root.render()` method is called.
 
 G.Node = function(tag, attributes) {
+  if (G.Node.$recording)
+    return Array.prototype.slice.call(arguments);
+
   var Node = this.Node && this.Node.construct ? this.Node : this.construct ? this : G.Node;
   if (!(this instanceof G.Node)) {
     switch (typeof tag) {
@@ -42,15 +45,9 @@ G.Node = function(tag, attributes) {
         }
     }
   } else {
-    if (G.Node.$migration) {
-      var self = G.Node.migrate.apply(this, arguments)
-      if (self) return self;
-    }
+    
     var self = this;
     this.setArguments(tag, attributes);
-    if (G.Node.$recording) {
-      G.Node.remember.apply(this, arguments);
-    }
   }
 
   for (var i = 2; i < arguments.length; i++)
@@ -900,65 +897,167 @@ G.Node.prototype.setMicrodata = function(value, meta) {
 
 
 
-G.Node.prototype.migrate = function(record) {
-  G.Node.$migration = record;
-  G.Node.$migrated = []
+G.Node.record = function() {
+  return G.Node.$recording = true
+};
+G.Node.stop = function(result) {
+  G.Node.$recording = undefined;
+  return result;
+}
+
+G.Node.getKey = function(node, key) {
+  if (node instanceof Array)
+    var attributes = node[2];
+  else if (node.nodeType == 1)
+    var attributes = node.attributes;
+  else
+    var attributes = node;
+
+  if (!attributes) return;
+
+  var absolute = attributes.id || attributes.key;
+  if (absolute) return absolute;
+
+
+}
+
+G.Node.prototype.migrate = function(tree, key) {
+  if (typeof tree == 'function') {                    // Run JSX to generate S-tree 
+    G.Node.record();                                  // without building G.Nodes
+    tree = tree.call(this);
+    G.Node.stop();
+  }
+  if (!tree) return;
+
+  var attributes = {};
+  tree = tree.valueOf(); 
+  if (typeof tree == 'string') {
+    G.Node.migrateAttribute('text', tree, this, attributes)
+    return this;
+  }
+
+  var matches = [];                             // stable elements that were not removed
+        
+  for (var node = this; node; node = node.$next) {
+    var key = G.Node.getKey(node)
+    if (key) {
+      if (!keys) {
+        var keys = {};                                // dictionary of stable children ids
+        var region = [];                              // current span between stable elements
+      }
+      keys[key] = node;
+    }
+  }
+
+  if (keys) {                                         
+    G.Node.eachChild(tree, G.Node.matchNode,          // Find stable elements
+                     this, keys, matches, region);
+  }
+  G.Node.eachChild(tree, G.Node.migrateNode,           
+                     this, matches, region);
+
+  G.Node.eachAttribute(tree, G.Node.migrateAttribute, this, attributes);
+  G.Node.eachAttribute(this, G.Node.cleanAttribute, this, attributes);
+
   return this;
 };
-G.Node.prototype.finalize = function() {
-  var migrated = G.Node.$migrated;
-  G.Node.$migration = undefined;
-  G.Node.$migrated = undefined;
-  return migrated;
-}
 
-G.Node.remember = function(tag, attributes) {
-  G.Node.$recording.push(this, attributes);
-}
-G.Node.record = function() {
-  return G.Node.$recording = []
-};
-G.Node.stop = function() {
-  var recording = G.Node.$recording;
-  G.Node.$recording = undefined;
-  return recording;
-}
-G.Node.migrate = function(tag, attributes) {
-  var node = G.Node.$migration[G.Node.$migrated.length];
-  var old  = G.Node.$migration[G.Node.$migrated.length + 1];
-
-  if (attributes)
-    attributes = attributes.valueOf();
-
-  G.Node.updateAttributes(node, attributes, old);
-  G.Node.$migrated.push(node, attributes)
-
-  return node;
-}
-
-G.Node.updateAttributes = function(node, attributes, old) {
-  G.record.push()
-  if (typeof attributes == 'string') {
-    node.set('text', attributes, node);
-  } else {
-    var meta = [node]
-    if (attributes)
-      for (var key in attributes) {
-        var v = attributes[key];
-        var o = (old ? old[key] : undefined);
-        
-        if (o != v) {
-          if (o == null || G.history.matches(node, key, o, meta)) 
-            node.push(key, v, node)
-        }
-      }
-    if (old)
-      for (var key in old) {
-        if (!attributes || attributes[key] !== old[key])
-          node.unset(key, old[key], meta)
-      }
+G.Node.migrateNode = function(child, parent, matches, region) {
+  var current = matches.current;
+  if (region) {
+    var index = matches.indexOf(child);
+    if (index > -1) {
+      var node = matches[index + 1];
+      node.migrate(child);                                   // 0. Element is stable
+      matches.current = node;                                //  - migrate it out of order
+      matches.lastIndex = index + 3;
+    } else {
+      var index = matches.lastIndex || 0;
+      if (matches[index + 2]) 
+        region = matches[index + 2];
+      var next = region[region.indexOf(child) + 1];
+      var from = matches.current;
+      var to   = matches[index + 1];
+    }
   }
-  G.record.pop()
+  if (!current) {
+    if (!parent.$first || (to && parent.$first == to)) { // 1. Element is empty 
+      matches.current = G.Node.create(child);            // 2. First element is stable
+      parent.prependChild(matches.current);              //    - add new element 
+    } else {                                             // 3. First element is not stable
+      matches.current = parent.$first                    //    - migrate it
+      matches.current.migrate(child)                      
+    }
+  } else {
+    if (current.$next != to) {                           // 4. Another unstabe element in a row
+      current.$next.migrate(child);
+      matches.current = current.$next;
+    } else {
+      matches.current = G.Node.create(child);            // 5. New trailing unstable element
+      parent.insertBefore(matches.current, current)
+    }
+  } 
+};
+
+G.Node.create = function(object) {
+  if (typeof object == 'array') {
+    return this.construct.apply(this, object);
+  } else {
+    return this.construct(object);
+  }
+}
+
+G.Node.matchNode = function(child, parent, keys, matches, region) {
+  var key = G.Node.getKey(child);
+  if (keys[key]) {
+    matches.push(child, node, region.splice(0))
+  } else {
+    region.push(child)
+  }
+};
+
+G.Node.eachChild = function(node, callback, a1, a2, a3) {
+  if (node instanceof Array) {
+    for (var i = 2; i < node.length; i++)
+      callback.call(this, node[i], a1, a2, a3);
+  } else if (node.nodeType == 1) {
+    for (var child = node.firstChild; child; child = child.nextSibling)
+      callback.call(this, child, a1, a2, a3);
+  } else {
+    for (var child = node; child; child = child.$next)
+      callback.call(this, child, a1, a2, a3);
+  }
+}
+G.Node.eachAttribute = function(node, callback, a1, a2, a3) {
+  if (node instanceof Array) {
+    if (typeof node[1] == 'object') {
+      for (var property in node[1])
+        callback.call(this, property, node[1][property], a1, a2, a3);
+    }
+  } else if (node.nodeType == 1) {
+    for (var i = 0, attribute; attribute = node.attributes[i++];)
+      callback.call(this, attribute.name, attribute.value, a1, a2, a3);
+  } else {
+    var keys = Object.keys(node);
+    for (var i = 0, key; key = keys[i++];)
+      if (key != 'tag' && typeof node[key] != 'function' && key.charAt(0) != '$')
+        callback.call(this, key, node[key], a1, a2, a3);
+  }
+}
+
+G.Node.migrateAttribute = function(key, value, node, attributes) {
+  G.record.push()
+  if (key == 'class') {
+    node.pushOnce(key, value, node)
+  } else {
+    node.set(key, value, node)
+  }
+  G.record.pop();
+  attributes[key] = value;
+}
+G.Node.cleanAttribute = function(key, value, node, attributes) {
+  if (value && value.recall && !attributes[key])
+    value.recall(node)
 }
 
 G.Node.extend = function(constructor) {

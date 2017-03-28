@@ -36,6 +36,8 @@ var G = function(context, key, value, a1, a2, a3) {
   if (args !== undefined)
     G.meta.set(this, args);                           // Use/merge extra arguments as meta
   if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
+    if (typeof this == 'function')
+      debugger
     this.call = G.prototype.call;
     this.uncall = G.prototype.uncall;
     this.recall = G.prototype.recall;

@@ -229,47 +229,40 @@ describe('G.Node', function() {
   describe('Migrating', function() {
 
     it ('should migrate text node content', function() {
-      G.Node.record()
       var node = G.Node('article', null, 'Hello world');
-      var record = G.Node.stop()
 
       expect(String(node.$first.text)).to.eql('Hello world')
-      node.migrate(record)
-      G.Node('article', null, 'Bye world');
-      node.finalize()
+      node.migrate(function() {
+        return G.Node('article', null, 'Bye world');
+      })
       expect(String(node.$first.text)).to.eql('Bye world')
     })
 
     it ('should migrate attribute change', function() {
-      G.Node.record()
       var node = G.Node('article', {class: 'test'});
-      var record = G.Node.stop()
       expect(String(node.class)).to.eql('test')
 
-      node.migrate(record)
-      G.Node('article', {class: 'nest'});
-      node.finalize()
+      node.migrate(function() {
+        return G.Node('article', {class: 'nest'});
+      })
+      
       expect(String(node.class)).to.eql('nest')
     })
 
     it ('should migrate removal of an attribute', function() {
-      G.Node.record()
       var node = G.Node('article', {class: 'test'});
-      var record = G.Node.stop()
       expect(String(node.class)).to.eql('test')
 
-      node.migrate(record)
-      G.Node('article', {});
-      node.finalize()
+      node.migrate(function() {
+        return G.Node('article', {});
+      });
       expect(node.class).to.eql(undefined)
     })
 
     it ('should migrate deep changes', function() {
-      G.Node.record()
       var article = G.Node('article', {class: 'test'}, 
         G.Node('h1', null, 'Hey guys'),
         G.Node('button', {class: 'big'}, 'Press me'));
-      var record = G.Node.stop()
 
       var h1 = article.$first;
       var button = article.$last;
@@ -283,11 +276,11 @@ describe('G.Node', function() {
       expect(String(title.text)).to.eql('Hey guys')
       expect(String(label.text)).to.eql('Press me')
 
-      article.migrate(record)
-      G.Node('article', {class: 'not-test'}, 
-        G.Node('h1', {class: 'tight'}, 'Hey gals'),
-        G.Node('button', null, 'Push me'));
-      article.finalize()
+      article.migrate(function() {
+        return G.Node('article', {class: 'not-test'}, 
+          G.Node('h1', {class: 'tight'}, 'Hey gals'),
+          G.Node('button', null, 'Push me'));
+      })
 
       expect(String(h1.class)).to.eql('tight')
       expect(String(article.class)).to.eql('not-test')
@@ -299,11 +292,9 @@ describe('G.Node', function() {
 
 
     it ('should migrate deep changes keeping other effects in place', function() {
-      G.Node.record()
       var article = G.Node('article', {class: 'test'}, 
         G.Node('h1', null, 'Hey guys'),
         G.Node('button', {class: 'big'}, 'Press me'));
-      var record = G.Node.stop()
 
       var h1 = article.$first;
       var button = article.$last;
@@ -321,21 +312,21 @@ describe('G.Node', function() {
       expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
       expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['big', 'deal']))
 
-      article.migrate(record)
-      G.Node('article', {class: 'not-test'}, 
-        G.Node('h1', {class: 'tight'}, 'Hey gals'),
-        G.Node('button', null, 'Push me'));
-      record = article.finalize()
+      article.migrate(function() {
+        return G.Node('article', {class: 'not-test'}, 
+          G.Node('h1', {class: 'tight'}, 'Hey gals'),
+          G.Node('button', null, 'Push me'));
+      })
 
       expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
       expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal']))
       expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['tight', 'header']))
 
-      article.migrate(record)
-      G.Node('article', {}, 
-        G.Node('h1', null, 'Hey gals'),
-        G.Node('button', {class: 'best'}, 'Push me'));
-      article.finalize()
+      article.migrate(function() {
+        return G.Node('article', {}, 
+          G.Node('h1', null, 'Hey gals'),
+          G.Node('button', {class: 'best'}, 'Push me'));
+      })
 
       expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
       expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['best', 'deal']))

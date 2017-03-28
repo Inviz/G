@@ -144,33 +144,32 @@ G.Future.compute = function(watcher, value) {
     value = G.value.current(watcher);
 
   var getter = watcher.$getter;
-  var migrator = getter.$migrator;
-  if (migrator) {
+  var recorder = getter.$migrator;
+  if (recorder) {
     var current =  watcher.$current;
     for (; current; current = current.$previous) {
       if (current.$caller === G.$caller) {
-        if (current.$record)
-          var migrating = current.migrate(current.$record);
+        var source = current;
         break;
       }
     }
     if (!current) {
       for (var after = value; after = after.$after;) {
-        if (after.$record && after.$cause == watcher) {
-          var migrating = after.migrate(after.$record);
+        if (after.$cause == watcher) {
+          var source = after;
           break;
         }
       }
     }
   }
   if (!getter.$returns || value || !watcher.$getter.length) {
-    if (migrator && !migrating)
-      var recording = migrator.record();
+    if (source)
+      recorder.record();
     var result = getter.call(watcher.$context, value);
-    if (recording)
-      result.$record = migrator.stop();
-    else if (migrating)
-      result.$record = result.finalize()
+    if (source) {
+      return source.migrate(recorder.stop(result));
+    }
+
     return result;
   }
 }
