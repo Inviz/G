@@ -1,14 +1,15 @@
+// Propagate new value and notify observers
 G.value = function(result, old, other, verb) {
   if (result && result.$merging) {
     result.observe(result.$merging)
     result.$merging = undefined;
   }
   var replacing = result.$multiple && (!old || old.$preceeding != result);
-  if (result !== old || result.$multiple) {         // Decide if value should be propagated                 // Save value in its context
-    G.record.push(result);                           // Put operation onto the caller stack
-    G.value.propagate(result, replacing ? other : old);                     // Apply side effects and invoke observers 
+  if (result !== old || result.$multiple) {           // Decide if value should be propagated                 // Save value in its context
+    G.record.push(result);                            // Put operation onto the caller stack
+    G.value.propagate(result, replacing ? other : old);// Apply side effects and invoke observers 
     if (old && old.$iterators)
-      G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
+      G.Array.iterate(result, old.$iterators)         // Invoke array's active iterators
     if (result !== old) {
       G.notify(result.$context, result.$key, result, replacing ? other : old)// Trigger user callbacks 
     }
@@ -17,10 +18,10 @@ G.value = function(result, old, other, verb) {
 
   if (result.$multiple  && other  && (!verb || verb.multiple)) {
     if (G.Array.isLinked(other)) {
-      G.record.push(other);                             // Put operation onto the caller stack
-      G.value.propagate(other);                            // Apply side effects and invoke observers 
+      G.record.push(other);                           // Put operation onto the caller stack
+      G.value.propagate(other);                       // Apply side effects and invoke observers 
       //if (old && old.$iterators)
-      //  G.Array.iterate(result, old.$iterators)        // Invoke array's active iterators
+      //  G.Array.iterate(result, old.$iterators)     // Invoke array's active iterators
       G.record.pop();
     } else {
       G.uncall(other)
@@ -33,23 +34,23 @@ G.value = function(result, old, other, verb) {
 
 // Process pure value transformations 
 G.value.format = function(value, old) {
-  var formatters = value.$context.$formatters;      // Formatters configuration for whole context
-  if (formatters)                                   // is stored in sub-object
-    var group = formatters[value.$key];
-
-  var current = G.formatted(value)                  // Use value as it was formatted previously
-  if (current.$formatted === group) {               // 1. Value is already properly formatted 
-    return current                                  //    return it
-  } else {                                          // 2. Value not (yet) properly formatted
-    var multiple = value.$multiple;
-    var result = G.unformatted(value)               //    get original value
-    var after = current.$after                      //    remember next operation
-    if (group) {                            
-      for (var i = 0, j = group.length; i < j; i++) // Context has formatters for key
-        result = G.callback(result, group[i], old); //   apply formatters in order
-      result.$formatted = group                     //   store formatting configuration
+  var formatters = value.$context.$formatters;        // Formatters configuration for whole context
+  if (formatters)                                     // is stored in sub-object
+    var group = formatters[value.$key];  
+  
+  var current = G.formatted(value)                    // Use value as it was formatted previously
+  if (current.$formatted === group) {                 // 1. Value is already properly formatted 
+    return current                                    //    return it
+  } else {                                            // 2. Value not (yet) properly formatted
+    var multiple = value.$multiple;  
+    var result = G.unformatted(value)                 //    get original value
+    var after = current.$after                        //    remember next operation
+    if (group) {                              
+      for (var i = 0, j = group.length; i < j; i++)   // Context has formatters for key
+        result = G.callback(result, group[i], old);   //   apply formatters in order
+      result.$formatted = group                       //   store formatting configuration
     }
-    G.history.rebase(value, result);                        // Replace value in the stack of values for key
+    G.history.rebase(value, result);                  // Replace value in the stack of values for key
     G.link(result, after);
     if (multiple) {
       result.$multiple = true;
@@ -67,8 +68,8 @@ G.value.format = function(value, old) {
 // When value is applied initially, it invokes all observers
 // When value is re-applied, it attempts to reuse effects
 G.value.propagate = function(value, old) {
-  var watchers = value.$context.$watchers;        // Watchers configuration for whole context
-  if (watchers)                                   // is stored in sub-object
+  var watchers = value.$context.$watchers;            // Watchers configuration for whole context
+  if (watchers)                                       // is stored in sub-object
     var group = watchers[value.$key]
 
   var observers = value.$context.$observers;
@@ -164,9 +165,13 @@ G.value.process = function(value, old, other, verb) {
   return value;
 }
 
+// Build observable object bound to context by key
+// e.g. when deep merging objects
 G.value.construct = function(context, key, value) {
   var constructors = context.constructors;
-  if (constructors && constructors[key])
+  if (context.$constructor && context.$constructor(key))
+    var result = new (context.$constructor(key));
+  else if (constructors && constructors[key])
     var result = new constructors[key];
   else if (context.constructor.recursive)
     var result = new (context.constructor);

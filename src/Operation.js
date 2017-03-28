@@ -10,17 +10,22 @@ a stack of values, allowing switching between them easily.
 work as observable context with proper prototype chain.
 
   It can be used to enrich primitive value too, when called
-as `G.extend('Hello world', context, key)`
+as `G.unbox('Hello world', context, key)`
 
 */
 /**
  * Makes a G operation
  * @constructor
  */
-var G = function(context, key, value) {
-  G.built = (G.built || (G.built = 0)) + 1;
+var G = function(context, key, value, a1, a2, a3) {
+  //G.built = (G.built || (G.built = 0)) + 1;
+  switch (arguments.length) {
+    case 4: var args = [a1]; break;          // Use/merge extra arguments as meta
+    case 5: var args = [a1, a2]; break;
+    case 6: var args = [a1, a2, a3];
+  }
   if (context && this instanceof G) {
-    this.observe.apply(this, arguments);
+    this.observe(context, key, value, args);
   } else if (key != null) {
     this.$key = String(key);                          // Store key
     if (context != null)         
@@ -28,11 +33,8 @@ var G = function(context, key, value) {
     if (value)                                        // If value is given to constructor, it's object
       this.$source = value;                           // Keep reference to original object to reify later
   }
-  if (arguments.length > 3) {                         // Use/merge extra arguments as meta
-    for (var args = [], i = 0; i < arguments.length - 3; i++)
-      args[i] = arguments[i + 3];
-    G.meta.set(this, args);
-  }
+  if (args !== undefined)
+    G.meta.set(this, args);                           // Use/merge extra arguments as meta
   if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
     this.call = G.prototype.call;
     this.uncall = G.prototype.uncall;
@@ -41,8 +43,9 @@ var G = function(context, key, value) {
   return this;
 }
 
-// Create operation - one property changed value 
-G.create = function(context, key, value) {
+// Create operation that signifies that
+// one property changes its value. 
+G.create = function(context, key, value, a1, a2, a3) {
   G.created = (G.created || (G.created = 0)) + 1;
   switch (typeof value) {
   case 'object': case 'function':
@@ -54,7 +57,7 @@ G.create = function(context, key, value) {
         if (computed == null)                         //    Proceed if value was computed
           return
 
-        var result = G.extend(computed, context, key);//    Enrich primitive value
+        var result = G.unbox(computed, context, key); //    Enrich primitive value
         //result.$cause = value
         result.$meta = value.$meta                    //    Pick up watcher meta
       }
@@ -75,24 +78,23 @@ G.create = function(context, key, value) {
         var primitive = value;   
       }
       if (primitive instanceof G) {
-        var result = value.transfer(context, key)   // Assign object ownreship
+        var result = value.transfer(context, key)     // Assign object ownreship
       } else {
-        var result = G.extend(primitive, context, key)//    Construct new operation
+        var result = G.unbox(primitive, context, key) //    Construct new operation
       }                     
       if (result.$context == value.$context &&            
-          result.$key     == value.$key)            //    If operation is from before
-      result.$meta = value.$meta                    //      Restore meta 
+          result.$key     == value.$key)              //    If operation is from before
+      result.$meta = value.$meta                      //      Restore meta 
     }
     break;
-    break;
   default:
-    var result = G.extend(value, context, key)        // 4. Operation from primitive
+    var result = G.unbox(value, context, key);        // 4. Operation from primitive
   }
   
-  if (arguments.length > 3) {                         // Use/merge extra arguments as meta
-    for (var args = [], i = 0; i < arguments.length - 3; i++)
-      args[i] = arguments[i + 3];
-    G.meta.set(result, args);
+  switch (arguments.length) {
+    case 4: G.meta.set(result, [a1]); break;          // Use/merge extra arguments as meta
+    case 5: G.meta.set(result, [a1, a2]); break;
+    case 6: G.meta.set(result, [a1, a2, a3]);
   }
   return result
 }
@@ -101,7 +103,7 @@ G.create = function(context, key, value) {
 // Apply operation to its context 
 // If method name is not provided, 
 // linked list of effects will not be altered 
-G.extend = G.call
+G.unbox = G.call
 G.prototype.call = function(verb, old) {
   if (this.$future)
     return G.Future.call(this, old) 
@@ -185,7 +187,7 @@ G.prototype.uncall = function(soft, unformatted) {
         G.replace(value.$preceeding, value)
         return value
       }
-    } else if (value == current) {      // And value is current and on top of history
+    } else if (value == current) {                    // And value is current and on top of history
       G.call(value.$preceeding, soft ? false : null)  // Apply previous version of a value
     }
   } else {  
@@ -194,7 +196,7 @@ G.prototype.uncall = function(soft, unformatted) {
         current = value.$previous;
         G.value.set(context, this.$key, current);     // reset head pointer
       }
-      if (G.Array.isLinked(value)) {          // or is a single child
+      if (G.Array.isLinked(value)) {                  // invoke ejection logic
         if (value.eject)
           value.eject()
         else
@@ -206,9 +208,9 @@ G.prototype.uncall = function(soft, unformatted) {
     }  
     G.notify(context, this.$key, null, value)         // Notify 
   }
-  if (!recalling) G.$recaller = this                //   set global flag to detect recursion
-  G.effects(value, G.revoke)                        // Recurse to recall side effects
-  if (!recalling) G.$recaller = null;               // Reset recursion pointer
+  if (!recalling) G.$recaller = this                  // Set global flag to detect recursion
+  G.effects(value, G.revoke)                          // Recurse to recall side effects
+  if (!recalling) G.$recaller = null;                 // Reset recursion pointer
   if (this.$computed) {
     for (var i = 0; i < this.$computed.length; i++) {
       if (this.$computed[i].$current)
@@ -249,7 +251,7 @@ G.prototype.revoke = function() {
 G.fork = function(primitive, value) {
   if (value == null)
     value = this;
-  var op = G.extend(primitive, value.$context, value.$key);
+  var op = G.unbox(primitive, value.$context, value.$key);
   op.$meta = value.$meta;
   return op;
 };

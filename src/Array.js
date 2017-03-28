@@ -436,7 +436,7 @@ G.Array.verbs = {
   },
 
   unshiftOnce: function(value, old) {
-    return G.Array.verbs.push(value, old);
+    return G.Array.verbs.unshift(value, old);
   },
 
 
@@ -506,10 +506,6 @@ G.Array.verbs = {
 
   // Bypass stack of values and write over 
   overlay: function(value, old) {
-    return G.Array.verbs.assign(value, old)
-  },
-
-  assign: function(value, old) {
     if (old.$next || old.$previous)
       var other = G.verbs.replace(value, old)
     G.verbs.set(value, old)
@@ -517,6 +513,7 @@ G.Array.verbs = {
     return other;
   },
 
+  // replace value within array
   replace: function(value, old, arg) {
     if (G.Array.isLinked(value))
       G.Array.eject(value, true);
@@ -550,7 +547,7 @@ G.Array.verbs = {
     G.Array.register(old.$last, value, old);
   },
 
-  // Add element on top
+  // Nest value into another on top
   prepend: function(value, old) {
     G.Array.link(old, value, true);
     if (old.$first) {

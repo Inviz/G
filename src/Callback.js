@@ -1,10 +1,11 @@
 // Invoke watcher whatever type it is
+// Callback functions do not care about their calling context
 G.callback = function(value, watcher, old) {
   var method = G.callback.dispatch(watcher)
   return method(value, watcher, old);
 };
 
-// Find a callback function for given watcher
+// Find a callback handler for given watcher
 G.callback.dispatch = function(watcher) {
   if (watcher.$future || watcher.$properties) {
     return G.callback.future;
@@ -16,7 +17,6 @@ G.callback.dispatch = function(watcher) {
     return G.callback.property
   }
 }
-
 
 G.callback.property = function(value, watcher, old) {
   var caused = G.$cause
@@ -134,9 +134,9 @@ G.callback.future = function(value, watcher, old) {
 
     target = targeting && target && target.$next || false;
   }
-    G.$called = called;
-    G.$caller = caller;
-    G.$cause  = caused;
+  G.$called = called;
+  G.$caller = caller;
+  G.$cause  = caused;
   return result;
 }
 
@@ -165,18 +165,23 @@ G.analyze = function(fn) {
   if (string.match(/return/)) {
     fn.$returns = true;
 
-    if (string.match(/G\.Node\s*\(/))
+    if (string.match(/\.Node\s*\(/))
       fn.$migrator = G.Node; // fast lane recomputation of JSX templates
   }
 
   fn.$arguments = [] 
   var m = string.match(G.$findProperties);          // find all property accessors
   if (m)
-    for (var i = 0; i < m.length; i++) {
+    matches: for (var i = 0; i < m.length; i++) {
       if (m[i].substring(0, 5) == 'this.') {
         var clean = m[i].substr(5).replace(G.$cleanProperty, '');
-        if (clean)
+        if (clean) {
+          for (var j = 0; j < fn.$arguments.length; j++) {
+            if (fn.$arguments[j].join('.') == clean)
+              continue matches;
+          }
           fn.$arguments.push(clean.split('.'))
+        }
       } else if (target && m[i].substring(0, target.length) 
              &&  m[i].charAt(target.length) == '.') {
         var clean = m[i].substr(target.length + 1).replace(G.$cleanProperty, '');
@@ -191,3 +196,8 @@ G.analyze = function(fn) {
 G.callback.pass = function(value) {
   return value;
 }
+
+// find used properties in callbacks like this.author.name
+G.$findProperties = /[a-zA-Z0-9_]+\s*(?:(?:\.\s*[_a-zA-Z-0-9]+)+)\s*(?:\()?/g
+// clean up property, cut off chained method call
+G.$cleanProperty = /(?:.|^)\s*([_a-zA-Z-0-9]+)\s*(\()|\s*/g

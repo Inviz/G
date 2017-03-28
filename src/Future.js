@@ -42,7 +42,7 @@ G.Future.prototype.uncall = function() {
   }
 }
 
-// make sure used arguments all have value
+// make sure all used arguments have resolved value
 G.Future.prepare = function(watcher, trigger) {
   var getter = watcher.$getter;
   var args = getter.$arguments;
@@ -57,7 +57,8 @@ G.Future.prepare = function(watcher, trigger) {
         && trigger instanceof G) {               // When observer returned object
         trigger.watch(bits[j + 1], watcher);     //   Observe object for next key in path
       }
-      if (!(context = context[bits[j]]) && (getter.$returns || watcher.$future)) // Proceed if argument has value
+      if (!(context = context[bits[j]]) 
+      && (getter.$returns || watcher.$future))   // Proceed if argument has value
         return;
     }
     var computed = context.$computed;

@@ -37,7 +37,7 @@ var future = object.watch('object', function(value) {
 
 
 // observe+object: merge objects
-source.observe(target)
+target.observe(source)
 
 // observe+return: creates new object
 var filtered = object.observe(function(key, value) {

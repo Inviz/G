@@ -60,15 +60,14 @@ G.compile.struct = function(struct) {
 
 // object.class.push('abc', 'cde')
 G.compile.method = function(verb) {
-  return function(key, value) {
+  return function(key, value, a1, a2, a3) {
     if (value != null) {
-
       switch (arguments.length) {
         case 1:
         case 2:  var op = G.create(this, key, value); break;
-        case 3:  var op = G.create(this, key, value, arguments[2]); break;
-        case 4:  var op = G.create(this, key, value, arguments[2], arguments[3]); break;
-        default: var op = G.create(this, key, value, arguments[2], arguments[3], arguments[4]); break;
+        case 3:  var op = G.create(this, key, value, a1); break;
+        case 4:  var op = G.create(this, key, value, a1, a2); break;
+        default: var op = G.create(this, key, value, a1, a2, a3); break;
       }
       if (op)
         return op.call(verb)
@@ -76,15 +75,15 @@ G.compile.method = function(verb) {
       switch (arguments.length) {
         case 1:
         case 2:  return this[key].recall();
-        case 3:  return this[key].recall(arguments[2]);
-        case 4:  return this[key].recall(arguments[2], arguments[3]);
-        default: return this[key].recall(arguments[2], arguments[3], arguments[4]);
+        case 3:  return this[key].recall(a1);
+        case 4:  return this[key].recall(a1, a2);
+        default: return this[key].recall(a1, a2, a3);
       }
     }
   };
 }
 G.compile.method.binary = function(verb) {
-  return function(key, value) {
+  return function(key, value, a1, a2, a3) {
     if (typeof key == 'object' && key.$key == value.$key && key.$context == value.$context) {
       return key.call(verb, value)
     } else if (typeof key == 'string'){
@@ -92,9 +91,9 @@ G.compile.method.binary = function(verb) {
       switch (arguments.length) {
         case 1:
         case 2:  var op = G.create(this, key, value); break;
-        case 3:  var op = G.create(this, key, value, arguments[2]); break;
-        case 4:  var op = G.create(this, key, value, arguments[2], arguments[3]); break;
-        default: var op = G.create(this, key, value, arguments[2], arguments[3], arguments[4]); break;
+        case 3:  var op = G.create(this, key, value, a1); break;
+        case 4:  var op = G.create(this, key, value, a1, a2); break;
+        default: var op = G.create(this, key, value, a1, a2, a3); break;
       }
       if (op)
         return op.call(verb)
@@ -102,9 +101,9 @@ G.compile.method.binary = function(verb) {
       switch (arguments.length) {
         case 1:
         case 2:  var op = G.create(this, key.$key, value); break;
-        case 3:  var op = G.create(this, key.$key, value, arguments[2]); break;
-        case 4:  var op = G.create(this, key.$key, value, arguments[2], arguments[3]); break;
-        default: var op = G.create(this, key.$key, value, arguments[2], arguments[3], arguments[4]); break;
+        case 3:  var op = G.create(this, key.$key, value, a1); break;
+        case 4:  var op = G.create(this, key.$key, value, a1, a2); break;
+        default: var op = G.create(this, key.$key, value, a1, a2, a3); break;
       }
       if (op)
         return op.call(verb, key)
@@ -113,21 +112,21 @@ G.compile.method.binary = function(verb) {
 }
 
 G.compile.generic = function(verb) {
-  return function(context, key, value) {
+  return function(context, key, value, a1, a2, a3) {
     if (value != null) {
       switch (arguments.length) {
         case 3:  return G.create(context, key, value).call(verb);
-        case 4:  return G.create(context, key, value, arguments[3]).call(verb);
-        case 5:  return G.create(context, key, value, arguments[3], arguments[4]).call(verb);
-        default: return G.create(context, key, value, arguments[3], arguments[4], arguments[5]).call(verb);
+        case 4:  return G.create(context, key, value, a1).call(verb);
+        case 5:  return G.create(context, key, value, a1, a2).call(verb);
+        default: return G.create(context, key, value, a1, a2, a3).call(verb);
       }
     } else if (this[key] != null) {
       switch (arguments.length) {
         case 2:
         case 3:  return context[key].recall();
-        case 4:  return context[key].recall(arguments[3]);
-        case 5:  return context[key].recall(arguments[3], arguments[4]);
-        default: return context[key].recall(arguments[3], arguments[4], arguments[5]);
+        case 4:  return context[key].recall(a1);
+        case 5:  return context[key].recall(a1, a2);
+        default: return context[key].recall(a1, a2, a3);
       }
     }
   };
@@ -136,38 +135,39 @@ G.compile.generic = function(verb) {
 // G.before(context, 'key', value, anchor)
 // G.before(value, anchor)
 G.compile.generic.binary = function(verb) {
-  return function(c, k, v, o) {
+  return function(c, k, v, o, a1, a2, a3) {
     if (typeof k == 'string') {
       if (v != null) {
         switch (arguments.length) {
           case 3:  return G.create(c, k, v).call(verb);
-          case 4:  return G.create(c, k, v, arguments[3]).call(verb);
-          case 5:  return G.create(c, k, v, arguments[3], arguments[4]).call(verb);
-          default: return G.create(c, k, v, arguments[3], arguments[4], arguments[5]).call(verb);
+          case 4:  return G.create(c, k, v, o).call(verb);
+          case 5:  return G.create(c, k, v, o, a1).call(verb);
+          default: return G.create(c, k, v, o, a1, a2).call(verb);
         }
       } else if (this[k] != null) {
         switch (arguments.length) {
           case 2:
           case 3:  return context[k].recall();
-          case 4:  return context[k].recall(arguments[3]);
-          case 5:  return context[k].recall(arguments[3], arguments[4]);
-          default: return context[k].recall(arguments[3], arguments[4], arguments[5]);
+          case 4:  return context[k].recall(a1);
+          case 5:  return context[k].recall(a1, a2);
+          default: return context[k].recall(a1, a2, a3);
         }
       }
     } else {
       if (o && o.$context) {
         switch (arguments.length) {
           case 3:  return G.create(c, k, v).call(verb, o);
-          case 4:  return G.create(c, k, v, arguments[4]).call(verb, o);
-          case 5:  return G.create(c, k, v, arguments[4], arguments[5]).call(verb, o);
-          default: return G.create(c, k, v, arguments[4], arguments[5], arguments[6]).call(verb, o);
+          case 4:  return G.create(c, k, v, a1).call(verb, o);
+          case 5:  return G.create(c, k, v, a1, a2).call(verb, o);
+          default: return G.create(c, k, v, a1, a2, a3).call(verb, o);
         }
       } else {
         switch (arguments.length) {
           case 2:  return G.create(k.$context, k.$key, c).call(verb, k);
           case 3:  return G.create(k.$context, k.$key, c, o).call(verb, k);
-          case 4:  return G.create(k.$context, k.$key, c, o, arguments[4]).call(verb, k);
-          default: return G.create(k.$context, k.$key, c, o, arguments[4], arguments[5]).call(verb, k);
+          case 4:  return G.create(k.$context, k.$key, c, o, a1).call(verb, k);
+          case 5:  return G.create(k.$context, k.$key, c, o, a1, a2).call(verb, k);
+          default: return G.create(k.$context, k.$key, c, o, a1, a2, a3).call(verb, k);
         }
       }
     }
@@ -175,14 +175,14 @@ G.compile.generic.binary = function(verb) {
 }
 
 G.compile.wrapper = function(fn, scope) {
-  return function(context) {
+  return function(context, a1, a2, a3, a4, a5) {
     switch (arguments.length) {
       case 1: return fn.call(context)
-      case 2: return fn.call(context, arguments[1])
-      case 3: return fn.call(context, arguments[1], arguments[2])
-      case 4: return fn.call(context, arguments[1], arguments[2], arguments[3])
-      case 5: return fn.call(context, arguments[1], arguments[2], arguments[3], arguments[4])
-      case 6: return fn.call(context, arguments[1], arguments[2], arguments[3], arguments[4], arguments[5])
+      case 2: return fn.call(context, a1)
+      case 3: return fn.call(context, a1, a2)
+      case 4: return fn.call(context, a1, a2, a3)
+      case 5: return fn.call(context, a1, a2, a3, a4)
+      case 6: return fn.call(context, a1, a2, a3, a4, a5)
     }
   }
 }

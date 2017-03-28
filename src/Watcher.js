@@ -3,7 +3,7 @@
   1) `watch/unwatch`:               Watch object key for changes
   2) `observe/unobserve`:           Observe all object keys for changes
     2.1) Callback with side effects – Triggers a function when any of keys change
-    2.2) Another object as callback – merges objects and propagates changes 
+    2.2) A  her object as callback – merges objects and propagates changes 
   3) `define/undefine`:             Producing new values
     3.1) Value transformer          – Returns altered copy of value
     3.2) Compound value             – Observes multiple keys
@@ -28,7 +28,7 @@ G.prototype.watch = function(key, watcher, watching) {
     watcher.$future = true
     watcher.valueOf = G.Future._getValue;
   }
-  if (!G._addWatcher(this, key, watcher, '$watchers'))
+  if (G._addWatcher(this, key, watcher, '$watchers') === false)
     return
   if (watcher.$computing) return;
       
@@ -98,8 +98,7 @@ G.prototype.define = function(key, callback) {
   }
   G.analyze(callback);
   if (!callback.$arguments.length) {                  // 1. Adding value formatter
-    G._addWatcher(this, key, callback, '$formatters' );
-
+    G._addWatcher(this, key, callback, '$formatters');
     var current = this[key];
     if (!current) return;
     if (current.$previous) {
@@ -107,15 +106,15 @@ G.prototype.define = function(key, callback) {
       for (var i = 0; i < values.length; i++)
         var result = G.call(values[i])
     } else {
-      if (!current.$context) {                          // If Value was not unboxed yet
-        var result = G.set(this, key, current);               //   Turn primitive value to G op 
+      if (!current.$context) {                        // If Value was not unboxed yet
+        var result = G.set(this, key, current);       //   Turn primitive value to G op 
       } else {
-        var result = G.call(current, null);                  // Re-apply value 
+        var result = G.call(current, null);           // Re-apply value 
       }
     }
     return result;
   } else {                                            
-    var observer = new G.Future(this, key)                      // 2. Adding computed property
+    var observer = new G.Future(this, key)            // 2. Adding computed property
     if (!key) {
       observer.$future = true;
       observer.valueOf = G.Future._getValue
@@ -170,7 +169,7 @@ G.prototype.merge = function(object) {
   return G.prototype._merge.apply(this, arguments);
 }
 
-// Merge object underneath (not shadowing original values)
+// Merge object underneath (will not shadow own values)
 G.prototype.defaults = function(object) {
   if (typeof object != 'string') {
     var meta
@@ -190,59 +189,72 @@ G.prototype.defaults = function(object) {
 }
 
 // Merge two G objects and subscribe for updates
-G.prototype.observe = function(source, preset, meta, method) {
-  if (!source.watch) {
-    if (preset)
-      return this.defaults.apply(this, arguments)
-    else
-      return this.merge.apply(this, arguments);
-  } else if (source.$source) {
-    if (!meta) meta = source.$meta;
+G.prototype.observe = function(source, method, meta) {
+  if (method === true)
+    method = 'defaults';
+  else if (!method)
+    method = 'merge';
+  if (typeof this[method] != 'function') {
+    meta = method;
+    method = 'merge';
+  }
+
+  
+  if (typeof source == 'function' || source.$future){// 1. Trigger callback when any of object keys change
+    var target = source;                             // source.observe(function(){})
+    var source = this;
+
+  } else if (!source.watch) {                        // 2. Merge plain static javascript object
+    return this[method].apply(this, arguments);      //    source.observe({a: 1})
+  
+  } else if (source.$source) {                       // 3. Chain G.Object by shallow-reference
+    if (!meta) meta = source.$meta;                  //    source.observe(reference)
     if (!source.$source.watch) {
       source.$method = method;
       source.$target = this;
       G.meta.set(source, meta);
-      if (preset)
-        return this.defaults(source.$source, meta)
-      else
-        return this.merge(source.$source, meta);
+      return this[method](source.$source, meta);
     }
     source = source.$source;
     var target = source;
     G.meta.set(target, meta);
     target.$method = method;
     target.$target = this;
-  } else if (meta != null) {
-    var target = new G.Future;
-    G.meta.set(target, meta);
+  
+  } else if (meta == null) {                          // 4. Chain G.Object (merge & subscribe)
+    var target = this;
+
+  } else {
+    var target = new G.Future;                        // 5. Chain G.Object with explicit meta
+    G.meta.set(target, meta);                         //    source.observe(target, null, ['meta1', 'meta2'])
     target.$method = method;
     target.$target = this;
-  } else {
-    var target = this;
   }
-  var watchers = [target]
 
-  if (!this.$chain) {
-    this.$chain = [source]
-  } else if (preset) {
-    this.$chain.unshift(source)
-  } else {
-    this.$chain.push(source)
+  if (source !== this) {
+    if (!this.$chain) {
+      this.$chain = [source]
+    } else if (method === 'defaults') {
+      this.$chain.unshift(source)
+    } else {
+      this.$chain.push(source)
+    }
   }
-  if (source.$observers)
+  if (source.$observers)                              // Subscribe to future changes
     source.$observers.push(target)
   else 
     source.$observers = [target]
   
-  var keys = Object.keys(source);
-  var called = G.$called;
+  var keys = Object.keys(source);                     
+  var called = G.$called;                             
   var cause = G.$cause;
-  G.$cause = this;
-  for (var i = 0, key; key = keys[i++];)
+  G.$cause = this; 
+  var callback = G.callback.dispatch(target);         
+  for (var i = 0, key; key = keys[i++];)              // Iterate keys in source object
     if (key.charAt(0) != '$') {
-      G.record.push(source[key], true)
-      G.callback.proxy(source[key], target);
-      G.record.pop()
+      G.record.push(source[key], true)                // Record effects to source value's graph
+      callback(source[key], target);                  // Invoke callback 
+      G.record.pop()                                  
     }
   G.$cause = cause;
   G.$called = called;
@@ -254,6 +266,9 @@ G.prototype.unobserve = function(source) {
     var target = source.$target || source;
     var meta = source.$meta;
     source = source.$source;
+  } else if (typeof source == 'function' || source.$future) {
+    var target = source;
+    source = this;
   } else {
     var target = this;
   }
@@ -312,25 +327,23 @@ G._addWatcher = function(self, key, watcher, property) {
   if (watchers[key]) {                              // Adding watcher creates new array
     if (watchers[key].indexOf(watcher) > -1)
       return false
-    watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag to 
-  } else {                                          // recompute stale values
+    watchers[key] = watchers[key].concat(watcher);  // Array's identity is used as a tag
+  } else {                                          // to recompute stale values
     watchers[key] = [watcher];
   }  
-  return true
 }
 
 G._removeWatcher = function(self, key, watcher, property) {
-
   var watchers = self[property];
   if (watchers && watchers[key]) {                  
     watchers[key] =                                 // Removing a watcher creates new array 
-      watchers[key].filter(function(other) {        // Array's identity is used as a tag to  
-        return other !== watcher && other.$getter !== watcher;                   // recompute stale values
+      watchers[key].filter(function(other) {        // Array's identity is used as a tag 
+        return other !== watcher                    // to recompute stale values
+            && other.$getter !== watcher;           
       });
     if (!watchers[key].length)
       watchers[key] = undefined
   }
-
 }
 
 G._revokeEffect = function(value, cause) {

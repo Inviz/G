@@ -241,8 +241,3 @@ G.record.isLinked = function(value) {
   return value.$caller && (!value.$before || value.$before.$after == value);
 }
 
-// find used properties in callbacks like this.author.name
-G.$findProperties = /[a-zA-Z0-9_]+\s*\.\s*(?:[_a-zA-Z-0-9.\s]+)\s*(?:\()?/g
-// clean up property, cut off chained method call
-G.$cleanProperty = /(?:.|^)\s*([_a-zA-Z-0-9]+)\s*(\()|\s*/g
-

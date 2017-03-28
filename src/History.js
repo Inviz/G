@@ -101,7 +101,7 @@ G.history.update = function(value, old, other) {
   if (other === value) {                            // 1. Op is already in history, so it's redo
     return value;                                   //    Not changing history
   } else if (other === old) {                       // 2. New value matches meta of old value 
-    G.history.rebase(old, value);                           //    Switch in place
+    G.history.rebase(old, value);                   //    Switch in place
     return value;                                   //    Return new value
   } else if (other) {                               // 3. Value matches
     G.history.rebase(other, value);                 //    Replace it in history
@@ -209,7 +209,6 @@ G.verbs = {
       last = value;
     }
     if (value.$succeeding) {
-
       value.$succeeding = old;
       value.$preceeding = old.$preceeding;
       old.$preceeding = value;
@@ -223,9 +222,9 @@ G.verbs = {
   // merge two objects
   merge: function(value, old, meta) {
     if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')
-      return G.verbs.set(value, old, meta || value.$meta);
+      return G.verbs.set(value, old, meta);
     if (value.watch) {
-      old.observe(value, false, meta || value.$meta, 'merge')
+      old.observe(value, 'merge', meta)
     } else {
       old.merge(value, meta)
     }
@@ -235,9 +234,9 @@ G.verbs = {
   // merge object underneath another
   defaults: function(value, old, meta) {
     if (typeof value.valueOf() != 'object' || typeof old.valueOf() != 'object')
-      return G.verbs.preset(value, old, meta || value.$meta);
+      return G.verbs.preset(value, old, meta);
     if (value.watch) {
-      old.observe(value, true, meta || value.$meta, 'defaults')
+      old.observe(value, 'defaults', meta)
     } else {
       old.defaults(value, meta)
     }

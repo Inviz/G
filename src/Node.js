@@ -18,26 +18,27 @@
 // `root.render()` method is called.
 
 G.Node = function(tag, attributes) {
+  var Node = this.Node && this.Node.construct ? this.Node : this.construct ? this : G.Node;
   if (!(this instanceof G.Node)) {
     switch (typeof tag) {
       case 'function':
         var self = new tag(attributes);
         break;
       case 'string':
-        if (G.Node[tag])
-          var self = new G.Node[tag](attributes)
+        if (typeof Node[tag] === 'function')
+          var self = new Node[tag](attributes)
         else
-          var self = new G.Node(tag, attributes)
+          var self = new Node(tag, attributes)
         break
       case 'object':
         if (tag && tag.nodeType) {
           if (tag.$operation) {
             var self = tag.$operation
           } else {
-            var self = G.Node.fromElement(tag)
+            var self = Node.fromElement(tag)
           }
         } else {
-          var self = new G.Node;
+          var self = new Node;
         }
     }
   } else {
@@ -57,26 +58,27 @@ G.Node = function(tag, attributes) {
 
   return self
 }
+G.Node.construct = G.Node;
 
 
-G.Node.fromElement = function(element, mapping) {
+G.Node.fromElement = function(element, shallow, mapping) {
   if (mapping === undefined)
-    mapping = G.Node.mapping;
+    mapping = this.mapping;
   switch (element.nodeType) {
     case 1:
       var tag = element.tagName && element.tagName.toLowerCase();
-      var self = G.Node(mapping[tag] || tag);
+      var self = this.construct(mapping[tag] || tag);
       for (var i = 0; i < element.attributes.length; i++) {
         self.set(element.attributes[i].name, element.attributes[i].value, self)
       }
       break;
     case 3:
-      var self = new G.Node(null, element.textContent);
+      var self = new this(null, element.textContent);
       break;
     case 8:
       break;
     case 11:
-      var self = new G.Node;
+      var self = new this;
   }
   self.$node = element;
 
@@ -90,25 +92,26 @@ G.Node.fromElement = function(element, mapping) {
         if (element.childNodes[j].nodeType == 8) {
           // If found closing comment
           if (element.childNodes[j].nodeValue.trim().substring(0, tag.length + 1) == '/' + tag) {
-            var rule = G.Node(tag)
+            var rule = this(tag)
             self.appendChild(rule)
             while (++i < j)
-              rule.appendChild(G.Node.fromElement(element.childNodes[i], mapping))
+              rule.appendChild(this.fromElement(element.childNodes[i], mapping))
           }
         }
       }
     } else {
-      var node = G.Node.fromElement(child, mapping);
+      var node = this.fromElement(child, mapping);
       self.appendChild(node)
     }
   }
   return self;
 }
 G.Node.prototype = new G.Array;
+G.Node.prototype.constructor = G.Node;
 G.Node.prototype.$multiple = true;
 G.Node.prototype.$referenced = true;
 
-G.Node.extend           = G.Node.call;
+G.Node.unbox            = G.Node.call;
 G.Node.prototype.call   = G.Array.prototype.call;
 G.Node.prototype.inject   = function() {
   if (this.$parent) {
@@ -143,6 +146,7 @@ G.Node.prototype.eject = function() {
 
 };
 
+// Process JSX-style arguments (tag, attributes, ...children)
 G.Node.prototype.setArguments = function(tag, attributes) {
   G.record.push(null)
   if (tag) {
@@ -180,6 +184,8 @@ G.Node.prototype.setArguments = function(tag, attributes) {
   G.record.pop()
 }
 
+
+// Concatenate text in all child nodes
 G.Node.prototype.getTextContent = function() {
   var result = '';
   if (this.$first)
@@ -196,6 +202,7 @@ G.Node.prototype.getTextContent = function() {
 // Update itemvalue
 G.Node.updateTrigger = function(node, prop) {
   var watchers = node.$watchers[prop];
+  if (!watchers) return;
   for (var i = 0; i < watchers.length; i++)
     if (watchers[i].$getter === G.Node.triggers[prop]) {
       G.callback.future(node[prop], watchers[i])
@@ -203,6 +210,7 @@ G.Node.updateTrigger = function(node, prop) {
     }
 }
 
+// Notify parent nodes of text content update
 G.Node.updateTextContent = function(node) {
   for (var parent = node; parent = parent.$parent;) {
     if (parent.itemprop)
@@ -210,7 +218,7 @@ G.Node.updateTextContent = function(node) {
   }
 }
 
-// Apply attribute changes to element
+// Schedule DOM updates when node attributes are changed 
 G.Node.prototype.onChange = function(key, value, old) {
   var trigger = G.Node.triggers[key];
   var current = this[key]
@@ -232,9 +240,13 @@ G.Node.prototype.onChange = function(key, value, old) {
   if (callback)
     callback.call(this, value, old)
 
-  if (this.itemprop && G.Node.itemvalues[key] && this.microdata)
+  if (this.itemprop && G.Node.itemvalues[key] && this.microdata) {
     G.Node.updateTrigger(this, 'itemprop');
-
+  } else if (this.name && G.Node.valueattributes[key]) {
+    G.Node.updateTrigger(this, 'name');
+  } else if (this.itemscope && G.Node.itemclasses[key]) {
+    G.Node.callbacks.itemscope.call(this, value)
+  }
   if (!this.$node || !(value || old).$context || key == 'tag' || G.Node.inherited[key])
     return;
 
@@ -263,7 +275,7 @@ G.Node.prototype.appendChild = function(child, verb, old) {
   if (!child) return;
   if (typeof child.valueOf() == 'string') {
     var text = child;
-    child = new G.Node(null, text)
+    child = new (this.constructor)(null, text)
   }
   if (G.Node.$migration)
     return;
@@ -348,26 +360,76 @@ G.Node.inheriting = {
   name: 'values',
   itemprop: 'microdata'
 }
+
+// Properties that trigger recomputation of `itemvalue` property 
 G.Node.itemvalues = {
   content: function() {},
   href: function() {},
   src: function() {}
 }
 
+// Properties that trigger recomputation of `microdata` class
+G.Node.itemclasses = {
+  itemtype: function(){},
+  itemprop: function(){}
+}
+
+// Properties that affect form submission value
+G.Node.valueattributes = {
+  checked:  function(){},
+  value:    function(){},
+  disabled: function(){},
+  type:     function(){}
+}
+
 G.Node.inheritable = Object.keys(G.Node.inherited);
 
+// Allow itemtype & itemprops attributes define subclass for microdata
+G.Node.prototype.$constructor = function(key) {
+  if (key == 'microdata') {
+    if (this.itemtypes && this.itemtypes[this.itemtype])
+      return this.itemtypes[this.itemtype];
+
+    if (this.itemprops && this.itemprops[this.itemprop])
+      return this.itemprops[this.itemprop];
+  }
+}
+
+// Triggers are callbacks that observe undeclared variables
 // Triggers should have return statement 
-// if they are expected to observe all properties
+// if they are expected to observe used properties
 G.Node.triggers = {
+
+  // Register node's value in the form.
+  // Triggered when `name`, `value` or `values` keys are changed
   name: function(name) {
-    var value = this.value;
+    var value = this.getValue();
+    if (value == null)
+      return;
+
     var last = G.$callers[G.$callers.length - 1];
-    // hack? :(
-    if (!last || !(last.$context instanceof G.Node.Values))
-      this.values.pushOnce(name, value, this);
+    // hack to prevent 2-way binding cycle with parsed representation
+    if (!last || !(last.$context instanceof G.Node.Values)) {
+
+      // Remember previous element in a radiogroup
+      if (this['type'] == 'radio' && this.values[name] && value) {
+        var old = this.values[name].$meta[0];
+      }
+      if (name.match(/\[\d*\]$/)) {
+        this.values.pushOnce(name, value, this);
+      } else {
+        this.values.set(name, value, this)
+      }
+
+      // Uncheck previous radio input
+      if (old && old != this && old.checked && old.checked != false)
+        old.checked.uncall()
+    }
     return
   },
 
+  // Nest node's microdata value in parent microdata object
+  // Triggered when `itemscope`, `itemprop` or `itemtype` keys are changed
   itemprop: function(itemprop) { // itemprop future is optimized to
     var value = this.getMicrodata()
 
@@ -392,11 +454,19 @@ G.Node.callbacks = {
       break;
     }
   },
-
-  itemscope: function() {
-    var microdata = this.set('microdata', {}, this);
-    microdata.$composable = true;
+    
+  // Changing itemtype/itemprop may cause microdata object to be recreated 
+  // with another class chosen by $constructor callback
+  itemscope: function(value) {
+    var current = this['microdata'];
+    var constructor = this.$constructor('microdata');
+    if (!current || (constructor && !(current instanceof constructor))) {
+      var microdata = this.set('microdata', {}, this);
+      microdata.$composable = true;
+    }
+    return
   }
+
 }
 
 G.Node.attributes = {
@@ -435,6 +505,8 @@ G.Node.types = {
   }
 }
 
+// Node and its descendants create references
+// to parent tree's microdata/form dictionaries
 G.Node.prototype.onregister = function() {
   for (var child = this; child != this.$next; child = child.$following) {
     G.Node.inherit(child);
@@ -459,6 +531,9 @@ G.Node.prototype.onregister = function() {
     }
   }
 }
+
+// Unregister node and its descendants 
+// from parent tree's microdata/form dictionaries
 G.Node.prototype.onunregister = function() {
   for (var child = this; child != this.$next; child = child.$following) {
     G.Node.deinherit(child);
@@ -609,31 +684,29 @@ G.Node.prototype.comparePosition = function(other) {
 }
 
 // Render descendant nodes
-G.Node.descend = function(node) {
-  for (var last = node; last.$last;)
+G.Node.prototype.descend = function() {
+  for (var last = this; last.$last;)
     last = last.$last;
 
-  for (var after = node; after = after.$following;) {              // for each effect
+  for (var after = this; after = after.$following;) {
     if (after.$future) {
       if (after.$current.$multiple) {
         var first = after.$current;
         while (first.$previous)
           first = first.$previous;
         while (first) {
-          var child = G.Node.render(first)
-          if (child) G.Node.place(first);
+          var child = first.render()
+          if (child) first.place();
           first = first.$next;
         }
       } else {
-        var child = G.Node.render(after.$current, false)
-        if (child) G.Node.place(after.$current);
+        var child = after.$current.render(false)
+        if (child) after.$current.place();
       }
     } else {
-      var child = G.Node.render(after, false)
-      if (child) G.Node.place(after);
+      var child = after.render(false)
+      if (child) after.place();
     }
-    if (after == node.$last)
-      node = after;
     if (last == after)
       break;
   }
@@ -641,22 +714,22 @@ G.Node.descend = function(node) {
 
 // Place DOM node in relation to its G siblings
 // This method applies changes in G node to DOM 
-G.Node.place = function(node) {
-  G.Node.unschedule(node, node.$parent, '$detached', '$detaching')
-  G.Node.unschedule(node, node.$parent, '$attached', '$attaching')
+G.Node.prototype.place = function() {
+  G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+  G.Node.unschedule(this, this.$parent, '$attached', '$attaching')
 
-  if (!node.$node) return;
+  if (!this.$node) return;
   
-  for (var parent = node; parent = parent.$parent || parent.$cause;)      // find closest parent that is in dom
+  for (var parent = this; parent = parent.$parent || parent.$cause;)      // find closest parent that is in dom
     if (parent.$node)
       break;
 
-  var anchor = G.Node.findNextElement(node, parent);
+  var anchor = G.Node.findNextElement(this, parent);
   if (anchor === false)
     anchor = parent.$node.firstChild;
-  if (anchor != node.$node)
-  if (node.$node.parentNode != parent.$node || node.$node.nextSibling != anchor)
-      parent.$node.insertBefore(node.$node, anchor)
+  if (anchor != this.$node)
+  if (this.$node.parentNode != parent.$node || this.$node.nextSibling != anchor)
+      parent.$node.insertBefore(this.$node, anchor)
 }
 
 G.Node.findNextElement = function(node, parent, limit) {
@@ -748,7 +821,7 @@ G.Node.unschedule = function(node, target, local, global) {
 }
 
 G.Node.prototype.cloneNode = function(deep) {
-  var node = new G.Node(this.tag);
+  var node = new (this.constructor)(this.tag);
   var keys = Object.keys(this);
   for (var i = 0, key; key = keys[i++];)
     if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) {// '$'
@@ -765,6 +838,23 @@ G.Node.prototype.cloneNode = function(deep) {
   return node
 }
 
+
+G.Node.prototype.getValue = function() {
+  if (this.disabled)                                  // Disabled inputs are not submitted
+    return;
+
+  if (this.type == 'submit' && !this.active)          // Submit button only provides value 
+    return;                                           //   if it was used to submit the form
+
+  if (this.type == 'checkbox' || this.type=='radio') {// Checkboxes and radiobuttons:
+    if (this.checked == null || this.checked == false)//   - only submitted when checked
+      return;    
+    if (this.value == null)                           //   - have `on` as default value
+      return 'on';
+  }
+
+  return this.value;                                  // Return current value attribute
+}
 
 G.Node.prototype.getMicrodata = function() {
   if (this.itemscope) {
@@ -799,7 +889,7 @@ G.Node.prototype.setMicrodata = function(value, meta) {
     }
   } else if (tag == 'a' || this.href) {
     this.set('href', value, meta || this)
-  } else if (this.src || tag == 'script' || tag == 'image') {
+  } else if (this.src || tag == 'script' || tag == 'img') {
     this.set('src', value, meta || this)
   } else if (this.$first && !this.$first.tag) {
     this.$first.set('text', value, meta || this.$first)
@@ -871,10 +961,18 @@ G.Node.updateAttributes = function(node, attributes, old) {
   G.record.pop()
 }
 
+G.Node.extend = function(constructor) {
+  constructor.prototype = new this;
+  constructor.prototype.constructor = constructor;
+  constructor.fromElement = this.fromElement;
+  constructor.construct   = this.construct;
+  constructor.mapping     = Object.create(G.Node.mapping);
+  return constructor;
+}
 
 
 G.Directive = function(attributes) {
-  G.Node.extend(this, null, attributes);
+  G.Node.unbox(this, null, attributes);
   for (var i = 1; i < arguments.length; i++)
     this.appendChild(arguments[i])
 }
@@ -902,9 +1000,15 @@ G.Node.mapping = {
 G.Node.Microdata = function() {
   G.apply(this, arguments);
 }
+G.Node.Microdata.extend = function(constructor) {
+  constructor.prototype = new this;
+  constructor.prototype.constructor = constructor;
+  constructor.extend = G.Node.Microdata.extend;
+  return constructor;
+}
 G.Node.Microdata.prototype = new G;
-G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.recursive = true;
+G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.prototype.onChange = function(key, value, old) {
   var current = G.value.current(value || old);
   var target = value || old;
@@ -1097,7 +1201,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
       else 
         context.unset(bit, old.valueOf(), old.$meta)
 
-      if (value == null) {
+      if (value == null && contexts) {
 
         // if value is removed, clean up objects on its path
         // which dont have any other sub-keys
@@ -1139,7 +1243,7 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
   var last = context.$next;
   var name = this.getName(value)
   for (var el = context; (el = el.$following) != last;) {
-    if (el.name == name) {
+    if (el.name && this.compareName(el.name, name)) {
       value.$ = el.cloneNode(true);
       value.$.set('value', value, value.$);
       
@@ -1195,6 +1299,13 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
     }
   }
 }
+
+// todo char by char comparison
+G.Node.Values.prototype.compareName = function(name, another) {
+  return name.replace(/\[\d*\]/, '') == another.replace(/\[\d*\]/, '')
+}
+
+
 G.Node.Values.prototype.updateNode = function(value, target) {
   if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
     target.$.name.$subscription.$computing = true;

@@ -884,7 +884,8 @@ describe('G.Node', function() {
         new G.Node('label', null, 'What is your name?'),
         new G.Node('div', null, 
           new G.Node('input', {name: 'your_name', value: 'Boris'}),
-          new G.Node('input', {type: 'submit'})
+          new G.Node('input', {name: 'over_18', type: 'checkbox'}),
+          new G.Node('input')
         )
       );
       var input = form.$last.$first;
@@ -943,13 +944,182 @@ describe('G.Node', function() {
       expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button', comment: 'Boo!'}))
 
 
-      expect(input3.$watchers.value).to.not.eql(undefined)
       expect(input3.$watchers.values).to.not.eql(undefined)
       
       input3.name.uncall()
 
-      expect(input3.$watchers.value).to.eql(undefined)
       expect(input3.$watchers.values).to.eql(undefined)
+    })
+
+    it ('should handle inputs of different types', function() {
+      var form = new G.Node('form', {method: 'post', action: '/whatever.html'},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('input', {name: 'your_name', value: 'Boris', type: 'hidden'}),
+          new G.Node('input', {name: 'over_18', type: 'checkbox', value: 'yeah'}),
+          new G.Node('input', {name: 'alignment', type: 'radio', value: 'good'}),
+          new G.Node('input', {name: 'alignment', type: 'radio', value: 'evil'}),
+          new G.Node('input', {name: 'submission', value: 'yaba-doo', type: 'submit'})
+        )
+      );
+      var input = form.$last.$first;
+      var checkbox = input.$next;
+      var good = checkbox.$next;
+      var evil = good.$next;
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+
+      checkbox.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', over_18: 'yeah'}))
+      checkbox.set('checked', false)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+      checkbox.set('checked', null)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+
+      evil.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', alignment: 'evil'}))
+
+      good.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', alignment: 'good'}))
+
+      evil.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', alignment: 'evil'}))
+
+      evil.checked.uncall();
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+
+      checkbox.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', over_18: 'yeah'}))
+
+      var value = checkbox.value.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', over_18: 'on'}))
+
+      value.call()
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', over_18: 'yeah'}))
+
+      var name = checkbox.name.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+
+      value.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+
+      name.call()
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris', over_18: 'on'}))
+
+      checkbox.set('disabled', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+    })
+
+    it ('should handle prefixed inputs of different types', function() {
+      var form = new G.Node('form', {method: 'post', action: '/whatever.html'},
+        new G.Node('label', null, 'What is your name?'),
+        new G.Node('div', null, 
+          new G.Node('input', {name: 'person[your_name]', value: 'Boris', type: 'hidden'}),
+          new G.Node('input', {name: 'person[over_18]', type: 'checkbox', value: 'yeah'}),
+          new G.Node('input', {name: 'person[alignment]', type: 'radio', value: 'good'}),
+          new G.Node('input', {name: 'person[alignment]', type: 'radio', value: 'evil'}),
+          new G.Node('input', {name: 'person[submission]', value: 'yaba-doo', type: 'submit'})
+        )
+      );
+      var input = form.$last.$first;
+      var checkbox = input.$next;
+      var good = checkbox.$next;
+      var evil = good.$next;
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      checkbox.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', over_18: 'yeah'},
+        'person[over_18]': 'yeah'
+      }))
+
+      checkbox.set('checked', false)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      checkbox.set('checked', null)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      evil.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', alignment: 'evil'},
+        'person[alignment]': 'evil'
+      }))
+
+      good.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', alignment: 'good'},
+        'person[alignment]': 'good'
+      }))
+
+      evil.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', alignment: 'evil'},
+        'person[alignment]': 'evil'
+      }))
+
+      evil.checked.uncall();
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      checkbox.set('checked', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', over_18: 'yeah'},
+        'person[over_18]': 'yeah'
+      }))
+
+      var value = checkbox.value.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', over_18: 'on'},
+        'person[over_18]': 'on'
+      }))
+
+      value.call()
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', over_18: 'yeah'},
+        'person[over_18]': 'yeah'
+      }))
+
+      var name = checkbox.name.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      value.uncall()
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
+
+      name.call()
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris', over_18: 'on'},
+        'person[over_18]': 'on'
+      }))
+
+      checkbox.set('disabled', true)
+      expect(G.stringify(form.values)).to.eql(G.stringify({
+        'person[your_name]': 'Boris',
+        person: {your_name: 'Boris'}
+      }))
     })
     
     it ('should register compound fieldnames in forms', function() {
@@ -1223,7 +1393,6 @@ describe('G.Node', function() {
       expect(anon.$first.getTextContent()).to.eql('')
       expect(String(anon.microdata.name)).to.eql('')
 
-      debugger
       var merged = anon.merge('microdata', {
         name: 'Vasya',
         url: 'vasya.html'
@@ -1273,7 +1442,6 @@ describe('G.Node', function() {
       form.appendChild(new G.Node('input', {name: 'person[3][name]', value: 'Delta'}))
       expect(G.stringify(ValueGroup(form.values.person))).to.eql(G.stringify([{name: 'Charlie'}, {name: 'Alfa'}, {name: 'Bravo'}, {name: 'Delta'}]))
 
-      debugger
     })
 
 
@@ -1310,12 +1478,44 @@ describe('G.Node', function() {
       expect(String(form.$first.$next.$next.value)).to.eql('goga.html')
     })
 
+    xit ('should clone numeric nested fieldsets', function() {
+      var form = new G.Node('form', {},
+        new G.Node('label', null, 'What is your name?'),
+
+        new G.Node('input', {name: 'person[0][name]', value: 'John Johnson'}),
+        new G.Node('input', {name: 'person[0][url]', value: 'john.html'})
+      );
+
+      var ivan = form.values.push('person', {url: 'ivan.html', name: 'Ivan Ivanov'});
+
+      expect(String(form.$last.$previous.value)).to.eql('Ivan Ivanov')
+      expect(String(form.$last.value)).to.eql('ivan.html')
+
+      var goga = form.values.unshift('person', {url: 'goga.html', name: 'Goga Georgiev'});
+
+      expect(String(form.$first.$next.value)).to.eql('Goga Georgiev')
+      expect(String(form.$first.$next.$next.value)).to.eql('goga.html')
+
+      ivan.set('name', 'Ioann Ioannov')
+      expect(String(form.$last.$previous.value)).to.eql('Ioann Ioannov')
+      expect(String(form.$last.value)).to.eql('ivan.html')
+
+      goga.set('name', 'George Georges')
+      expect(String(form.$first.$next.value)).to.eql('George Georges')
+      expect(String(form.$first.$next.$next.value)).to.eql('goga.html')
+
+      form.$first.$next.$next.set('value', 'george.html')
+      expect(String(goga.url)).to.eql('george.html')
+
+
+    })
+
     it ('should change form values', function() {
       var form = new G.Node('form',
         new G.Node('label', null, 'What is your name?'),
         new G.Node('div', null, 
-          new G.Node('input', {name: 'url', value: 'boris.html'}),
-          new G.Node('input',  {name: 'url', value: 'eldar.html'})
+          new G.Node('input', {name: 'url[]', value: 'boris.html'}),
+          new G.Node('input',  {name: 'url[]', value: 'eldar.html'})
         )
       );
       expect(String(form.$last.$first.value)).to.eql('boris.html')
@@ -1379,9 +1579,9 @@ describe('G.Node', function() {
       }))).to.eql(G.stringify([
         ['form', null,null], 
         ['div', null,null],
-        ['input', 'url','boris.html'],
-        ['input', 'url','eldar.html'],
-        ['input', 'url','Hello']
+        ['input', 'url[]','boris.html'],
+        ['input', 'url[]','eldar.html'],
+        ['input', 'url[]','Hello']
       ]))
 
       var hi = form.values.unshift('url', 'Hi')
@@ -1391,10 +1591,10 @@ describe('G.Node', function() {
       }))).to.eql(G.stringify([
         ['form', null,null], 
         ['div', null,null],
-        ['input', 'url','Hi'],
-        ['input', 'url','boris.html'],
-        ['input', 'url','eldar.html'],
-        ['input', 'url','Hello']
+        ['input', 'url[]','Hi'],
+        ['input', 'url[]','boris.html'],
+        ['input', 'url[]','eldar.html'],
+        ['input', 'url[]','Hello']
       ]))
     })
     it ('should inherit microdata object from parent scope', function() {

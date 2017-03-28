@@ -1037,6 +1037,7 @@ describe('Observers', function() {
       expect(author.$watchers).to.not.eql({name: undefined});
       post.author.recall();
       expect(author.$watchers).to.eql({name: undefined});
+      expect(post.title).to.eql(undefined)
 
       post.set('author', author);
       expect(post.title.valueOf()).to.eql('Story by LN TOLSTOY')
@@ -1078,6 +1079,37 @@ describe('Observers', function() {
     })
     
   })
+
+  describe('Observing', function() {
+    it ('should observe object keys', function() {
+      var post = new G({title: 'Hello world'});
+      var target = new G;
+      post.observe(function(value, old) {
+        if (value.$multiple)
+          target.push(value.$key, value)
+        else
+          target.set(value.$key, value)
+      });
+
+      expect(String(target.title)).to.eql('Hello world')
+
+      var body = post.set('body', 'Lots of text');
+
+      expect(String(target.body)).to.eql('Lots of text');
+
+      body.uncall();
+
+      expect(target.body).to.eql(undefined);
+
+      body.call();
+      expect(String(target.body)).to.eql('Lots of text');
+
+      var klassA = post.push('class', 'A');
+      var klassB = post.push('class', 'B');
+
+      expect(G.stringify(ValueGroup(target.class))).to.eql(G.stringify(['A', 'B']));
+    });
+  });
   describe('Merging', function() {
     it ('should assign objects', function() {
       var post = new G();
@@ -1254,7 +1286,7 @@ describe('Observers', function() {
       expect(String(post.author.name)).to.eql('George')
       expect(String(defaults.author.title)).to.eql('Writer')
 
-      post.defaults(defaults, 'preset')
+      post.defaults(defaults, 'default stuff')
 
       expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Anonymous', 'George']))
       expect(String(post.author.name)).to.eql('George')
