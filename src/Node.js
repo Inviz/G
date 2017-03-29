@@ -55,8 +55,21 @@ G.Node = function(tag, attributes) {
 
   return self
 }
+G.Node.prototype = new G.Array;
+G.Node.prototype.constructor = G.Node;
+G.Node.prototype.$multiple = true;
+G.Node.prototype.$referenced = true;
+G.Node.prototype.constructors = {}
 G.Node.construct = G.Node;
 
+G.Node.extend = function(constructor) {
+  constructor.prototype = new this;
+  constructor.prototype.constructor = constructor;
+  constructor.fromElement = this.fromElement;
+  constructor.construct   = this.construct;
+  constructor.mapping     = Object.create(G.Node.mapping);
+  return constructor;
+}
 
 G.Node.fromElement = function(element, shallow, mapping) {
   if (mapping === undefined)
@@ -103,46 +116,9 @@ G.Node.fromElement = function(element, shallow, mapping) {
   }
   return self;
 }
-G.Node.prototype = new G.Array;
-G.Node.prototype.constructor = G.Node;
-G.Node.prototype.$multiple = true;
-G.Node.prototype.$referenced = true;
 
 G.Node.unbox            = G.Node.call;
 G.Node.prototype.call   = G.Array.prototype.call;
-G.Node.prototype.inject   = function() {
-  if (this.$parent) {
-    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
-    G.Node.schedule(this, this.$parent, '$attached', '$attaching')
-  }
-  var called = G.Array.prototype.inject.apply(this, arguments);
-  var transaction = G.Node.$transaction
-  if (transaction) {
-    (transaction.$nodes || (transaction.$nodes = [])).push(this)
-  } else {
-    if (this.$node)
-      G.Node.place(this)
-    else
-      G.Array.children(this, G.Node.place)
-  }
-  if (this.text != null)
-    G.Node.updateTextContent(this);
-  
-  return called
-}
-G.Node.prototype.eject = function() {
-  G.Node.$ejecting = true;
-  this.detach()
-  var uncalled =  G.Array.eject(this)
-
-  if (this.text != null)
-    G.Node.updateTextContent(this);
-  
-  G.Node.$ejecting = false;
-  return uncalled;
-
-};
-
 // Process JSX-style arguments (tag, attributes, ...children)
 G.Node.prototype.setArguments = function(tag, attributes) {
   G.record.push(null)
@@ -181,6 +157,86 @@ G.Node.prototype.setArguments = function(tag, attributes) {
   G.record.pop()
 }
 
+
+G.Node.prototype.inject   = function() {
+  if (this.$parent) {
+    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+    G.Node.schedule(this, this.$parent, '$attached', '$attaching')
+  }
+  var called = G.Array.prototype.inject.apply(this, arguments);
+  var transaction = G.Node.$transaction
+  if (transaction) {
+    (transaction.$nodes || (transaction.$nodes = [])).push(this)
+  } else {
+    if (this.$node)
+      G.Node.place(this)
+    else
+      G.Array.children(this, G.Node.place)
+  }
+  if (this.text != null)
+    G.Node.updateTextContent(this);
+  
+  return called
+}
+
+
+G.Node.prototype.eject = function() {
+  G.Node.$ejecting = true;
+  this.detach()
+  var uncalled =  G.Array.eject(this)
+
+  if (this.text != null)
+    G.Node.updateTextContent(this);
+  
+  G.Node.$ejecting = false;
+  return uncalled;
+};
+
+// Inject node into another
+// If child is a string, creates text node
+G.Node.prototype.appendChild = function(child, verb, old) {
+  if (!child) return;
+  if (typeof child.valueOf() == 'string') {
+    var text = child;
+    child = new (this.constructor)(null, text)
+  }
+  if (G.Node.$migration)
+    return;
+  return G.verbs[verb || 'append'](child, old || this);
+}
+G.Node.prototype.replaceChild = function(child, another) {
+  return G.verbs.replace(child, another)
+}
+G.Node.prototype.removeChild = function(child) {
+  return child.uncall()
+}
+G.Node.prototype.prependChild = function(child) {
+  return this.appendChild(child, 'prepend')
+}
+G.Node.prototype.insertBefore = function(child, anchor) {
+  if (anchor)
+    return this.appendChild(child, 'before', anchor)
+  else
+    return this.appendChild(child, 'append')
+}
+
+G.Node.prototype.cloneNode = function(deep) {
+  var node = new (this.constructor)(this.tag);
+  var keys = Object.keys(this);
+  for (var i = 0, key; key = keys[i++];)
+    if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) {// '$'
+      G.record.push();
+      node.set(key, this[key], node)
+      G.record.pop()
+    }
+
+  if (deep) {
+    for (var child = this.$first; child; child = child.$next) {
+      node.appendChild(child.cloneNode(deep))
+    }
+  }
+  return node
+}
 
 // Concatenate text in all child nodes
 G.Node.prototype.getTextContent = function() {
@@ -266,31 +322,6 @@ G.Node.prototype.onChange = function(key, value, old) {
   }
 }
 
-// Inject node into another
-// If child is a string, creates text node
-G.Node.prototype.appendChild = function(child, verb, old) {
-  if (!child) return;
-  if (typeof child.valueOf() == 'string') {
-    var text = child;
-    child = new (this.constructor)(null, text)
-  }
-  if (G.Node.$migration)
-    return;
-  return G.verbs[verb || 'append'](child, old || this);
-}
-G.Node.prototype.removeChild = function(child) {
-  return child.uncall()
-}
-G.Node.prototype.prependChild = function(child) {
-  return this.appendChild(child, 'prepend')
-}
-G.Node.prototype.insertBefore = function(child, anchor) {
-  if (anchor)
-    return this.appendChild(child, 'before', anchor)
-  else
-    return this.appendChild(child, 'append')
-}
-
 G.Node.inherit = function(node) {
   for (var x = 0; x < G.Node.inheritable.length; x++)
     G.Node.inherit.property(node, G.Node.inheritable[x]);
@@ -345,126 +376,20 @@ G.Node.deinherit.property = function(node, property) {
   }
 }
 
-G.Node.inherited = {
-  values: 'name',
-  microdata: 'itemprop'
-}
-G.Node.$inherited = {
-  values: '$values',
-  microdata: '$microdata'
-}
-G.Node.inheriting = {
-  name: 'values',
-  itemprop: 'microdata'
-}
 
-// Properties that trigger recomputation of `itemvalue` property 
-G.Node.itemvalues = {
-  content: function() {},
-  href: function() {},
-  src: function() {}
-}
 
-// Properties that trigger recomputation of `microdata` class
-G.Node.itemclasses = {
-  itemtype: function(){},
-  itemprop: function(){}
-}
+G.Node.inheritable = []                               // register inheritable property
+G.Node.inherited = {}                                 // name of an attribute that triggers inheritance 
+G.Node.$inherited = {}                                // name of key that references parent microdata scope
+G.Node.inheriting = {}                                // name of a inherited property triggered by key
 
-// Properties that affect form submission value
-G.Node.valueattributes = {
-  checked:  function(){},
-  value:    function(){},
-  disabled: function(){},
-  type:     function(){}
-}
-
-G.Node.inheritable = Object.keys(G.Node.inherited);
-
-// Allow itemtype & itemprops attributes define subclass for microdata
-G.Node.prototype.$constructor = function(key) {
-  if (key == 'microdata') {
-    if (this.itemtypes && this.itemtypes[this.itemtype])
-      return this.itemtypes[this.itemtype];
-
-    if (this.itemprops && this.itemprops[this.itemprop])
-      return this.itemprops[this.itemprop];
-  }
-}
-
-// Triggers are callbacks that observe undeclared variables
+// Triggers are functions that observe undeclared variables
 // Triggers should have return statement 
 // if they are expected to observe used properties
-G.Node.triggers = {
+G.Node.triggers = {}
 
-  // Register node's value in the form.
-  // Triggered when `name`, `value` or `values` keys are changed
-  name: function(name) {
-    var value = this.getValue();
-    if (value == null)
-      return;
-
-    var last = G.$callers[G.$callers.length - 1];
-    // hack to prevent 2-way binding cycle with parsed representation
-    if (!last || !(last.$context instanceof G.Node.Values)) {
-
-      // Remember previous element in a radiogroup
-      if (this['type'] == 'radio' && this.values[name] && value) {
-        var old = this.values[name].$meta[0];
-      }
-      if (name.match(/\[\d*\]$/)) {
-        this.values.pushOnce(name, value, this);
-      } else {
-        this.values.set(name, value, this)
-      }
-
-      // Uncheck previous radio input
-      if (old && old != this && old.checked && old.checked != false)
-        old.checked.uncall()
-    }
-    return
-  },
-
-  // Nest node's microdata value in parent microdata object
-  // Triggered when `itemscope`, `itemprop` or `itemtype` keys are changed
-  itemprop: function(itemprop) { // itemprop future is optimized to
-    var value = this.getMicrodata()
-
-    if (this.microdata && this.$microdata) {
-      var last = G.$callers[G.$callers.length - 1];
-      // hack? :(
-      if (!last || !(last.$context instanceof G.Node.Microdata) || last.$key != itemprop)
-        this.$microdata.pushOnce(itemprop, value, this);
-    }
-    return 
-  }
-
-}
-
-G.Node.callbacks = {
-
-  text: function(value) {
-    for (var parent = this; parent = parent.$parent;) {
-      if (!parent.itemprop) continue;
-      if (!parent.itemscope)
-        G.Node.updateTrigger(parent, 'itemprop');
-      break;
-    }
-  },
-    
-  // Changing itemtype/itemprop may cause microdata object to be recreated 
-  // with another class chosen by $constructor callback
-  itemscope: function(value) {
-    var current = this['microdata'];
-    var constructor = this.$constructor('microdata');
-    if (!current || (constructor && !(current instanceof constructor))) {
-      var microdata = this.set('microdata', {}, this);
-      microdata.$composable = true;
-    }
-    return
-  }
-
-}
+// Callbacks are static observers of node properties
+G.Node.callbacks = {}
 
 G.Node.attributes = {
   text: function(value) {
@@ -492,15 +417,6 @@ G.Node.tags = {
   //}
 }
 
-G.Node.types = {
-  radio: function() {
-    this.preset('radiogroup', this.name);
-    this.unshift('action', 'check');
-  },
-  checkbox: function() {
-    this.preset('action', 'check');
-  }
-}
 
 // Node and its descendants create references
 // to parent tree's microdata/form dictionaries
@@ -536,6 +452,8 @@ G.Node.prototype.onunregister = function() {
     G.Node.deinherit(child);
   }
 }
+
+// Format array values like classnames
 G.Node.prototype.decorate = function(value) {
   // format token list
   var result = value
@@ -817,258 +735,15 @@ G.Node.unschedule = function(node, target, local, global) {
   }
 }
 
-G.Node.prototype.cloneNode = function(deep) {
-  var node = new (this.constructor)(this.tag);
-  var keys = Object.keys(this);
-  for (var i = 0, key; key = keys[i++];)
-    if (!G.Node.inherited[key] && key.charCodeAt(0) != 36) {// '$'
-      G.record.push();
-      node.set(key, this[key], node)
-      G.record.pop()
-    }
 
-  if (deep) {
-    for (var child = this.$first; child; child = child.$next) {
-      node.appendChild(child.cloneNode(deep))
-    }
-  }
-  return node
-}
-
-
-G.Node.prototype.getValue = function() {
-  if (this.disabled)                                  // Disabled inputs are not submitted
-    return;
-
-  if (this.type == 'submit' && !this.active)          // Submit button only provides value 
-    return;                                           //   if it was used to submit the form
-
-  if (this.type == 'checkbox' || this.type=='radio') {// Checkboxes and radiobuttons:
-    if (this.checked == null || this.checked == false)//   - only submitted when checked
-      return;    
-    if (this.value == null)                           //   - have `on` as default value
-      return 'on';
-  }
-
-  return this.value;                                  // Return current value attribute
-}
-
-G.Node.prototype.getMicrodata = function() {
-  if (this.itemscope) {
-    if (this.$microdata) {
-      return this.microdata
-    }
-  } else if (this.href != null)    // be triggered by any possible
-    return this.href;              // source of itemvalue without 
-  else if (this.src != null)       // individual subscription
-    return this.src;
-  else if (this.content != null)
-    return this.content;
-  else
-    return this.getTextContent()
-
-}
-G.Node.prototype.setMicrodata = function(value, meta) {
-  if (meta == null)
-    meta = [this, 'microdata'] // if metadata is false, it falls back 
-  var cause = G.$cause;
-  G.$cause = null;
-  var tag = this.tag.valueOf();
-  if (value && G.value.isObject(value)) {
-    for (var next = this; next = next.$following;) {
-      if (next == this.$next)
-        break;
-      if (next.itemprop) {
-        next.setMicrodata(value[next.itemprop] || '', false)
-        if (next.$next)
-          next = next.$next.$leading;
-      }
-    }
-  } else if (tag == 'a' || this.href) {
-    this.set('href', value, meta || this)
-  } else if (this.src || tag == 'script' || tag == 'img') {
-    this.set('src', value, meta || this)
-  } else if (this.$first && !this.$first.tag) {
-    this.$first.set('text', value, meta || this.$first)
-  }
-
-  G.$cause = cause;
-}
-
-
-
-G.Node.record = function() {
-  return G.Node.$recording = true
-};
-G.Node.stop = function(result) {
-  G.Node.$recording = undefined;
-  return result;
-}
-
-G.Node.getKey = function(node, key) {
+G.Node.getTag = function(node) {
   if (node instanceof Array)
-    var attributes = node[2];
+    return node[0]
   else if (node.nodeType == 1)
-    var attributes = node.attributes;
+    return node.tagName.toLowerCase()
   else
-    var attributes = node;
-
-  if (!attributes) return;
-
-  var absolute = attributes.id || attributes.key;
-  if (absolute) return absolute;
-
-
+    return node.tag;
 }
-
-G.Node.prototype.migrate = function(tree, key) {
-  if (typeof tree == 'function') {                    // Run JSX to generate S-tree 
-    G.Node.record();                                  // without building G.Nodes
-    tree = tree.call(this);
-    G.Node.stop();
-  }
-  if (!tree) return;
-
-  var attributes = {};
-  tree = tree.valueOf(); 
-  if (typeof tree == 'string') {
-    G.Node.migrateAttribute('text', tree, this, attributes)
-    return this;
-  }
-
-  var matches = [];                             // stable elements that were not removed
-        
-  for (var node = this; node; node = node.$next) {
-    var key = G.Node.getKey(node)
-    if (key) {
-      if (!keys) {
-        var keys = {};                                // dictionary of stable children ids
-        var region = [];                              // current span between stable elements
-      }
-      keys[key] = node;
-    }
-  }
-
-  if (keys) {                                         
-    G.Node.eachChild(tree, G.Node.matchNode,          // Find stable elements
-                     this, keys, matches, region);
-  }
-  G.Node.eachChild(tree, G.Node.migrateNode,           
-                     this, matches, region);
-
-  G.Node.eachAttribute(tree, G.Node.migrateAttribute, this, attributes);
-  G.Node.eachAttribute(this, G.Node.cleanAttribute, this, attributes);
-
-  return this;
-};
-
-G.Node.migrateNode = function(child, parent, matches, region) {
-  var current = matches.current;
-  if (region) {
-    var index = matches.indexOf(child);
-    if (index > -1) {
-      var node = matches[index + 1];
-      node.migrate(child);                                   // 0. Element is stable
-      matches.current = node;                                //  - migrate it out of order
-      matches.lastIndex = index + 3;
-    } else {
-      var index = matches.lastIndex || 0;
-      if (matches[index + 2]) 
-        region = matches[index + 2];
-      var next = region[region.indexOf(child) + 1];
-      var from = matches.current;
-      var to   = matches[index + 1];
-    }
-  }
-  if (!current) {
-    if (!parent.$first || (to && parent.$first == to)) { // 1. Element is empty 
-      matches.current = G.Node.create(child);            // 2. First element is stable
-      parent.prependChild(matches.current);              //    - add new element 
-    } else {                                             // 3. First element is not stable
-      matches.current = parent.$first                    //    - migrate it
-      matches.current.migrate(child)                      
-    }
-  } else {
-    if (current.$next != to) {                           // 4. Another unstabe element in a row
-      current.$next.migrate(child);
-      matches.current = current.$next;
-    } else {
-      matches.current = G.Node.create(child);            // 5. New trailing unstable element
-      parent.insertBefore(matches.current, current)
-    }
-  } 
-};
-
-G.Node.create = function(object) {
-  if (typeof object == 'array') {
-    return this.construct.apply(this, object);
-  } else {
-    return this.construct(object);
-  }
-}
-
-G.Node.matchNode = function(child, parent, keys, matches, region) {
-  var key = G.Node.getKey(child);
-  if (keys[key]) {
-    matches.push(child, node, region.splice(0))
-  } else {
-    region.push(child)
-  }
-};
-
-G.Node.eachChild = function(node, callback, a1, a2, a3) {
-  if (node instanceof Array) {
-    for (var i = 2; i < node.length; i++)
-      callback.call(this, node[i], a1, a2, a3);
-  } else if (node.nodeType == 1) {
-    for (var child = node.firstChild; child; child = child.nextSibling)
-      callback.call(this, child, a1, a2, a3);
-  } else {
-    for (var child = node; child; child = child.$next)
-      callback.call(this, child, a1, a2, a3);
-  }
-}
-G.Node.eachAttribute = function(node, callback, a1, a2, a3) {
-  if (node instanceof Array) {
-    if (typeof node[1] == 'object') {
-      for (var property in node[1])
-        callback.call(this, property, node[1][property], a1, a2, a3);
-    }
-  } else if (node.nodeType == 1) {
-    for (var i = 0, attribute; attribute = node.attributes[i++];)
-      callback.call(this, attribute.name, attribute.value, a1, a2, a3);
-  } else {
-    var keys = Object.keys(node);
-    for (var i = 0, key; key = keys[i++];)
-      if (key != 'tag' && typeof node[key] != 'function' && key.charAt(0) != '$')
-        callback.call(this, key, node[key], a1, a2, a3);
-  }
-}
-
-G.Node.migrateAttribute = function(key, value, node, attributes) {
-  G.record.push()
-  if (key == 'class') {
-    node.pushOnce(key, value, node)
-  } else {
-    node.set(key, value, node)
-  }
-  G.record.pop();
-  attributes[key] = value;
-}
-G.Node.cleanAttribute = function(key, value, node, attributes) {
-  if (value && value.recall && !attributes[key])
-    value.recall(node)
-}
-
-G.Node.extend = function(constructor) {
-  constructor.prototype = new this;
-  constructor.prototype.constructor = constructor;
-  constructor.fromElement = this.fromElement;
-  constructor.construct   = this.construct;
-  constructor.mapping     = Object.create(G.Node.mapping);
-  return constructor;
-}
-
 
 G.Directive = function(attributes) {
   G.Node.unbox(this, null, attributes);
@@ -1092,347 +767,4 @@ G.Else.prototype = new G.Directive
 G.Node.mapping = {
   'if': G.If,
   'else': G.Else
-}
-
-
-
-G.Node.Microdata = function() {
-  G.apply(this, arguments);
-}
-G.Node.Microdata.extend = function(constructor) {
-  constructor.prototype = new this;
-  constructor.prototype.constructor = constructor;
-  constructor.extend = G.Node.Microdata.extend;
-  return constructor;
-}
-G.Node.Microdata.prototype = new G;
-G.Node.Microdata.recursive = true;
-G.Node.Microdata.prototype.constructor = G.Node.Microdata;
-G.Node.Microdata.prototype.onChange = function(key, value, old) {
-  var current = G.value.current(value || old);
-  var target = value || old;
-  if (value && !value.$)
-    if (!this.adoptNode(value, old))
-      this.cloneNode(value, current);
-
-  if (old && old.$)
-    this.cleanNode(key, value, old, current);
-
-  this.callNode(value)
-  this.updateNode(value, target)
-}
-
-
-G.Node.Microdata.prototype.adoptNode = function(value, old) {
-  if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node) {
-    value.$ = value.$meta[0]
-    value.$.$origin = value;
-  } else if (old && old.$) {
-    value.$ = old.$;
-    value.$.$origin = value;
-  } else if (old && old.$meta && old.$meta[0] && old.$meta[0] instanceof G.Node) {
-    value.$ = old.$meta[0];
-    value.$.$origin = value;
-  }
-  return this.ownNode(value)
-}
-
-G.Node.Microdata.prototype.ownNode = function(value, other, method) {
-  if (value.$ && !(value.$context.$context instanceof G.Node))
-    value.$.$scope = value.$context;
-
-  if (other) {
-    value.$.name.$subscription.$computing = true;
-    G[method](value.$, other)
-    value.$.name.$subscription.$computing = false;
-  }
-
-  return value.$
-}
-
-
-G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
-  if (old.$.$origin == old) {
-    old.$.$origin = null
-  } else if (old.$.itemprop == key && 
-    (!current || current.$ != old.$) &&
-    (!value || value.$ != old.$)) {
-    if (!G.Node.$ejecting && !old.$.$origin) {
-      old.$.uncall()
-    }
-  }
-}
-
-G.Node.Microdata.prototype.callNode = function(value) {
-  if (value && value.$) {
-    if (!G.Array.isLinked(value.$)) {
-      G.record.push();
-      value.$.call()
-      G.record.pop()
-    }
-    return value;
-  }
-}
-
-G.Node.Microdata.prototype.cloneNode = function(value, old) {
-  for (var prev = value; prev = prev.$previous;) {
-    if (!prev.$) continue;
-    value.$ = prev.$.cloneNode(value);
-    value.$.setMicrodata(value, value.$);
-    value.$.itemprop.$subscription.$computing = true;
-    G.after(value.$, prev.$)
-    value.$.itemprop.$subscription.$computing = false;
-    return value.$
-  }
-  for (var next = value; next = next.$next;) {
-    if (!next.$) continue;
-    value.$ = next.$.cloneNode(value);
-    value.$.setMicrodata(value, value.$);
-    value.$.itemprop.$subscription.$computing = true;
-    G.before(value.$, next.$)
-    value.$.itemprop.$subscription.$computing = false;
-    return value.$
-  }
-}
-G.Node.Microdata.prototype.updateNode = function(value, target) {
-
-  var last = G.$callers[G.$callers.length - 1];
-  // hack? :(
-  if (!last || (last.$context != this.$context))
-  if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
-    target.$.itemprop.$subscription.$computing = true;
-    target.$.setMicrodata(value, value.$meta);
-    target.$.itemprop.$subscription.$computing = null
-  }
-}
-
-
-
-G.Node.Values = function() {
-  G.apply(this, arguments);
-}
-G.Node.Values.prototype = new G;
-G.Node.Values.prototype.constructor = G.Node.Values;
-G.Node.Values.prototype.adoptNode = G.Node.Microdata.prototype.adoptNode;
-G.Node.Values.prototype.cloneNode = G.Node.Microdata.prototype.cloneNode;
-G.Node.Values.prototype.cleanNode = G.Node.Microdata.prototype.cleanNode;
-G.Node.Values.prototype.callNode  = G.Node.Microdata.prototype.callNode;
-G.Node.Values.prototype.ownNode   = G.Node.Microdata.prototype.ownNode;
-G.Node.Values.recursive = true;
-
-// parse input names like person[friends][n][name]
-// and store values like person.friends[n].name 
-G.Node.Values.prototype.onChange = function(key, value, old) {
-  var last = 0;
-  var context = this;
-  var length = key.length;
-  var current = this[key]
-  if (value && !value.$)
-    if (!this.adoptNode(value, old))
-      this.cloneNode(value, current);
-
-  if (old && old.$)
-    this.cleanNode(key, value, old, current);
-
-  for (var i = -1; (i = key.indexOf('[', last)) > -1;) {
-    var end = i - !!last;
-    var bit = key.substring(last, end);
-    if (bit.length) {
-      // check if its array accessor following (e.g. [1])
-      inner: for (var letter = end; ++letter != length;) {
-        switch (key.charCodeAt(letter)) {
-          case 48: case 49: case 50: case 51: case 52: case 53:
-          case 54: case 55: case 56: case 57: case 91:
-            break;
-          default:
-            break inner;
-        }
-      }
-      // [] or [1] at the end of key
-      if (letter == length - 1) {
-        length = i;
-        var array = true;
-        break;
-
-      // [] or [1] in the middle of key
-      } else if (key.charCodeAt(letter) == 93) { // ]
-        var subkey = key.substring(0, letter + 1);
-        i = letter + 1;
-        for (var current = context[bit]; current; current = current.$previous) {
-          if (current.$index == subkey) {
-            var match = current;
-            break;
-          }
-        }
-        if (!match) {
-          G.record.push(this);
-          match = context.push(bit, {}, value.$meta)
-          match.$index = subkey;
-          G.record.pop()
-        }
-        context = match;
-      } else {
-
-        if (context[bit] == null) {
-          G.record.push(this);
-          context.set(bit, {}, this)
-          G.record.pop()
-        }
-        context = context[bit]
-      }
-
-      if (value == null) {
-        if (!contexts)
-          var contexts = []
-        contexts.push(context);
-      }
-
-    }
-    last = i + 1;
-  }
-  var cause = G.$cause;
-  G.$cause = null;
-  if (last || array) {
-    var bit = key.substring(last, length - (!!last));
-    if (!array || context[bit] == null || value == null) {
-      if (value)
-        context.push(bit, value, (value || old).$meta);
-      else 
-        context.unset(bit, old.valueOf(), old.$meta)
-
-      if (value == null && contexts) {
-
-        // if value is removed, clean up objects on its path
-        // which dont have any other sub-keys
-
-        for (var j = contexts.length; j--;)
-          if (G.getLength(context) == 0) {
-            context.uncall()
-          }
-      }
-    } else {
-      context.pushOnce(bit, value, value.$meta)
-    }
-  } else {
-    var current = G.value.current(value || old);
-    var target = value || old;
-
-    this.callNode(value)
-    this.updateNode(value, target)
-  }
-  G.$cause = cause;
-}
-
-G.Node.Values.prototype.cloneNode = function(value, old) {
-  for (var prev = value; prev = prev.$previous;) {
-    if (!prev.$) continue;
-    value.$ = prev.$.cloneNode(true);
-    value.$.set('value', value, value.$);
-    return this.ownNode(value, prev.$, 'after')
-  }
-  for (var next = value; next = next.$next;) {
-    if (!next.$) continue;
-    value.$ = next.$.cloneNode(true);
-    value.$.set('value', value, value.$);
-    return this.ownNode(value, next.$, 'before')
-  }
-  var context = this.$context;
-  while (!(context instanceof G.Node))
-    context = context.$context;
-  var last = context.$next;
-  var name = this.getName(value)
-  for (var el = context; (el = el.$following) != last;) {
-    if (el.name && this.compareName(el.name, name)) {
-      value.$ = el.cloneNode(true);
-      value.$.set('value', value, value.$);
-      
-      this.ownNode(value)
-      var pos = 0;
-
-      if (!el.$scope) continue;
-
-    
-      if (G.Array.isAfter(value.$context, el.$scope)) {
-        // find position of input within its scope
-        for (var after = el; (after = after.$following) != last;) 
-          if (after.$scope == el.$scope)
-            pos++;
-
-        // find first input in the scope
-        for (var before = el; (before = before.$leading) != context;) 
-          if (el.$scope && before.$scope == el.$scope)
-            el = before;
-
-        // attempt to place cloned span in a similar position
-        if (pos) {
-          for (var before = el; (before = before.$leading) != context;) 
-            if (before.$scope == value.$context) {
-              el = before;
-              if (--pos == 0)
-                break;
-            }
-        }
-        return this.ownNode(value, el, 'before')
-      } else {
-        // find position of input within its scope
-        for (var before = el; (before = before.$leading) != context;) 
-          if (before.$scope == el.$scope)
-            pos++;
-
-        // find last input in the scope
-        for (var after = el; (after = after.$following) != last;) 
-          if (el.$scope && after.$scope == el.$scope)
-            el = after;
-
-        // attempt to place cloned span in a similar position
-        if (pos) {
-          for (var after = el; (after = after.$following) != last;) 
-            if (after.$scope == value.$context) {
-              el = after;
-              if (--pos == 0)
-                break;
-            }
-        }
-        return this.ownNode(value, el, 'after')
-      }
-    }
-  }
-}
-
-// todo char by char comparison
-G.Node.Values.prototype.compareName = function(name, another) {
-  return name.replace(/\[\d*\]/, '') == another.replace(/\[\d*\]/, '')
-}
-
-
-G.Node.Values.prototype.updateNode = function(value, target) {
-  if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
-    target.$.name.$subscription.$computing = true;
-    value.$.set('value', value, value.$meta || [value.$, 'values']);
-    target.$.name.$subscription.$computing = null
-  }
-}
-G.Node.Values.prototype.getName = function(value) {
-  var key = ''
-  while (value) {
-    for (var before = value, i = 0; before = before.$previous; )
-      i++;
-    if (i)
-      key = '[' + i + ']' + key
-
-    key = '[' + value.$key + ']' + key
-
-    if (value.$context.$context instanceof G.Node)
-      break;
-    value = value.$context
-    if (value.$context.$context instanceof G.Node)
-      break;
-  }
-  return value.$key + key
-}
-
-
-G.Node.prototype.constructors = {
-  values:    G.Node.Values,
-  microdata: G.Node.Microdata
 }

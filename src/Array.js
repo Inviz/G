@@ -519,6 +519,7 @@ G.Array.verbs = {
       G.Array.eject(value, true);
     var p = old.$previous;
     var n = old.$next;
+    var parent = old.$parent;
     if (arg !== undefined) {
       old.uncall(null, arg);
     } else {
@@ -533,6 +534,9 @@ G.Array.verbs = {
     if (n){
       G.Array.link(value, n);
       G.Array.register(value, n, old.$parent)
+    }
+    if (!p && !n && parent) {
+      G.verbs.append(value, parent);
     }
     return old;
   },
