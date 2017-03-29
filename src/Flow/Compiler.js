@@ -187,6 +187,7 @@ G.compile.wrapper = function(fn, scope) {
   }
 }
 
+G.compile()
 
 
 if (typeof global !== "undefined")
