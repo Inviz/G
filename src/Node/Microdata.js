@@ -12,7 +12,6 @@ G.Node.Microdata.prototype = new G;
 G.Node.Microdata.recursive = true;
 G.Node.Microdata.prototype.constructor = G.Node.Microdata;
 G.Node.Microdata.prototype.onChange = function(key, value, old) {
-  debugger
   var current = G.value.current(value || old);
   var target = value || old;
   if (value && !value.$)
@@ -45,25 +44,21 @@ G.Node.Microdata.prototype.ownNode = function(value, other, method) {
   if (value.$ && !(value.$context.$context instanceof G.Node))
     value.$.$scope = value.$context;
 
-  if (other) {
-    value.$.name.$subscription.$computing = true;
-    G[method](value.$, other)
-    value.$.name.$subscription.$computing = false;
-  }
-
   return value.$
 }
 
 
 G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
-  if (old.$.$origin == old) {
-    old.$.$origin = null
-  } else if (old.$.itemprop == key && 
+  
+  if (old.$.itemprop == key && 
     (!current || current.$ != old.$) &&
     (!value || value.$ != old.$)) {
-    if (!G.Node.$ejecting && !old.$.$origin) {
+    if (!G.Node.$ejecting && old.$.$origin === old) {
       old.$.uncall()
+      old.$.$origin = value;
     }
+  } else if (old.$.$origin == old) {
+    old.$.$origin = value
   }
 }
 
@@ -82,19 +77,17 @@ G.Node.Microdata.prototype.cloneNode = function(value, old) {
   for (var prev = value; prev = prev.$previous;) {
     if (!prev.$) continue;
     value.$ = prev.$.cloneNode(value);
+    value.$.$origin = value;
     value.$.setMicrodata(value, value.$);
-    value.$.itemprop.$subscription.$computing = true;
     G.after(value.$, prev.$)
-    value.$.itemprop.$subscription.$computing = false;
     return value.$
   }
   for (var next = value; next = next.$next;) {
     if (!next.$) continue;
     value.$ = next.$.cloneNode(value);
+    value.$.$origin = value;
     value.$.setMicrodata(value, value.$);
-    value.$.itemprop.$subscription.$computing = true;
     G.before(value.$, next.$)
-    value.$.itemprop.$subscription.$computing = false;
     return value.$
   }
 }
@@ -104,9 +97,7 @@ G.Node.Microdata.prototype.updateNode = function(value, target) {
   // hack? :(
   if (!last || (last.$context != this.$context))
   if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
-    target.$.itemprop.$subscription.$computing = true;
     target.$.setMicrodata(value, value.$meta);
-    target.$.itemprop.$subscription.$computing = null
   }
 }
 
@@ -147,16 +138,17 @@ G.Node.callbacks.text = function(value) {
 // Nest node's microdata value in parent microdata object
 // Triggered when `itemscope`, `itemprop` or `itemtype` keys are changed
 
-G.Node.triggers.itemprop = function(itemprop) {       // itemprop future is optimized to
+G.Node.triggers.itemprop = function(itemprop, old) {       // itemprop future is optimized to
   var value = this.getMicrodata()
 
-  if (this.microdata && this.$microdata) {
-    var last = G.$callers[G.$callers.length - 1];
+  if (this.$microdata) {
     // hack? :(
-    if (!last || !(last.$context instanceof G.Node.Microdata) || last.$key != itemprop)
-      this.$microdata.pushOnce(itemprop, value, this);
+    if (!G.record.match(this.$microdata, itemprop))
+      if (this['microdata'])
+        this.$microdata.pushOnce(itemprop, value, this);
+      else if (this.$microdata[itemprop])
+        this.$microdata[itemprop].recall(this)
   }
-  return 
 }
 
 // Allow itemtype & itemprops attributes define subclass for microdata

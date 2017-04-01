@@ -93,11 +93,11 @@ describe('G.Node data', function() {
     expect(G.stringify(form.values)).to.eql(G.stringify({her_name: 'Jackie', submission_button: 'the_button', comment: 'Boo!'}))
 
 
-    expect(input3.$watchers.values).to.not.eql(undefined)
+    expect(input3.$watchers.name).to.not.eql(undefined)
     
     input3.name.uncall()
 
-    expect(input3.$watchers.values).to.eql(undefined)
+    expect(input3.$watchers.name).to.eql(undefined)
   })
 
   it ('should handle inputs of different types', function() {
@@ -433,7 +433,30 @@ describe('G.Node data', function() {
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     expect(String(form.$last.$last.$previous.href)).to.eql('gunslinger.html')
   })
+  it ('should change microdata scopes', function() {
+    var form = new G.Node('article', {itemscope: true},
+      new G.Node('label', null, 'What is your name?'),
+      new G.Node('div', null, 
+        new G.Node('a', {itemprop: 'url', href: 'boris.html'}),
+        new G.Node('span', {}, 'Hello')
+      )
+    );
 
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+
+    form.$last.merge({
+      itemscope: true,
+      itemprop: 'person'
+    })
+    expect(form.$last.$first.$microdata).to.eql(form.$last.microdata);
+    expect(form.$last.$first.microdata).to.eql(form.$last.microdata);
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+
+    form.$last.itemprop.uncall()
+
+    debugger
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+  });
   it ('should change microdata values', function() {
     var form = new G.Node('article', {itemscope: true},
       new G.Node('label', null, 'What is your name?'),
@@ -442,6 +465,7 @@ describe('G.Node data', function() {
         new G.Node('span', {}, 'Hello')
       )
     );
+    expect(String(form.microdata.url)).to.eql('boris.html')
 
     form.microdata.set('url', 'horror.html', 'zug')
     expect(String(form.$last.$first.href)).to.eql('horror.html')
@@ -452,13 +476,16 @@ describe('G.Node data', function() {
     var boris = form.microdata.url.uncall();
     expect(String(form.$last.$first.tag)).to.eql('span')
 
+    debugger
     boris.call()
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['boris.html', 'horror.html']))
+    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html']))
 
     form.microdata.preset('url', 'zorro.html', 'xoxo')
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
+    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html']))
 
     form.$last.$last.set('itemprop', 'url')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
@@ -469,22 +496,27 @@ describe('G.Node data', function() {
     
     var gomes = form.microdata.overlay('url', 'Gomes', 'hulk')
     expect(G.stringify(ValueStack(gomes))).to.eql(G.stringify(['Hello', 'Gomes']))
+    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
     gomes.uncall()
     expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(form.$last.$last.$first.text))).to.eql(G.stringify(['Hello']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
 
+    debugger
     gomes.call()
+    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
     var holmes = form.microdata.overlay(boris, 'Holmes', 'hulk')
+    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(G.stringify(ValueStack(holmes))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
     expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Holmes', 'Gomes']))
     expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html', 'Holmes']))
@@ -694,6 +726,8 @@ describe('G.Node data', function() {
     expect(String(form.$last.$last.value)).to.eql('eldar.html')
     expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html']))
 
+    console.error(123)
+    debugger
     horror.call()
     expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
     expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'eldar.html', 'horror.html']))
@@ -807,11 +841,9 @@ describe('G.Node data', function() {
     submit.$parent.appendChild(input3)
     expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello', comment: 'Boo!'}))
     expect(input3.$watchers.itemprop).to.not.eql(undefined)
-    expect(input3.$watchers.microdata).to.not.eql(undefined)
     
     input3.itemprop.uncall()
     expect(input3.$watchers.itemprop).to.eql(undefined)
-    expect(input3.$watchers.microdata).to.eql(undefined)
     expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
     submit.$first.set('text', 'Goodbye')

@@ -255,10 +255,14 @@ G.Node.prototype.getTextContent = function() {
 // Update itemvalue
 G.Node.updateTrigger = function(node, prop) {
   var watchers = node.$watchers[prop];
-  if (!watchers) return;
+  if (!watchers || !node[prop]) return;
+  var trigger = G.Node.triggers[prop];
+  if (trigger.$computing) return;
   for (var i = 0; i < watchers.length; i++)
-    if (watchers[i].$getter === G.Node.triggers[prop]) {
-      G.callback.future(node[prop], watchers[i])
+    if (watchers[i] === trigger || watchers[i].$getter === trigger) {
+      G.record.push(node[prop])
+      G.callback(node[prop], watchers[i])
+      G.record.pop()
       break;
     }
 }
@@ -279,14 +283,18 @@ G.Node.prototype.onChange = function(key, value, old) {
     var prop = G.Node.inheriting[key];
     if (value && old == null) {
       current.$subscription = this.watch(key, trigger)
-      if (prop)
+      if (prop) {
         G.Node.inherit.property(this, prop);
+        G.Node.inherit.propagate(this, prop, value, old);
+      }
 
     } else if (old && value == null) {
       this.unwatch(key, trigger)
       old.$subscription = undefined;
-      if (prop)
+      if (prop) {
         G.Node.deinherit.property(this, prop);
+        G.Node.deinherit.propagate(this, prop, value, old);
+      }
     }
   }
   var callback = G.Node.callbacks[key];
@@ -327,14 +335,22 @@ G.Node.inherit = function(node) {
     G.Node.inherit.property(node, G.Node.inheritable[x]);
 }
 
-G.Node.inherit.property = function(node, property) {
-  if (node[G.Node.inherited[property]] == null)
+G.Node.inherit.propagate = function(node, property, value, old) {
+  for (var child = node.$first; child && child != node.$next; child = child.$following) {
+    G.Node.inherit.property(child, property)
+  }
+}
+
+G.Node.inherit.property = function(node, property, parent) {
+  if (node[G.Node.inherited[property]] == null && !node[property])
     return;
   var $prop = G.Node.$inherited[property];
-  for (var parent = node; parent = parent.$parent;) {
+  if (!parent)
+    parent = node;
+  for (; parent = parent.$parent;) {
     if (parent[property]) {
       if (node[$prop] != parent[property]) {
-        if (!node[property]) {
+        if (!node[property] || node[$prop] == node[property]) {
           node[property] = parent[property];
         }
         node[$prop] = parent[property]
@@ -351,6 +367,12 @@ G.Node.deinherit = function(node) {
     G.Node.deinherit.property(node, G.Node.inheritable[x])
 }
 
+G.Node.deinherit.propagate = function(node, property, value, old) {
+  for (var child = node.$first; child && child != node.$next; child = child.$following) {
+    G.Node.deinherit.property(child, property)
+  }
+}
+
 G.Node.deinherit.property = function(node, property) {
   var $prop = G.Node.$inherited[property];
   var key = G.Node.inherited[property];
@@ -358,13 +380,15 @@ G.Node.deinherit.property = function(node, property) {
     if (parent[property]) {
       if (node[$prop] === parent[property]) {
         if (node[property] == node[$prop]) {
-          node[property] = undefined;
+          node[property] = undefined
+          G.Node.inherit.property(node, property, parent)
+          debugger
+          G.Node.updateTrigger(node, key)
         } else if (node[key] && node[property].$context != node) {
-          
           var object = node[property].uncall() // detach named sub-microdata 
-          // node.set(key, object)
         }
-        node[$prop] = undefined
+        if (node[$prop] === parent[property])
+          node[$prop] = undefined
         var watchers = node.$watchers && node.$watchers[property];
         if (watchers)
           for (var i = 0; i < watchers.length; i++)
@@ -391,6 +415,12 @@ G.Node.triggers = {}
 // Callbacks are static observers of node properties
 G.Node.callbacks = {}
 
+// Properties that trigger recomputation of `itemvalue` property 
+G.Node.itemvalues = {
+  content: function() {},
+  href: function() {},
+  src: function() {}
+}
 G.Node.attributes = {
   text: function(value) {
     if (this.$node)

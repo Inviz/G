@@ -13,7 +13,7 @@ G.value = function(result, old, other, verb) {
     if (result !== old) {
       G.notify(result.$context, result.$key, result, replacing ? other : old)// Trigger user callbacks 
     }
-    G.record.pop();
+    G.record.pop(old);
   }
 
   if (result.$multiple  && other  && (!verb || verb.multiple)) {
@@ -22,13 +22,13 @@ G.value = function(result, old, other, verb) {
       G.value.propagate(other);                       // Apply side effects and invoke observers 
       //if (old && old.$iterators)
       //  G.Array.iterate(result, old.$iterators)     // Invoke array's active iterators
-      G.record.pop();
+      G.record.pop(undefined);
     } else {
       G.uncall(other)
     }
     if (other.$context !== result.$context ||
         other.$key !== result.$key)
-    G.notify(other.$context, other.$key, other)// Trigger user callbacks 
+      G.notify(other.$context, other.$key, other)     // Trigger user callbacks 
   }
 }
 

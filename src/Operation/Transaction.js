@@ -62,7 +62,22 @@ G.record.push = function(value) {
   return G.$caller = G.$called = value               // Reassign call stack pointers 
 };
 
-G.record.pop = function() {
+G.record.pop = function(old) {
+  if (G.debugging && arguments.length) {
+    if (G.$called != G.$caller) {
+      debugger
+      console.group('%o %s %c %s %s', G.$caller.$context, G.$caller.$key, 'background-color: #eaeaea; font-weight: normal', G.$caller.valueOf(), old && old.valueOf())
+      for (var call = G.$caller; call = call.$after;) {
+        if (call.$caller === G.$caller)
+          console.log('%o', call.$context, call.$key, call.valueOf(), G.$callers.length)
+        if (call === G.$called)
+          break;
+      }
+      console.groupEnd()
+    } else if (G.$caller) {
+      console.log(G.$caller.$context, G.$caller.$key, G.$caller.valueOf(), old && old.valueOf())
+    }
+  }
   G.$caller = G.$callers.pop();                       // Revert global pointers to previous values 
   if (!G.$caller || !G.$caller.$context) {            // Reset $called pointer on top level
     if (G.$called && G.$called.$after)                // Patch up graph to point to next ops
@@ -70,6 +85,17 @@ G.record.pop = function() {
     G.$called = null;
   }
 };
+
+G.record.match = function(context, key) {
+  for (var i = 0; i < G.$callers.length; i++) {
+    var caller = G.$callers[i];
+    if (!caller) continue;
+    if (caller.$context === context &&
+        caller.$key == key) {
+      return caller;
+    } 
+  }
+}
 
 // Record transformed value as a local effect
 G.record.transformation = function(value, old, last, transform) {

@@ -61,10 +61,7 @@ G.history.matches = function(context, key, value, meta, callback) {
   
   for (var old = current; old = G.history.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
-    for (var head = old; head != current && head.$next;)
-      head = head.$next;
-    if (head === current
-    && (value === undefined || value == old.valueOf())) {      
+    if ((value === undefined || value == old.valueOf())) {      
       var result = callback ? callback(old) : old;
       current = G.value.get(context, key);
     }

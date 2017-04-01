@@ -36,8 +36,6 @@ var G = function(context, key, value, a1, a2, a3) {
   if (args !== undefined)
     G.meta.set(this, args);                           // Use/merge extra arguments as meta
   if (!(this instanceof G)) {                         // Enrich unboxed primitive with call/recall methods
-    if (typeof this == 'function')
-      debugger
     this.call = G.prototype.call;
     this.uncall = G.prototype.uncall;
     this.recall = G.prototype.recall;
@@ -147,7 +145,7 @@ G.prototype.call = function(verb, old) {
 
   if (!G.record.isLinked(value))                       // If operation position in graph needs update
     G.record(value, old, verb);                        // Register in graph and remember caller op/callback
-
+  
   G.value.apply(result);   
   G.value(result || value, old, other, verb)
   return value;
@@ -258,3 +256,4 @@ G.fork = function(primitive, value) {
   return op;
 };
 
+G.debugging = location.search.indexOf('debug') > -1

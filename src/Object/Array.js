@@ -363,10 +363,10 @@ G.Array.isAfter = function(value, another, property) {
 
 G.Array.contains = function(array, value) {
   for (var source = array; source; source = source.$previous)
-    if (source === array)
+    if (source === value)
       return true;
   for (var source = array; source; source = source.$next)
-    if (source === array)
+    if (source === value)
       return true;
 }
 G.Array.first = function(array) {

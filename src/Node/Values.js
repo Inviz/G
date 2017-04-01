@@ -94,7 +94,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
     var bit = key.substring(last, length - (!!last));
     if (!array || context[bit] == null || value == null) {
       if (value)
-        context.push(bit, value, (value || old).$meta);
+        context.pushOnce(bit, value, (value || old).$meta);
       else 
         context.unset(bit, old.valueOf(), old.$meta)
 
@@ -108,7 +108,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
             context.uncall()
           }
       }
-    } else {
+    } else if (!G.record.match(context, bit)) {
       context.pushOnce(bit, value, value.$meta)
     }
   } else {
@@ -204,11 +204,11 @@ G.Node.Values.prototype.compareName = function(name, another) {
 
 
 G.Node.Values.prototype.updateNode = function(value, target) {
-  if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
-    target.$.name.$subscription.$computing = true;
-    value.$.set('value', value, value.$meta || [value.$, 'values']);
-    target.$.name.$subscription.$computing = null
-  }
+    if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
+      target.$.name.$subscription.$computing = true;
+      value.$.set('value', value, value.$meta || [value.$, 'values']);
+      target.$.name.$subscription.$computing = null
+    }
 }
 G.Node.Values.prototype.getName = function(value) {
   var key = ''
@@ -230,7 +230,33 @@ G.Node.Values.prototype.getName = function(value) {
 }
 
 
+G.Node.Values.prototype.ownNode = function(value, other, method) {
+  if (value.$ && !(value.$context.$context instanceof G.Node))
+    value.$.$scope = value.$context;
 
+  if (other) {
+    value.$.name.$subscription.$computing = true;
+    G[method](value.$, other)
+    value.$.name.$subscription.$computing = false;
+  }
+
+  return value.$
+}
+
+/*
+G.Node.Values.prototype.cleanNode = function(key, value, old, current) {
+  
+  if (old.$.name == key && 
+    (!current || current.$ != old.$) &&
+    (!value || value.$ != old.$)) {
+    if (!G.Node.$ejecting && old.$.$origin === old) {
+      old.$.uncall()
+      old.$.$origin = value;
+    }
+  } else if (old.$.$origin == old) {
+    old.$.$origin = value
+  }
+}*/
 
 G.Node.prototype.constructors.values = G.Node.Values;
 G.Node.inheritable.push('values')                     // register inheritable property
@@ -238,12 +264,6 @@ G.Node.inherited.values = 'name';                     // name of an attribute th
 G.Node.$inherited.values = '$values';                 // name of key that references parent microdata scope
 G.Node.inheriting.name = 'values';                    // name of a inherited property triggered by key
 
-// Properties that trigger recomputation of `itemvalue` property 
-G.Node.itemvalues = {
-  content: function() {},
-  href: function() {},
-  src: function() {}
-}
 
 
 // Properties that affect form submission value
@@ -258,28 +278,29 @@ G.Node.valueattributes = {
 // Triggered when `name`, `value` or `values` keys are changed
 G.Node.triggers.name = function(name) {
   var value = this.getValue();
-  if (value == null)
-    return;
 
-  var last = G.$callers[G.$callers.length - 1];
   // hack to prevent 2-way binding cycle with parsed representation
-  if (!last || !(last.$context instanceof G.Node.Values)) {
+  if (this.$values && !G.record.match(this.$values, name)) {
 
     // Remember previous element in a radiogroup
-    if (this['type'] == 'radio' && this.values[name] && value) {
-      var old = this.values[name].$meta[0];
+    if (this['type'] == 'radio' && this.$values[name] && value) {
+      var old = this.$values[name].$meta[0];
     }
-    if (name.match(/\[\d*\]$/)) {
-      this.values.pushOnce(name, value, this);
-    } else {
-      this.values.set(name, value, this)
-    }
+    if (this['values'] && value != null) {
 
-    // Uncheck previous radio input
-    if (old && old != this && old.checked && old.checked != false)
-      old.checked.uncall()
+      if (name.match(/\[\d*\]$/)) {
+        this.$values.pushOnce(name, value, this);
+      } else {
+        this.$values.set(name, value, this)
+      }
+
+      // Uncheck previous radio input
+      if (old && old != this && old.checked && old.checked != false)
+        old.checked.uncall()
+    } else if (this.$values[name]) {
+      this.$values[name].recall(this)
+    }
   }
-  return
 }
 
 G.Node.prototype.getValue = function() {
