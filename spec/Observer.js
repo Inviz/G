@@ -1161,7 +1161,7 @@ describe('Observers', function() {
       
       author.set('name', 'Borya', 444)
       expect(G.stringify(ValueStack(author.name))).to.eql(G.stringify(['Borya']));
-
+      
       authorship.call('defaults')
       expect(G.stringify(ValueStack(post.author.name))).to.eql(G.stringify(['Borya', 'Vasya']));
       expect(G.stringify(ValueStack(post.author.pet))).to.eql(G.stringify(['cat', 'bull']));

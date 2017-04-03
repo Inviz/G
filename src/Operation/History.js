@@ -30,7 +30,11 @@ G.history.isReplacing = function(value, old, verb) {
     return;
   if ((verb.multiple || !verb.reifying) && !verb.once)
     return;
-  if (value instanceof G)
+  if (value instanceof G
+    && (!verb.multiple 
+    || value.$context != old.$context 
+    || value.$key != old.$key))
+
     return
   return true;
 }

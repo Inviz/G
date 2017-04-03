@@ -241,7 +241,6 @@ G.Node.prototype.cloneNode = function(deep) {
 // Concatenate text in all child nodes
 G.Node.prototype.getTextContent = function() {
   var result = '';
-  debugger
   if (this.$first)
     for (var lead = this; (lead = lead.$following) != this.$next;) {
       if (lead && !lead.tag && lead.text) {
@@ -350,7 +349,7 @@ G.Node.inherit.property = function(node, property, parent) {
     if (parent[property]) {
       if (node[$prop] != parent[property]) {
         if (node[$prop]) {
-          node[property] = null;
+          //node[property] = null;
           G.Node.updateTrigger(node, G.Node.inherited[property])
         }
         if (!node[property] || node[$prop] == node[property]) {

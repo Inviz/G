@@ -80,8 +80,8 @@ describe('Subclassing', function() {
 
     doc.$first.$first.$first.set('itemtype', 'serenade');
     expect(doc.$first.$first.$first.microdata instanceof App.Article).to.eql(false)
-    expect(doc.$first.$first.$first.microdata instanceof App.Article).to.eql(false)
-    expect(doc.microdata.the_articles instanceof App.Article).to.eql(false)
+    expect(doc.$first.$first.$last.microdata instanceof App.Article).to.eql(true)
+    expect(doc.microdata.the_articles instanceof App.Article).to.eql(true)
     expect(doc.microdata.the_articles.$previous instanceof App.Article).to.eql(false)
     expect(JSON.stringify(doc.microdata.the_articles.clean())).to.eql(JSON.stringify({title: 'Goodbye'}))
     expect(JSON.stringify(doc.microdata.the_articles.$previous.clean())).to.eql(JSON.stringify({title: 'Hello',"comments":{"body":"Lol"}}))
