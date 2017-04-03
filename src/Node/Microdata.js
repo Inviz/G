@@ -25,7 +25,20 @@ G.Node.Microdata.prototype.onChange = function(key, value, old) {
   this.updateNode(value, target)
 }
 
-
+// Restore original ownership of microdata object 
+// when it is uncalled by parent context
+G.Node.Microdata.prototype.$composable = function() {
+  if (this.$ ) {
+    if (this.$.itemscope) {
+      this.$.microdata = undefined
+      this.$context = this.$;
+      this.$key = 'microdata';
+      G.record.push(this.$.itemscope);
+      this.$.set('microdata', this)
+      G.record.pop()
+    }
+  }
+}
 G.Node.Microdata.prototype.adoptNode = function(value, old) {
   if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node) {
     value.$ = value.$meta[0]
@@ -110,20 +123,44 @@ G.Node.inheriting.itemprop = 'microdata';             // name of a inherited pro
 // Properties that trigger recomputation of `microdata` class
 G.Node.itemclasses = {
   itemtype: function(){},
-  itemprop: function(){}
+  itemprop: function(){},
+  itemscope: function(){}
 }
 
 // Changing itemtype/itemprop may cause microdata object to be recreated 
 // with another class chosen by $constructor callback
 
-G.Node.callbacks.itemscope = function(value) {
-  var current = this['microdata'];
+G.Node.callbacks.itemscope = function() {             // This method is full of low-level magic 
+  var current = this['microdata'];                    // 
   var constructor = this.$constructor('microdata');
-  if (!current || (constructor && current.constructor !== constructor)) {
-    var microdata = this.set('microdata', {}, this);
-    microdata.$composable = true;
+  if (this.itemscope) {
+    if (!current                                      // 1. Adding new top-level scope
+    || this.$microdata === current                    // 2. Adding nested scope
+    || current.constructor !== constructor) {         // 3. Recreating scope with (another) custom constructor 
+      G.record.push()                                 // opt-out of automatic side effect tracking
+      this['microdata'] = undefined;                  // clear scope when adding itemscope to node with itemprop
+      this.microdata = new constructor;
+      this.microdata.$context = this;
+      this.microdata.$key = 'microdata';
+      this.microdata.$meta = [this]
+      this.microdata.$ = this;
+      G.record.pop()
+      if (current) {                                  // apply new scope and propagate to children
+        G.Node.updateTrigger(this, 'itemprop')
+        G.Node.inherit.propagate(this, 'microdata', this.microdata);
+      }
+    }
+  } else {
+    if (this['microdata']) {                          // When scope is removed it hands off
+      var microdata = this['microdata'].uncall()      // its properties to parent scope
+      this.$microdata = null;
+      if (this.itemprop) {                            // 4. Turn named scope into named node
+        G.Node.inherit.property(this, 'microdata');   // inherit parent scope
+        this['microdata'] = this.$microdata
+      }
+      G.Node.inherit.propagate(this, 'microdata', undefined, microdata);
+    }
   }
-  return
 }
 
 G.Node.callbacks.text = function(value) {
@@ -138,17 +175,10 @@ G.Node.callbacks.text = function(value) {
 // Nest node's microdata value in parent microdata object
 // Triggered when `itemscope`, `itemprop` or `itemtype` keys are changed
 
-G.Node.triggers.itemprop = function(itemprop, old) {       // itemprop future is optimized to
-  var value = this.getMicrodata()
-
-  if (this.$microdata) {
-    // hack? :(
-    if (!G.record.match(this.$microdata, itemprop))
-      if (this['microdata'])
-        this.$microdata.pushOnce(itemprop, value, this);
-      else if (this.$microdata[itemprop])
-        this.$microdata[itemprop].recall(this)
-  }
+G.Node.triggers.itemprop = function(itemprop, old) {
+  if (this.$microdata && !G.record.match(this.$microdata, itemprop))
+    this.$microdata.pushOnce(itemprop, this.getMicrodata(), this);
+  return
 }
 
 // Allow itemtype & itemprops attributes define subclass for microdata

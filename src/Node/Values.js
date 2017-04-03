@@ -277,10 +277,9 @@ G.Node.valueattributes = {
 // Register node's value in the form.
 // Triggered when `name`, `value` or `values` keys are changed
 G.Node.triggers.name = function(name) {
-  var value = this.getValue();
 
-  // hack to prevent 2-way binding cycle with parsed representation
   if (this.$values && !G.record.match(this.$values, name)) {
+    var value = this.getValue();
 
     // Remember previous element in a radiogroup
     if (this['type'] == 'radio' && this.$values[name] && value) {
@@ -297,10 +296,9 @@ G.Node.triggers.name = function(name) {
       // Uncheck previous radio input
       if (old && old != this && old.checked && old.checked != false)
         old.checked.uncall()
-    } else if (this.$values[name]) {
-      this.$values[name].recall(this)
     }
   }
+  return
 }
 
 G.Node.prototype.getValue = function() {

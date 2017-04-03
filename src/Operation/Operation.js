@@ -236,6 +236,9 @@ G.prototype.uncall = function(soft, unformatted) {
       G.Future.unobserve(cause.$cause, cause)
     G.unlink(from, G.last(value), true)                        // Patch graph and detach the tree at top
   }
+  if (typeof this.$composable == 'function') {
+    this.$composable();
+  }
   return value;
 }
 

@@ -433,6 +433,7 @@ describe('G.Node data', function() {
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     expect(String(form.$last.$last.$previous.href)).to.eql('gunslinger.html')
   })
+
   it ('should change microdata scopes', function() {
     var form = new G.Node('article', {itemscope: true},
       new G.Node('label', null, 'What is your name?'),
@@ -452,10 +453,22 @@ describe('G.Node data', function() {
     expect(form.$last.$first.microdata).to.eql(form.$last.microdata);
     expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
 
-    form.$last.itemprop.uncall()
+    var microdata = form.$last.microdata;
+    var itemprop = form.$last.itemprop.uncall()
+
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+
+    itemprop.call()
+    expect(form.$last.microdata).to.eql(microdata)
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+
+
+    var itemscope = form.$last.itemscope.uncall()
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: 'Hello', url: 'boris.html'}))
 
     debugger
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+    itemscope.call()
+    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
   });
   it ('should change microdata values', function() {
     var form = new G.Node('article', {itemscope: true},
@@ -476,7 +489,6 @@ describe('G.Node data', function() {
     var boris = form.microdata.url.uncall();
     expect(String(form.$last.$first.tag)).to.eql('span')
 
-    debugger
     boris.call()
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['boris.html', 'horror.html']))
@@ -508,7 +520,6 @@ describe('G.Node data', function() {
     expect(G.stringify(ValueStack(form.$last.$last.$first.text))).to.eql(G.stringify(['Hello']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
 
-    debugger
     gomes.call()
     expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))

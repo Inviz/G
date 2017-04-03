@@ -210,6 +210,7 @@ G.value.reuse = function(target, source) {          // If plain JS object was re
   if (target === source) {
     return target;
   } else if (target.$composable) {                  // Return value if it allows changing ownership
+    target.$caller = null                           // Marked operation to be re-linked
     return target;                                  
   } else if (!source.$source.observe) {             // Use G object as value
     target.$meta = source.$meta;

@@ -65,7 +65,6 @@ G.record.push = function(value) {
 G.record.pop = function(old) {
   if (G.debugging && arguments.length) {
     if (G.$called != G.$caller) {
-      debugger
       console.group('%o %s %c %s %s', G.$caller.$context, G.$caller.$key, 'background-color: #eaeaea; font-weight: normal', G.$caller.valueOf(), old && old.valueOf())
       for (var call = G.$caller; call = call.$after;) {
         if (call.$caller === G.$caller)
