@@ -11,7 +11,7 @@ A system to manipulate state with ease.
    ticks and flows.
 
 1. Side effects are tracked automatically
-   Down with 
+   All state changes build a graph of operations, that can be visualized and undone in group. The graph is available to future operations to find efficient strategy of migrating state, it can be dynamically updated and spliced. The graph is not centralized, and is rather a functional data structure that can be easily spliced and patched. 
 
 2. Anything can be undone
    Unloading and deconstructing of complex interaction should be possible 
@@ -24,15 +24,14 @@ A system to manipulate state with ease.
     No domain-specific code should be ran when cleaning up.
 
    *  Progressive state migration
-      When state is changed
+      When state is changed, the system knows what needs to be updated, and how current state can be migrated with least effort
 
 3. Stacks of values
-   Concurrent stat
+   State changes can be triggered by different sources: User interactions, declarative rules, inheritance and domain-specific code. Values should coexist together, work in a predictable and reprodusible way way for complex behaviours to compose properly with glue code.
 
-4. 
-
-5. All state can be tagged with metadata
-   * 
+4. State can be tagged with metadata
+   Values may have additional identity used for retrival and cleanup of state. Metadata may also provide clues for sorting, ownership and importance of values.
+   
 
 
 ## Abstractions
@@ -52,3 +51,13 @@ A stack of concurrent values for the key of specific context
 
 *Group*   - $previous/$next 
 A groupping of values, similar to array.
+
+
+### Node
+
+*G.Node* - An observable virtual dom element. Provides a number of state reconciliation strategies and ways to build the tree.
+
+*G.Node.Values* - Representation of form data. Provides observable access to structured fieldnames, and current state of form fields.
+
+*G.Node.Microdata* - Nestable resources bound to DOM by conventions of microdata. Provides 2-way access to data, can populate templates when data is changed.
+###
