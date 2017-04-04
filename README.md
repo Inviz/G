@@ -14,8 +14,17 @@ A system to manipulate state with ease.
 1. Side effects are tracked automatically
    
    All state changes build a graph of operations, that can be visualized and undone in group. The graph is available to future operations to find efficient strategy of migrating state, it can be dynamically updated and spliced. The graph is not centralized, and is rather a functional data structure that can be easily spliced and patched. 
+   
+2. Stacks of values
+   
+   State changes can be triggered by different sources: User interactions, declarative rules, inheritance and domain-specific code. Values should coexist together, work in a predictable and reprodusible way way for complex behaviours to compose properly with glue code.
 
-2. Anything can be undone
+3. Methods not classes define attribute types
+   
+   Working with trees, arrays and single values should not be so fundamentally different, or else it creates a lot of glue code. Linked lists provide a clean way out, the structure of two-way references can be interpreted differently in different contexts.
+   
+
+4. Anything can be undone
    
    Unloading and deconstructing of complex interaction should be possible 
 
@@ -29,16 +38,15 @@ A system to manipulate state with ease.
    *  Progressive state migration
       When state is changed, the system knows what needs to be updated, and how current state can be migrated with least effort
 
-3. Stacks of values
-   
-   State changes can be triggered by different sources: User interactions, declarative rules, inheritance and domain-specific code. Values should coexist together, work in a predictable and reprodusible way way for complex behaviours to compose properly with glue code.
 
-4. State can be tagged with metadata
+5. Anything can be optimistically redone
+   
+   When element is ejected from linked list, it should keep its broken references to sibling elements. It will help to optimistically re-apply (e.g. redo) it later even onto changed list. It's a huge help in avoiding glue-code in undo/redo action pair. 
+
+6. State can be tagged with metadata
    
    Values may have additional identity used for retrival and cleanup of state. Metadata may also provide clues for sorting, ownership and importance of values.
    
-
-
 ## Abstractions
 
 ### Operation
@@ -65,4 +73,3 @@ A groupping of values, similar to array.
 *G.Node.Values* - Representation of form data. Provides observable access to structured fieldnames, and current state of form fields.
 
 *G.Node.Microdata* - Nestable resources bound to DOM by conventions of microdata. Provides 2-way access to data, can populate templates when data is changed.
-###
