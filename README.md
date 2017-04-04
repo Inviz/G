@@ -8,8 +8,9 @@ A system to manipulate state with ease.
 
 0. Continuations 
    
-   Linear execution of programs has failed us. Code should be arranged semanticlly, leaving up order of execution to the system that computes state. Programmer should never think about execution contexts,
-   ticks and flows.
+   Linear execution of programs has failed us. Code should be arranged semanticlly, leaving up order of execution to the system that computes state. Programmer should never think about execution contexts, ticks and flows. 
+   
+   Though if they want to, they get all the power to them: different strategies to propagate, synchronize and serialize values.
 
 1. Side effects are tracked automatically
    
