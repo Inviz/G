@@ -15,17 +15,17 @@
 
 // Find operation in group or history that matches meta of a given operation 
 
-G.history = function(value, old, verb) {
+G.stack = function(value, old, verb) {
   if (!verb && value.$multiple)
     for (var prec = value; prec = prec.$preceeding;) 
       if (G.Array.contains(old, prec)) 
         return prec;
 
-  if (G.history.isReplacing(value, old, verb))    // If key is supposed to have singular value
-    return G.history.match(value.$meta, old)      //   Attempt to find value with same meta in history 
+  if (G.stack.isReplacing(value, old, verb))    // If key is supposed to have singular value
+    return G.stack.match(value.$meta, old)      //   Attempt to find value with same meta in history 
 };
 
-G.history.isReplacing = function(value, old, verb) {
+G.stack.isReplacing = function(value, old, verb) {
   if (!verb || !old)
     return;
   if ((verb.multiple || !verb.reifying) && !verb.once)
@@ -39,7 +39,7 @@ G.history.isReplacing = function(value, old, verb) {
   return true;
 }
 
-G.history.match = function(meta, old) {
+G.stack.match = function(meta, old) {
   // Allow meta to be passed as array
   if (meta && meta.length == 1 && (!meta[0] || meta[0] instanceof Array))
     meta = meta[0];
@@ -59,11 +59,11 @@ G.history.match = function(meta, old) {
 };
 
 // Iterate all values in stack that match meta & value
-G.history.matches = function(context, key, value, meta, callback) {
+G.stack.matches = function(context, key, value, meta, callback) {
   var current = G.value.get(context, key);
   if (!current) return;
   
-  for (var old = current; old = G.history.match(meta, old); old = next) {
+  for (var old = current; old = G.stack.match(meta, old); old = next) {
     var next = old.$previous || old.$preceeding;
     if ((value === undefined || value == old.valueOf())) {      
       var result = callback ? callback(old) : old;
@@ -74,7 +74,7 @@ G.history.matches = function(context, key, value, meta, callback) {
   return result;
 }
 
-G.history.hasLinks = function(value) {
+G.stack.hasLinks = function(value) {
   return value.$succeeding || value.$preceeding
 }
 
@@ -82,7 +82,7 @@ G.history.hasLinks = function(value) {
 // Replace one operation in history with another 
 // Removed value keeps its pointers
 // so it can be re-applied in place in future
-G.history.rebase = function(old, value) {
+G.stack.rebase = function(old, value) {
   if (value) {                                      // 1. Switching value in history
     if (value.$succeeding = old.$succeeding)        //    Steal neighbour pointers
       value.$succeeding.$preceeding = value;        //    Assign foreign pointers
@@ -98,14 +98,14 @@ G.history.rebase = function(old, value) {
 };
 
 // Attempt to perform soft update, one that only changes references 
-G.history.update = function(value, old, other) {
+G.stack.update = function(value, old, other) {
   if (other === value) {                            // 1. Op is already in history, so it's redo
     return value;                                   //    Not changing history
   } else if (other === old) {                       // 2. New value matches meta of old value 
-    G.history.rebase(old, value);                   //    Switch in place
+    G.stack.rebase(old, value);                   //    Switch in place
     return value;                                   //    Return new value
   } else if (other) {                               // 3. Value matches
-    G.history.rebase(other, value);                 //    Replace it in history
+    G.stack.rebase(other, value);                 //    Replace it in history
     return undefined;                               //    Keep old value assigned
   }
 };

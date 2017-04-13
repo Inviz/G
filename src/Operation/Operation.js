@@ -114,7 +114,7 @@ G.prototype.call = function(verb, old) {
     old = G.value.current(this);
 
   var value  = G.value.format(this, old);             // Transform value 
-  var other  = G.history(value, old, verb);           // Find value with matching meta in history
+  var other  = G.stack(value, old, verb);           // Find value with matching meta in history
   var result = G.value.process(value, old, other, verb)
   value = G.value.reuse(result, value)                // Use it instead of value, if possible
   verb  = G.Array.process(result, other, verb);       // Attempt to put it back at its place in collection
@@ -127,7 +127,7 @@ G.prototype.call = function(verb, old) {
         if (other.$multiple && G.Array.isLinked(other))
           G.verbs.replace(result, other)
         else
-          result = G.history.update(result, old, other);//   Or replace it in history
+          result = G.stack.update(result, old, other);//   Or replace it in history
       } else {
         other = verb(result, old);                    // invoke stack-manipulation method
         if (other === false) {                        
@@ -139,7 +139,7 @@ G.prototype.call = function(verb, old) {
       }
     }
   } else if (verb !== null) {
-    if (old && G.history.hasLinks(value))
+    if (old && G.stack.hasLinks(value))
       G.verbs.restore(result, old)
   }
 
@@ -156,7 +156,7 @@ G.prototype.recall = function() {
   if (arguments.length > arity)                         // Use/merge extra arguments as meta
     for (var meta = [], i = 0; i < arguments.length - arity; i++)
       meta[i] = arguments[i + arity];
-  G.history.matches(this.$context, this.$key, undefined, meta, G.uncall);
+  G.stack.matches(this.$context, this.$key, undefined, meta, G.uncall);
   return this;
 };
 
@@ -246,7 +246,7 @@ G.prototype.uncall = function(soft, unformatted) {
 // Recall and remove from history
 G.prototype.revoke = function() {
   this.uncall();
-  G.history.rebase(G.formatted(this), null)
+  G.stack.rebase(G.formatted(this), null)
   return this;
 }
 

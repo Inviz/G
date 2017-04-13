@@ -50,7 +50,7 @@ G.value.format = function(value, old) {
         result = G.callback(result, group[i], old);   //   apply formatters in order
       result.$formatted = group                       //   store formatting configuration
     }
-    G.history.rebase(value, result);                  // Replace value in the stack of values for key
+    G.stack.rebase(value, result);                  // Replace value in the stack of values for key
     G.link(result, after);
     if (multiple) {
       result.$multiple = true;

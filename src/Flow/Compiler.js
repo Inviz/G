@@ -58,7 +58,7 @@ G.compile.struct = function(struct) {
 };
 
 
-// object.class.push('abc', 'cde')
+// object.push('class', 'cde')
 G.compile.method = function(verb) {
   return function(key, value, a1, a2, a3) {
     if (value != null) {
@@ -82,6 +82,8 @@ G.compile.method = function(verb) {
     }
   };
 }
+// object.replace('class', 'cde', object.class)
+// object.class.replace('cde')
 G.compile.method.binary = function(verb) {
   return function(key, value, a1, a2, a3) {
     if (typeof key == 'object' && key.$key == value.$key && key.$context == value.$context) {
@@ -187,7 +189,21 @@ G.compile.wrapper = function(fn, scope) {
   }
 }
 
+G.compile.togglers = {};
+G.compile.toggler = function(name) {
+  if (G.compile.togglers[name])
+    return G.compile.togglers[name];
+  return G.compile.togglers[name] = function(object) {
+    if (object[name] == null)
+      object.set(name, true);
+    else
+      object.unset(name)
+  }
+}
+
 G.compile()
+
+G.Location(location);
 
 
 if (typeof global !== "undefined")

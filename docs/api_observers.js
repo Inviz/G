@@ -39,11 +39,6 @@ var future = object.watch('object', function(value) {
 // observe+object: merge objects
 target.observe(source)
 
-// observe+return: creates new object
-var filtered = object.observe(function(key, value) {
-    if (key != 'test')
-      return value;
-})
 
 // observe: global side effects
 object.observe(function(key, value) {
@@ -51,3 +46,8 @@ object.observe(function(key, value) {
       something.set('reality', value);
 })
 
+// observe+return: creates new object (TODO)
+var filtered = object.observe(function(key, value) {
+    if (key != 'test')
+      return value;
+})

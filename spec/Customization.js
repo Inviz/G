@@ -6,9 +6,9 @@ describe('Subclassing', function() {
 
     // Base class for model based on microdata
     App.Model = function() {
-      return G.Node.Microdata.apply(this, arguments);
+      return G.Scope.apply(this, arguments);
     }
-    G.Node.Microdata.extend(App.Model);
+    G.Scope.extend(App.Model);
 
 
     // Custom microdata handler

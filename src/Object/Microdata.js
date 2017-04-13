@@ -1,17 +1,17 @@
 
-G.Node.Microdata = function() {
+G.Microdata = function() {
   G.apply(this, arguments);
 }
-G.Node.Microdata.extend = function(constructor) {
+G.Microdata.extend = function(constructor) {
   constructor.prototype = new this;
   constructor.prototype.constructor = constructor;
-  constructor.extend = G.Node.Microdata.extend;
+  constructor.extend = G.Microdata.extend;
   return constructor;
 }
-G.Node.Microdata.prototype = new G;
-G.Node.Microdata.recursive = true;
-G.Node.Microdata.prototype.constructor = G.Node.Microdata;
-G.Node.Microdata.prototype.onChange = function(key, value, old) {
+G.Microdata.prototype = new G;
+G.Microdata.recursive = true;
+G.Microdata.prototype.constructor = G.Microdata;
+G.Microdata.prototype.onChange = function(key, value, old) {
   var current = G.value.current(value || old);
   var target = value || old;
   if (value && !value.$)
@@ -25,7 +25,7 @@ G.Node.Microdata.prototype.onChange = function(key, value, old) {
   this.updateNode(value, target)
 }
 
-G.Node.Microdata.prototype.adoptNode = function(value, old) {
+G.Microdata.prototype.adoptNode = function(value, old) {
   if (value.$meta && value.$meta[0] && value.$meta[0] instanceof G.Node) {
     value.$ = value.$meta[0]
     value.$.$origin = value;
@@ -39,7 +39,7 @@ G.Node.Microdata.prototype.adoptNode = function(value, old) {
   return this.ownNode(value)
 }
 
-G.Node.Microdata.prototype.ownNode = function(value, other, method) {
+G.Microdata.prototype.ownNode = function(value, other, method) {
   if (value.$ && !(value.$context.$context instanceof G.Node))
     value.$.$scope = value.$context;
 
@@ -47,7 +47,7 @@ G.Node.Microdata.prototype.ownNode = function(value, other, method) {
 }
 
 
-G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
+G.Microdata.prototype.cleanNode = function(key, value, old, current) {
   
   if (old.$.itemprop == key && 
     (!current || current.$ != old.$) &&
@@ -61,7 +61,7 @@ G.Node.Microdata.prototype.cleanNode = function(key, value, old, current) {
   }
 }
 
-G.Node.Microdata.prototype.callNode = function(value) {
+G.Microdata.prototype.callNode = function(value) {
   if (value && value.$) {
     if (!G.Array.isLinked(value.$)) {
       G.record.push();
@@ -72,7 +72,7 @@ G.Node.Microdata.prototype.callNode = function(value) {
   }
 }
 
-G.Node.Microdata.prototype.cloneNode = function(value, old) {
+G.Microdata.prototype.cloneNode = function(value, old) {
   for (var prev = value; prev = prev.$previous;) {
     if (!prev.$) continue;
     value.$ = prev.$.cloneNode(value);
@@ -90,7 +90,7 @@ G.Node.Microdata.prototype.cloneNode = function(value, old) {
     return value.$
   }
 }
-G.Node.Microdata.prototype.updateNode = function(value, target) {
+G.Microdata.prototype.updateNode = function(value, target) {
 
   var last = G.$callers[G.$callers.length - 1];
   // hack? :(
@@ -100,7 +100,7 @@ G.Node.Microdata.prototype.updateNode = function(value, target) {
   }
 }
 
-G.Node.prototype.constructors.microdata = G.Node.Microdata;
+G.Node.prototype.constructors.microdata = G.Microdata;
 G.Node.inheritable.push('microdata')                  // register inheritable property
 G.Node.inherited.microdata = 'itemprop';              // name of an attribute that triggers inheritance
 G.Node.$inherited.microdata = '$microdata';           // name of key that references parent microdata scope
@@ -172,13 +172,13 @@ G.Node.prototype.$constructor = function(key) {
     if (this.itemprops && this.itemprops[this.itemprop])
       return this.itemprops[this.itemprop];
 
-    return G.Node.Microdata;
+    return G.Microdata;
   }
 }
 
 // Restore original ownership of microdata object 
 // when it is uncalled by parent context
-G.Node.Microdata.prototype.$composable = function() {
+G.Microdata.prototype.$composable = function() {
   if (this.$ ) {
     if (this.$.itemscope && this.$.microdata === this) {
       this.$.microdata = undefined

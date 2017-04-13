@@ -1,4 +1,15 @@
+/*
+  Future is a declarative value assignment 
+  that may be computed and updated asynchronously.
 
+  It encapsulates logic of observing variables,
+  triggering updates, assigning computed value
+  and recomputing side effects. 
+
+  It is used for  future proxies, computed properties,
+  observable variables and loops 
+  as seen in Watcher.js
+*/
 G.Future = function(context, key, watcher) {
   this.$context = context;
   this.$key = key;

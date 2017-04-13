@@ -1,0 +1,49 @@
+
+<!-- 1. State change -->
+
+<!-- `?` sets variable in current scope-->
+<!-- URL: #/articles/123/?hidden=true-->
+<a href="#?hidden=true"></a>
+
+<!-- `&` appends variables if scopes matches -->
+<!-- URL: #/articles/123/?hidden=true&collapsed=yes-->
+<li itemscope itemprop="articles" itemid="123">
+  <a href="#&hidden=true">Hide</a>
+  <a href="#&collapsed=yes">Collapse</a>
+</li>
+
+<!-- Params without value toggle on activation -->
+<!-- URL: #/articles/123/?hidden and #/articles/123-->
+<li itemscope itemprop="articles" itemid="123">
+  <a href="#&hidden">Hide/Expand</a>
+</li>
+
+<!-- Missing `?` or `&` in URL means URL will not be changed
+     and state changes are persistent through multiple actions -->
+
+<a href="#hidden=true"></a>
+
+<!-- Params without value toggle on activation -->
+<!-- URL: #/articles/123/?hidden or #/articles/123/comments/321?hidden-->
+<li itemscope itemprop="articles" itemid="123">
+  <li itemscope itemprop="comments" itemid="321">
+    <a href="#../?hidden">Toggle article</a>
+    <a href="#?hidden">Toggle comment</a>
+  </li>
+  <a href="#?hidden">Toggle article</a>
+  <a href="#comments/123/?hidden">Toggle comment</a>
+  <a href="#?comments[0]=hidden">Toggle comment</a>
+</li>
+
+
+
+
+
+
+<!-- 2. Methods -->
+<li itemscope itemprop="articles" itemid="123">
+  <a method="hide">Hide/Expand</a>
+</li>
+
+
+

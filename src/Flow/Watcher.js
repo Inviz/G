@@ -161,9 +161,20 @@ G.prototype.merge = function(object) {
       return G.verbs.merge(object, this, meta);
 
     var keys = Object.keys(object);
-    for (var i = 0, key; key = keys[i++];)
-      if (key.charAt(0) != '$')
-        G.merge(this, key, object[key], meta);
+    for (var i = 0, key; key = keys[i++];) {
+      var value = object[key];
+      if (key.charAt(0) != '$' && value != null) {
+        if (typeof value == 'function')
+          value = value(this);
+
+        if (typeof value == 'object' && 'length' in object[key]) {
+          for (var j = 0; j < object[key].length; j++)
+            G.push(this, key, object[key][j], meta);
+        } else {
+          G.merge(this, key, value, meta);
+        }
+      }
+    }
     return this;
   }
   return G.prototype._merge.apply(this, arguments);
@@ -180,9 +191,20 @@ G.prototype.defaults = function(object) {
       return G.verbs.defaults(object, this, meta);
 
     var keys = Object.keys(object);
-    for (var i = 0, key; key = keys[i++];)
-      if (key.charAt(0) != '$')
-        G.defaults(this, key, object[key], meta);
+    for (var i = 0, key; key = keys[i++];) {
+      var value = object[key];
+      if (key.charAt(0) != '$' && value != null) {
+        if (typeof value == 'function')
+          value = value(this);
+
+        if (typeof value == 'object' && 'length' in object[key]) {
+          for (var j = value.length; j--;)
+            G.unshift(this, key, value[j], meta);
+        } else {
+          G.defaults(this, key, value, meta);
+        }
+      }
+    }
     return this;
   }
   return G.prototype._defaults.apply(this, arguments);

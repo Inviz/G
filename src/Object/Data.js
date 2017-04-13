@@ -1,5 +1,5 @@
-// An observable storage for field values
-// Values with keys like `people[1][name]` are both accessible
+// An observable storage for field values and query string k/v pairs
+// Values with composite keys like `people[1][name]` are both accessible
 // as absolute and parsed path like `people.$first.name`
 
 // When new entries are added into those parsed arrays of objects
@@ -7,20 +7,20 @@
 
 // Disabled inputs, or unchecked checkboxes and radiobuttons
 // do not provide value, just like if you submitted the form
-G.Node.Values = function() {
+G.Data = function() {
   G.apply(this, arguments);
 }
-G.Node.Values.prototype = new G;
-G.Node.Values.prototype.constructor = G.Node.Values;
-G.Node.Values.prototype.adoptNode = G.Node.Microdata.prototype.adoptNode;
-G.Node.Values.prototype.cleanNode = G.Node.Microdata.prototype.cleanNode;
-G.Node.Values.prototype.callNode  = G.Node.Microdata.prototype.callNode;
-G.Node.Values.prototype.ownNode   = G.Node.Microdata.prototype.ownNode;
-G.Node.Values.recursive = true;
+G.Data.prototype = new G;
+G.Data.prototype.constructor = G.Data;
+G.Data.prototype.adoptNode = G.Scope.prototype.adoptNode;
+G.Data.prototype.cleanNode = G.Scope.prototype.cleanNode;
+G.Data.prototype.callNode  = G.Scope.prototype.callNode;
+G.Data.prototype.ownNode   = G.Scope.prototype.ownNode;
+G.Data.recursive = true;
 
 // parse input names like person[friends][n][name]
 // and store values like person.friends[n].name 
-G.Node.Values.prototype.onChange = function(key, value, old) {
+G.Data.prototype.onChange = function(key, value, old) {
   var last = 0;
   var context = this;
   var length = key.length;
@@ -98,18 +98,19 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
       else 
         context.unset(bit, old.valueOf(), old.$meta)
 
-      if (value == null && contexts) {
-
-        // if value is removed, clean up objects on its path
-        // which dont have any other sub-keys
-
-        for (var j = contexts.length; j--;)
-          if (G.getLength(context) == 0) {
+      if (value == null && contexts) {                // if value is removed
+        for (var j = contexts.length; j--;)           // clean up objects on its path
+          if (G.getLength(context) == 0) {            // that dont have any other sub-keys
             context.uncall()
           }
       }
     } else if (!G.record.match(context, bit)) {
-      context.pushOnce(bit, value, value.$meta)
+
+      if (value.$meta && value.$meta[0]               // nodes only provide a single value
+      && value.$meta[0] instanceof G.Node)
+        context.pushOnce(bit, value, value.$meta)
+      else
+        context.push(bit, value, value.$meta)
     }
   } else {
     var current = G.value.current(value || old);
@@ -121,7 +122,7 @@ G.Node.Values.prototype.onChange = function(key, value, old) {
   G.$cause = cause;
 }
 
-G.Node.Values.prototype.cloneNode = function(value, old) {
+G.Data.prototype.cloneNode = function(value, old) {
   for (var prev = value; prev = prev.$previous;) {
     if (!prev.$) continue;
     value.$ = prev.$.cloneNode(true);
@@ -135,8 +136,10 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
     return this.ownNode(value, next.$, 'before')
   }
   var context = this.$context;
+  if (!context) return;
   while (!(context instanceof G.Node))
-    context = context.$context;
+    if (!(context = context.$context))
+      return;
   var last = context.$next;
   var name = this.getName(value)
   for (var el = context; (el = el.$following) != last;) {
@@ -148,7 +151,6 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
       var pos = 0;
 
       if (!el.$scope) continue;
-
     
       if (G.Array.isAfter(value.$context, el.$scope)) {
         // find position of input within its scope
@@ -198,19 +200,19 @@ G.Node.Values.prototype.cloneNode = function(value, old) {
 }
 
 // todo char by char comparison
-G.Node.Values.prototype.compareName = function(name, another) {
+G.Data.prototype.compareName = function(name, another) {
   return name.replace(/\[\d*\]/, '') == another.replace(/\[\d*\]/, '')
 }
 
 
-G.Node.Values.prototype.updateNode = function(value, target) {
+G.Data.prototype.updateNode = function(value, target) {
     if (value && value.$ && (!value.$meta || value.$meta.length != 1 || value.$meta[0] != target.$)) {
       target.$.name.$subscription.$computing = true;
       value.$.set('value', value, value.$meta || [value.$, 'values']);
       target.$.name.$subscription.$computing = null
     }
 }
-G.Node.Values.prototype.getName = function(value) {
+G.Data.prototype.getName = function(value) {
   var key = ''
   while (value) {
     for (var before = value, i = 0; before = before.$previous; )
@@ -230,7 +232,7 @@ G.Node.Values.prototype.getName = function(value) {
 }
 
 
-G.Node.Values.prototype.ownNode = function(value, other, method) {
+G.Data.prototype.ownNode = function(value, other, method) {
   if (value.$ && !(value.$context.$context instanceof G.Node))
     value.$.$scope = value.$context;
 
@@ -244,7 +246,7 @@ G.Node.Values.prototype.ownNode = function(value, other, method) {
 }
 
 /*
-G.Node.Values.prototype.cleanNode = function(key, value, old, current) {
+G.Data.prototype.cleanNode = function(key, value, old, current) {
   
   if (old.$.name == key && 
     (!current || current.$ != old.$) &&
@@ -258,7 +260,7 @@ G.Node.Values.prototype.cleanNode = function(key, value, old, current) {
   }
 }*/
 
-G.Node.prototype.constructors.values = G.Node.Values;
+G.Node.prototype.constructors.values = G.Data;
 G.Node.inheritable.push('values')                     // register inheritable property
 G.Node.inherited.values = 'name';                     // name of an attribute that triggers inheritance
 G.Node.$inherited.values = '$values';                 // name of key that references parent microdata scope
