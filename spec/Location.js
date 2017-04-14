@@ -270,33 +270,45 @@ describe('G.Location', function() {
   })
 
   describe('Routing', function() {
-    it ('should match locations to routes', function() {
-      var routes = G.Location.define({
-        'people': {
-          'show': function(id) {
+    it ('should match urls to locations', function() {
+      var location = new G.Location({
+        people: {
+          key: 'project_id',
+          show: function(id) {
             return 123;
           }
         }
       })
+      expect(location.toString()).to.eql('');
+      expect(location.people.toString()).to.eql('people');
+      var route = location.match('/people/123/show');
+      expect(route.stringify()).to.eql(G.stringify({"action":"show","id":"123"}));
+      expect(route.toString()).to.eql('people/123/show');
 
-      var location = routes.match('/people/123');
-      expect(method).to.eql(routes.people.show);
-
+      var partial = location.people.match('123/show');
+      expect(partial.stringify()).to.eql(G.stringify({"action":"show","id":"123"}));
+      expect(partial.toString()).to.eql('people/123/show');
     })
 
     it ('should match locations to nested routes', function() {
-      var routes = G.Location.define({
-        'projects': {
-          'people': {
-            'show': function(id) {
+      var location = new G.Location({
+        projects: {
+          key: 'project_id',
+          people: {
+            key: 'person_id',
+            show: function(id) {
               return 123;
             }
           }
         }
       })
+      expect(location.toString()).to.eql('');
+      expect(location.projects.toString()).to.eql('projects');
+      expect(location.projects.people.toString()).to.eql('projects/:project_id/people');
 
-      var location = routes.match('/people/123');
-      expect(method).to.eql(routes.people.show);
+      var route = location.match('/projects/123/people/321/show');
+      expect(route.stringify()).to.eql(G.stringify({"action":"show","project_id": "123", "id":"321"}));
+      expect(route.toString()).to.eql('projects/123/people/321/show');
 
     })
   })

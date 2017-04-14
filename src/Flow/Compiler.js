@@ -193,12 +193,14 @@ G.compile.togglers = {};
 G.compile.toggler = function(name) {
   if (G.compile.togglers[name])
     return G.compile.togglers[name];
-  return G.compile.togglers[name] = function(object) {
+  G.compile.togglers[name] = function(object) {
     if (object[name] == null)
       object.set(name, true);
     else
       object.unset(name)
   }
+  G.compile.togglers[name].$computed = true;
+  return G.compile.togglers[name];
 }
 
 G.compile()

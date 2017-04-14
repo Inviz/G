@@ -26,6 +26,7 @@ Locations may serve different purposes:
   - to route urls to custom logic
   - to stack views like dialogs and detail view
   - to make requests and sync with API endpoints
+  - identity map for models
 
 todo:
   - uid:      Unique identification of current user
@@ -34,16 +35,19 @@ todo:
 */
 G.Location = function(url, base) {
   if (this instanceof G.Location) {                   // 1. Creating new location
-    this.merge(
-      G.Location.rebase(                              // Parse and rebase URL
-        G.Location.parse(url), 
-      base));         
+    if (url != null)
+      this.merge(
+        G.Location.rebase(                              // Parse and rebase URL
+          G.Location.parse(url), 
+        base));         
   } else {                                            // 
     return (new G.Location(url)).navigate(base);      // 2. Navigate to new location
   }
 };
 
+G.Location.recursive = true;
 G.Location.prototype = new G.Data;
+G.Location.prototype.constructor = G.Location;
 
 G.Location.prototype.affect = function(callback) {
   G.record.push(this);
@@ -92,8 +96,15 @@ G.Location.inherit = function(params, base, concat) {
     if (!params.path || (concat !== false && params.path.charAt(0) != '/'))
       params.path = base.path + (params.path ? '/'  + params.path : '');
 }
-G.Location.rebase = function(params, base) {
-  if (params.caller && (params.target || !params.domain)) {
+
+G.Location.rebase = function(params, base, path) {    // contextualize location parameters
+  if (base)                                           // Inherit URL parts from given location
+    G.Location.inherit(params, base);
+
+  if (!params.caller)
+    return params;
+
+  if (params.target || !params.domain) {              // Inherit URL parts from parent scopes & document
     var skip = G.Location.targets[params.target];
     parents: for (var p = params.caller; p; p = p.$parent) {
       var url = p.getURL();
@@ -112,8 +123,6 @@ G.Location.rebase = function(params, base) {
       }
     }
   }
-  if (base)
-    G.Location.inherit(params, base);
 
   return params;
 }
@@ -128,6 +137,59 @@ G.Location.prototype.push = function(location) {
   if (!(location instanceof G.Location))
     location = new G.Location(location);
   return G.Object.prototype.push.apply(this, arguments);
+}
+
+G.Location.prototype.match = function(input, cursor, params) {
+  var url = input.url || input;
+
+  var start = cursor || 0;
+  var length = url.length;
+  if (url.charAt(start) == '/')
+    start++;
+
+  // extract one level of path
+  var end = start;
+  loop: while (end < length) {
+    switch (url.charAt(end)) {
+      case '/': case '?': case '#': case '&':
+        break loop;
+      default:
+        end++;
+    }
+  }
+
+  if (end !== start) {
+    var path = url.substring(start, end);
+    var location = this[path];
+    if (location) {                                   // if resource matched by name
+      if (url.charAt(end) != '/' && typeof location == 'function') {
+        var result = Object.create(this)
+        result.action = path;
+        if (params)
+          for (var param in params)
+            result[param] = params[param]
+      }
+    } else if (this.key) {
+      debugger
+      if (url.charAt(end) != '/') {         // interpret file name as id
+        var result = Object.create(this)
+        result.id = path;
+        if (params)
+          for (var param in params)
+            result[param] = params[param]
+        return result;
+      } else {                                  // interpret next level of path as parent id
+        if (url.indexOf('/', end + 1) > -1)
+          (params || (params = {}))[this.key] = path
+        else
+          (params || (params = {})).id = path
+      }
+    }
+    if (end !== length)
+      return (location || this).match(input, end + 1, params)
+
+    return result || location || this;
+  }
 }
 
 G.Location.prototype.navigate = function() {
@@ -154,25 +216,19 @@ G.Location.targets = {
 }
 
 // Parse href into intermediate data representation
-G.Location.parse = function(href) {
-  if (href instanceof G.Node)
-    var caller = href;
-  var method = href.method;
-  var target = href.target;
-  var action = G.Node.prototype.getURL.call(href);    // 1. Parse location/node object
-  if (action) href = action;                          //    use href property of location
-
+G.Location.parse = function(input, prefix) {
+  if (input instanceof G.Node)
+    var caller = input;
+  var method = input.method;
+  var target = input.target;
+  var action = G.Node.prototype.getURL.call(input);    // 1. Parse location/node object
+  if (action) 
+    var href = action.valueOf();                       //    use href property of location
+  else if (typeof input.valueOf() != 'object')
+    var href = input;
+  else if (input.query && !input.params)              // 2. only parse query, re-use other properties
+    var href = '?' + input.query
   
-  if (href.query && !href.params) {                   // 2. only parse query, re-use other properties
-    var schema = href.schema
-    var domain = href.domain
-    var path   = href.path
-    var params = href.params
-    href = '?' + href.query
-  }
-  
-  href = href.valueOf();
-
   if (typeof href === 'string') {                     // 3. Parse url string
     var hash = href.indexOf('#');                     // process fragment
     if (hash > -1) {
@@ -231,17 +287,86 @@ G.Location.parse = function(href) {
       }
     }
   }
-  return {
-    caller:   caller,
-    target:   target,
-    method:   method,
-    
-    schema:   schema,
-    domain:   domain,
-    path:     path,
-    params:   params,
+  if (prefix) {
+    if (path)
+      path = prefix + '/' + path;
+    else
+      path = prefix;
+  } 
+  var result = {
+    caller: caller,
+    target: target,
+    method: method,
+    schema: schema,
+    domain: domain,
+    path: path,
+    params: params,
     fragment: fragment
+  };
+
+
+  if (!caller && typeof input.valueOf() == 'object') {// parse and rebase nested locations
+    for (var property in input) {
+      if (input[property] == null)
+        continue;
+      if (typeof input[property] == 'object') {
+        var prefix = input.key ? ':' + input.key + '/' + property : property;
+        result[property] =  G.Location.rebase(
+                              G.Location.parse(input[property], prefix), 
+                            result);
+      } else {
+        result[property] = input[property];
+      }
+    }
   }
+  return result;
+}
+
+G.Location.serialize = function(input, params) {
+  var url = ''
+  if (input.domain) {
+    if (input.schema)
+      url += input.schema + '://' + input.domain
+    else
+      url += '//' + input.domain
+  }
+  if (input.path) {
+    if (url && input.path.charAt(0) != '/')
+      url += '/' + input.path
+    else
+      url += input.path
+  }
+  if (input.id) {
+    if (url && url.charAt(url.length - 1) != '/')
+      url += '/' + input.id
+    else
+      url += input.id
+  }
+  if (input.action) {
+    if (url && url.charAt(url.length - 1) != '/')
+      url += '/' + input.action
+    else
+      url += input.action
+  }
+  if (input.params) {
+    url += '?' + input.params.toString();
+  } else if (input.query) {
+    url += '?' + input.query;
+  }
+  if (input.fragment) {
+    url += '#' + input.fragment;
+  }
+  return url.replace(/:([a-z0-9_-]+)/g, function(m, property) {
+    if (params && params[property] != null)
+      return params[property];
+    if (input && input[property] != null)
+      return input[property];
+    return m;
+  });
+}
+
+G.Location.prototype.toString = function(params) {
+  return G.Location.serialize(this, params);
 }
 
 G.Location.prototype.onChange = function(key, value, old) {

@@ -164,10 +164,10 @@ G.prototype.merge = function(object) {
     for (var i = 0, key; key = keys[i++];) {
       var value = object[key];
       if (key.charAt(0) != '$' && value != null) {
-        if (typeof value == 'function')
+        if (value.$computed)
           value = value(this);
 
-        if (value && typeof value.valueOf() == 'object' && 'length' in object[key]) {
+        if (value != null && value.valueOf().constructor === Array) {
           for (var j = 0; j < object[key].length; j++)
             G.push(this, key, object[key][j], meta);
         } else {
