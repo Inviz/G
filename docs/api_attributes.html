@@ -5,7 +5,7 @@
 <!-- URL: #/articles/123/?hidden=true-->
 <a href="#?hidden=true"></a>
 
-<!-- `&` appends variables if scopes matches -->
+<!-- `&` appends variable if it matches scope of previous variables -->
 <!-- URL: #/articles/123/?hidden=true&collapsed=yes-->
 <li itemscope itemprop="articles" itemid="123">
   <a href="#&hidden=true">Hide</a>
@@ -23,7 +23,7 @@
 
 <a href="#hidden=true"></a>
 
-<!-- Params without value toggle on activation -->
+<!-- Actions may target scopes relatively -->
 <!-- URL: #/articles/123/?hidden or #/articles/123/comments/321?hidden-->
 <li itemscope itemprop="articles" itemid="123">
   <li itemscope itemprop="comments" itemid="321">
@@ -42,8 +42,27 @@
 
 <!-- 2. Methods -->
 <li itemscope itemprop="articles" itemid="123">
-  <a method="hide">Hide/Expand</a>
+  <a method="hide">Hide</a>
+</li>
+
+<!-- PUT /articles/123?article[published]=true -->
+<li itemscope itemprop="articles" itemid="123">
+  <a href="#published=true" method="put" target=".">Publish</a>
 </li>
 
 
+<li itemscope itemprop="articles" itemid="123">
+  <form target="..">
+    <input name="article[title]" />
+  </form>
+</li>
 
+
+<!-- 3. Directives -->
+
+
+<li>
+  <!--if-->
+
+  <!--/if-->
+</li>

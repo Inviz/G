@@ -167,7 +167,7 @@ G.prototype.merge = function(object) {
         if (typeof value == 'function')
           value = value(this);
 
-        if (typeof value == 'object' && 'length' in object[key]) {
+        if (value && typeof value.valueOf() == 'object' && 'length' in object[key]) {
           for (var j = 0; j < object[key].length; j++)
             G.push(this, key, object[key][j], meta);
         } else {

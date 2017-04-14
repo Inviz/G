@@ -250,6 +250,22 @@ G.Node.prototype.getTextContent = function() {
   return result;
 }
 
+G.Node.prototype.getData = function() {
+  return this.data || this.values 
+              || (this.itemscope && this.microdata);
+}
+G.Node.prototype.getURL = function() {
+  if (this.href)
+    return this.href;
+  if (this.action)
+    return this.action;
+  if (this.itemscope && this.itemtype && this.itemid) {
+    return this.itemtype + '/' + this.itemid;
+  }
+  if (this.tag == 'body')
+    return this.basepath || location.href;
+}
+
 // Update itemvalue
 G.Node.updateTrigger = function(node, prop, old) {
   var watchers = node.$watchers && node.$watchers[prop];
