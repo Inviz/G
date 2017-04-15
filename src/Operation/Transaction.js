@@ -38,15 +38,17 @@ G.record.sequence = function(value, old, verb) {
     if (!old.$multiple && !value.$multiple)
       value.$after = old.$after;                      //    Remember old value's next op (1-way)
 
-  if (old && old.$caller === G.$caller && !value.$multiple) { //    If new value has the same caller as old
-    var before = G.unformatted(old).$before;
+  if (!value.$multiple
+      && old && old.$caller === G.$caller) {          //    If new value has the same caller as old
+    var before = G.value.unformatted(old).$before;
     if (before)
-      G.link(G.unformatted(old).$before, value);        //    Connect new value to old's previous ops
+      G.link(before, value);                          //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
-    G.link(G.$called, G.unformatted(value), true)     //    Continue writing at parent's point
-    G.$called = value;
+    var unformatted = G.value.unformatted(value);
+    G.link(G.$called, unformatted, true)              
+    G.$called = value;                                //   Continue writing at parent's point
   } else if (G.$caller){
-    var unformatted = G.unformatted(value);
+    var unformatted = G.value.unformatted(value);
     for (var op = G.$caller; op; op = op.$after) {
       if (op === unformatted)                         // 3. Operation is already in record
         break;
@@ -114,7 +116,7 @@ G.record.causation = function(value) {
 // Reuse state change and it's effects, set new caller. 
 // Rewind to the end
 G.record.reuse = function(value) {
-  var last = G.last(value); 
+  var last = G.record.last(value); 
   if (value.$caller != G.$caller) {
     G.link(value.$before, last.$after);               // detach effect from old graph
     G.record.causation(value);                        // set new caller
@@ -183,7 +185,7 @@ G.transact = function(value) {
 // Undo all state changes since transaction has started
 G.abort = function(value) {
   G.$recaller = value
-  last = G.effects(value, G.uncall)
+  last = G.effects.each(value, G.uncall)
   G.$recaller = null
   if (G.$caller == value)
     G.$caller = null
@@ -192,7 +194,7 @@ G.abort = function(value) {
 
 // Reapply previously aborted transaction
 G.commit = function(value) {
-  return G.effects(value, G.call);
+  return G.effects.each(value, G.call);
 };
 
 G.finalize = function() {
@@ -205,64 +207,19 @@ G.head = function(value) {
     value = value.$after
   return value
 }
-
-// Find result of last transformation over value
-G.formatted = function(value) {
-  while (value.$after && value.$after.$transform)
-    value = value.$after
-  return value
-},
-
-// Find value before transformations
-G.unformatted = function(value) {
-  while (value.$transform)
-    value = value.$before
-  return value
-},
-
-// Iterate side effects caused by value 
-G.effects = function(value, callback, argument) {
-  for (var after = value; after = after.$after;)
-    if (after.$caller === value)
-      var last = callback(after, argument) || after;
-  return last;
+G.record.isLinked = function(value) {
+  return value.$caller && (!value.$before || value.$before.$after == value);
 }
 
-G.effects.caused = function(value, watcher, old) {
-  var effects
-  for (var next = value; next; next = next.$after) {
-    if (next.$cause == watcher && next.$caller == value)
-      (effects || (effects = [])).push(next)
-  }
-  return effects
-}
-
-G.effects.clean = function(value, effects) {
-  for (var i = 0; i < effects.length; i++) {
-    for (var next = value; next; next = next.$after)
-      if (next === effects[i])
-        break;
-      else if (next === G.$called) {
-        next = undefined;
-        break;
-      }
-    if (!next)
-      effects[i].uncall()
-  }  
-}
-
-G.last = function(value) {
+G.record.last = function(value) {
   var last = value;
   for (var after = value; after = after.$after;)
     if (after.$caller === value)
       last = after;
   if (last !== value)
-    return G.last(last)
+    return G.record.last(last)
   else
     return last;
 } 
 
-G.record.isLinked = function(value) {
-  return value.$caller && (!value.$before || value.$before.$after == value);
-}
 

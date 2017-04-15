@@ -25,7 +25,7 @@ G.callback.property = function(value, watcher, old) {
   if (old)
     for (var after = old; after = after.$after;)                   // undo all conditional stuff
       if (after.$caller == old && after.$cause == watcher)         // that did not fire this time
-        if (after.$multiple || !G.isUndone(after))
+        if (after.$multiple || G.stack.isLinked(after))
           after.uncall(true)
     
   G.$cause = caused;
@@ -37,19 +37,8 @@ G.callback.property = function(value, watcher, old) {
   return G.record.transformation(transformed, old, value, watcher);
 };
 
-G.isUndone = function(value) {
-  if (G.value.current(value) === value)
-    return false;
-  if (value.$succeeding && value.$succeeding.$preceeding === value)
-    return false;
-  if (value.$preceeding && value.$preceeding.$succeeding === value)
-    return false;
-  return true;
-}
-
 G.callback.proxy = function(value, watcher) {
   var target = watcher.$target || watcher;
-
   if (watcher.$method) {
     return G[watcher.$method](target, value.$key, value, watcher.$meta)
   } else {

@@ -274,8 +274,8 @@ describe('G.Location', function() {
       var location = new G.Location({
         people: {
           key: 'project_id',
-          show: function(id) {
-            return 123;
+          show: function() {
+            return - parseInt(this.id);
           }
         }
       })
@@ -284,10 +284,12 @@ describe('G.Location', function() {
       var route = location.match('/people/123/show');
       expect(route.stringify()).to.eql(G.stringify({"action":"show","id":"123"}));
       expect(route.toString()).to.eql('people/123/show');
+      expect(route.execute()).to.eql(-123)
 
       var partial = location.people.match('123/show');
       expect(partial.stringify()).to.eql(G.stringify({"action":"show","id":"123"}));
       expect(partial.toString()).to.eql('people/123/show');
+      expect(partial.execute()).to.eql(-123)
     })
 
     it ('should match locations to nested routes', function() {
@@ -296,8 +298,8 @@ describe('G.Location', function() {
           key: 'project_id',
           people: {
             key: 'person_id',
-            show: function(id) {
-              return 123;
+            show: function() {
+              return - parseInt(this.id);
             }
           }
         }
@@ -305,12 +307,85 @@ describe('G.Location', function() {
       expect(location.toString()).to.eql('');
       expect(location.projects.toString()).to.eql('projects');
       expect(location.projects.people.toString()).to.eql('projects/:project_id/people');
+      expect(location.projects.people.toString({project_id: 333})).to.eql('projects/333/people');
 
       var route = location.match('/projects/123/people/321/show');
       expect(route.stringify()).to.eql(G.stringify({"action":"show","project_id": "123", "id":"321"}));
       expect(route.toString()).to.eql('projects/123/people/321/show');
 
+      expect(route.execute()).to.eql(-321)
     })
+
+    it ('should execute implicit actions', function() {
+      var location = new G.Location({
+        people: {
+          key: 'project_id',
+          fetch: function() {
+            return {id: this.id, title: 'Hello'}
+          },
+          custom_action: function(person) {
+            return {id: this.id, title: person.title, displayed: true}
+          },
+          shallow_action: function() {
+            return {id: this.id}
+          }
+        }
+      })
+      expect(location.toString()).to.eql('');
+      expect(location.people.toString()).to.eql('people');
+
+      var route = location.match('/people/123');
+      expect(route.stringify()).to.eql(G.stringify({"id":"123"}));
+      expect(route.toString()).to.eql('people/123');
+      expect(route.execute()).to.eql({id: '123', title: 'Hello'})
+
+      var route = location.match('/people/123/custom_action');
+      expect(route.stringify()).to.eql(G.stringify({action: 'custom_action', "id":"123"}));
+      expect(route.toString()).to.eql('people/123/custom_action');
+      expect(route.execute()).to.eql({id: '123', title: 'Hello', displayed: true})
+
+      var route = location.match('/people/123/shallow_action');
+      expect(route.stringify()).to.eql(G.stringify({action: 'shallow_action', "id":"123"}));
+      expect(route.toString()).to.eql('people/123/shallow_action');
+      expect(route.execute()).to.eql({id: '123'})
+
+    })
+
+    it ('should execute nested implicit actions', function() {
+      var location = new G.Location({
+        projects: {
+          key: 'project_id',
+          fetch: function() {
+            return {id: this.id, title: 'Goodbye'}
+          },
+          people: {
+            key: 'person_id',
+            fetch: function() {
+              return {id: this.id, title: 'Hello'}
+            },
+            custom_action: function(person, project) {
+              return {id: this.id, title: person.title, project: project}
+            },
+            shallow_action: function() {
+              return {id: this.id}
+            }
+          }
+        }
+      })
+
+      var route = location.match('/projects/333/people/123/custom_action');
+      expect(G.stringify(route.execute())).to.eql(G.stringify({
+        id: '123', 
+        title: 'Hello', 
+        project: {
+          id: '333',
+          title: 'Goodbye'
+        }
+      }))
+
+
+    })
+
   })
 
 

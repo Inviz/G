@@ -108,7 +108,7 @@ G.Future.invoke = function(watcher, value) {
 G.Future._callValue = function() {
   if (this.$multiple) {
     G.Array.inject(this, true)
-    G.effects(this, G.call)
+    G.effects.each(this, G.call)
   } else {
 
   }
@@ -144,7 +144,7 @@ G.Future.notify = function(watcher, value, result) {
     return true;
   } else if (called) {
     called.$after = old;
-    G.$called = G.last(old);
+    G.$called = G.record.last(old);
   }
   G.$cause = cause;
 }
@@ -344,7 +344,7 @@ G.Future.subscribe = function(context, key, watcher, meta, method) {
     var cause = G.$cause;
     G.$cause = application;
     G.record.push(watcher.$current)
-    G.$called = G.last(watcher.$current);
+    G.$called = G.record.last(watcher.$current);
     if (method)
       context[method](key, watcher.$current, meta)
     else

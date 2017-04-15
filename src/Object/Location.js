@@ -26,7 +26,8 @@ Locations may serve different purposes:
   - to route urls to custom logic
   - to stack views like dialogs and detail view
   - to make requests and sync with API endpoints
-  - identity map for models
+  - to fetch data with associations
+  - to map identity of models and their representations
 
 todo:
   - uid:      Unique identification of current user
@@ -365,6 +366,30 @@ G.Location.serialize = function(input, params) {
   });
 }
 
+G.Location.prototype.fetch = function() {
+  
+}
+
+G.Location.prototype.execute = function() {
+  if (this.action) {
+    var argv = this[this.action].length;
+    if (argv) {                                       // 1. explicit action over fetched data  
+      // todo async
+      this.args = [];
+      var parent = this;
+      for (var i = 0; i < argv; i++) {
+        var loc = parent === this ? this : parent.match(this[parent.key])
+        this.args[i] = loc.fetch()
+        parent = parent.$context
+      }
+      return this[this.action].apply(this, this.args)
+    } else {                                          // 2. shallow action over raw URL params
+      return this[this.action]()
+    }
+  } else if (!this.method || this.method == 'get') {  // 3. implicit fetch action
+    return this.fetch();
+  }
+}
 G.Location.prototype.toString = function(params) {
   return G.Location.serialize(this, params);
 }

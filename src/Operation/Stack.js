@@ -15,6 +15,8 @@
 
 // Find operation in group or history that matches meta of a given operation 
 
+
+
 G.stack = function(value, old, verb) {
   if (!verb && value.$multiple)
     for (var prec = value; prec = prec.$preceeding;) 
@@ -37,6 +39,16 @@ G.stack.isReplacing = function(value, old, verb) {
 
     return
   return true;
+}
+
+G.stack.isLinked = function(value) {
+  if (G.value.current(value) === value)
+    return true;
+  if (value.$succeeding && value.$succeeding.$preceeding === value)
+    return true;
+  if (value.$preceeding && value.$preceeding.$succeeding === value)
+    return true;
+  return false;
 }
 
 G.stack.match = function(meta, old) {

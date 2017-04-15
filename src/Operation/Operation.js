@@ -113,7 +113,7 @@ G.prototype.call = function(verb, old) {
   if (old === undefined)
     old = G.value.current(this);
 
-  var value  = G.value.format(this, old);             // Transform value 
+  var value  = G.value(this, old);                  // Transform/format value 
   var other  = G.stack(value, old, verb);           // Find value with matching meta in history
   var result = G.value.process(value, old, other, verb)
   value = G.value.reuse(result, value)                // Use it instead of value, if possible
@@ -146,8 +146,8 @@ G.prototype.call = function(verb, old) {
   if (!G.record.isLinked(value))                       // If operation position in graph needs update
     G.record(value, old, verb);                        // Register in graph and remember caller op/callback
   
-  G.value.apply(result);   
-  G.value(result || value, old, other, verb)
+  G.value.apply(result);                               // Assign value to context
+  G.effects(result || value, old, other, verb);        // Propagate change to listeners
   return value;
 };
 
@@ -175,10 +175,13 @@ G.prototype.uncall = function(soft, unformatted) {
   var context = this.$context;  
   var recalling = G.$recaller;                        // Top-level call will detach sub-tree,
       
-  if (context)  
+  if (context)                                        // 2. Return to previous version
     var current = G.value.current(this)  
-  var value = unformatted ? this : G.formatted(this); // 2. Return to previous version
-  var from = G.unformatted(value)                     // Get initial value before formatting
+  if (unformatted)
+    var value = this
+  else
+    var value = G.value.formatted(this);              
+  var from = G.value.unformatted(value)               // Get initial value before formatting
   
   var prec = value.$preceeding;  
   if (prec && prec.$succeeding == value) {            // If stack holds values before given
@@ -209,7 +212,7 @@ G.prototype.uncall = function(soft, unformatted) {
     G.notify(context, this.$key, null, value)         // Notify 
   }
   if (!recalling) G.$recaller = this                  // Set global flag to detect recursion
-  G.effects(value, G.revoke)                          // Recurse to recall side effects
+  G.effects.each(value, G.revoke)                          // Recurse to recall side effects
   if (!recalling) G.$recaller = null;                 // Reset recursion pointer
   if (this.$computed) {
     for (var i = 0; i < this.$computed.length; i++) {
@@ -234,7 +237,7 @@ G.prototype.uncall = function(soft, unformatted) {
     var cause = this.$cause;
     if (this.$key && cause && cause.$cause && cause.$cause.$future)
       G.Future.unobserve(cause.$cause, cause)
-    G.unlink(from, G.last(value), true)                        // Patch graph and detach the tree at top
+    G.unlink(from, G.record.last(value), true)        // Patch graph and detach the tree at top
   }
   if (typeof this.$composable == 'function') {
     this.$composable();
@@ -246,7 +249,7 @@ G.prototype.uncall = function(soft, unformatted) {
 // Recall and remove from history
 G.prototype.revoke = function() {
   this.uncall();
-  G.stack.rebase(G.formatted(this), null)
+  G.stack.rebase(G.value.formatted(this), null)
   return this;
 }
 
