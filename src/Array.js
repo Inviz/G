@@ -295,10 +295,11 @@ G.Array.guessPosition = function(value, old, cause) {
     // Future binds to specific place in array
     } else if (cause.$leading !== undefined) {
       for (var prev = old; prev; prev = prev.$previous) {
-        if (prev == cause.$leading) {                              // find hook element remembered by future
+        if (prev == cause.$leading) {                 // find hook element remembered by future
           for (var next = prev; next = next.$next;) 
-            if (next.$cause && next.$cause.$cause == cause.$cause
-            && G.Array.isAfter(next.$caller, G.$caller)) // next element is added by same future
+            if (next.$cause 
+            && next.$cause.$cause == cause.$cause
+            && G.Array.isAfter(next.$caller, G.$caller))// next element is added by same future
               prev = next;
             else
               break
@@ -312,32 +313,33 @@ G.Array.guessPosition = function(value, old, cause) {
     if (prev != value) {
       var order = G.meta.compare(value.$meta, prev.$meta);
       if (order != null) {
-        if (order == -1)
-          return prev
+        if (order == -1)                              // 1. meta argument is of highest importance
+          return prev;                                //    place after last value with comparable meta
         else 
           var last = prev;
       }
     }
   }
-  if (!last)
-    return value.$previous || (value.$next ? false : null)
-  else if (G.Array.isAfter(value, last))
-    return value.$previous || false;
-  else
-    return false;
+  if (last && !G.Array.isAfter(value, last))          // 2. meta argument is of lowest importance
+    return false;                                     //    place at the beginning of a list
 
+  if (value.$previous)                                // 3. value has known previous value
+    return value.$previous;                           //    place value after that known neighbour
+
+  if (value.$next)                                    // 4. value as known next value
+    return false;                                     //    place in the beginning of a list
 }
 
 // Switch values arraylike flag
 G.Array.mark = function(value, state) {
-  if (state) {                                      // If verb allows arraylike values
+  if (state) {                                        // If verb allows arraylike values
     if (!value.$multiple) {
-      value.$multiple = true                        // Set flag on the value
+      value.$multiple = true                          // Set flag on the value
     }
   } else if (value.$multiple) {
     G.Array.cleanup(value);
     if (value.hasOwnProperty('$multiple'))
-      value.$multiple = undefined;                  // Otherwise, reset flag
+      value.$multiple = undefined;                    // Otherwise, reset flag
   }
 }
 
