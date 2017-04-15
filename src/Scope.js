@@ -1,4 +1,7 @@
-
+/*
+  Scope is a base class for model that 
+  seemlessly integrates with HTML microdata markup.    
+*/
 G.Scope = function() {
   G.apply(this, arguments);
 }

@@ -11,6 +11,10 @@
   None of those method create a state change, so they should not be nested 
   into each other. Developer is responsible to call pair undoing method
   if observer needs to be removed.
+
+  Functions in this file are exported as:
+  - object methods, like `object.watch(key, callback)`
+  - generics, like `G.watch(object, key, callback)`
 */
 
 // Add observer for key, call it if there's a value with that key
@@ -23,10 +27,10 @@ G.prototype.watch = function(key, watcher, watching) {
   var value = this[key], meta;
   if (watcher.$returns) {
     var cb = watcher;
-    watcher = new G.Future(this, key)
+    watcher = new G.future(this, key)
     watcher.$getter = cb
     watcher.$future = true
-    watcher.valueOf = G.Future._getValue;
+    watcher.valueOf = G.future._getValue;
   }
   if (G._addWatcher(this, key, watcher, '$watchers') === false)
     return
@@ -53,7 +57,7 @@ G.prototype.watch = function(key, watcher, watching) {
     }
   }
 
-  G.Future.watch(this, key, watcher);
+  G.future.watch(this, key, watcher);
   return watcher;
 };
 
@@ -68,7 +72,7 @@ G.prototype.unwatch = function(key, watcher, pure) {
     G.callback.revoke(value, watcher);              //    Update side effects
     G.record.pop(value)
   }
-  G.Future.unwatch(this, key, watcher);
+  G.future.unwatch(this, key, watcher);
 };
 
 
@@ -114,16 +118,16 @@ G.prototype.define = function(key, callback) {
     }
     return result;
   } else {                                            
-    var observer = new G.Future(this, key)            // 2. Adding computed property
+    var observer = new G.future(this, key)            // 2. Adding computed property
     if (!key) {
       observer.$future = true;
-      observer.valueOf = G.Future._getValue
+      observer.valueOf = G.future._getValue
     }
     observer.$getter = callback
     if (arguments.length > 2)
       observer.$meta = Array.prototype.slice.call(arguments, 2);
 
-    G.Future.watch(this, key, observer)
+    G.future.watch(this, key, observer)
     return observer;
   }
 }
@@ -146,7 +150,7 @@ G.prototype.undefine = function(key, callback) {
       var result = G.call(current, null)
     }
   } else {
-    G.Future.unwatch(this, key, callback);
+    G.future.unwatch(this, key, callback);
   }
 }
 
@@ -247,7 +251,7 @@ G.prototype.observe = function(source, method, meta) {
     var target = this;
 
   } else {
-    var target = new G.Future;                        // 5. Chain G.Object with explicit meta
+    var target = new G.future;                        // 5. Chain G.Object with explicit meta
     G.meta.set(target, meta);                         //    source.observe(target, null, ['meta1', 'meta2'])
     target.$method = method;
     target.$target = this;

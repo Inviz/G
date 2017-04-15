@@ -102,7 +102,7 @@ G.prototype.has = function(key) {
 
 G.prototype.unset = function(key, value) {
   if (value.$future) {
-    return G.Future.unsubscribe(this, key, value);
+    return G.future.unsubscribe(this, key, value);
   }
   var arity = 2;
   if (arguments.length > arity)                         // Use/merge extra arguments as meta

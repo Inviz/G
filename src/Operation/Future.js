@@ -2,7 +2,7 @@
   Future is a declarative value assignment 
   that may be computed and updated asynchronously.
 
-  It encapsulates logic of observing variables,
+  It encapsulates logic of observing multiple variables,
   triggering updates, assigning computed value
   and recomputing side effects. 
 
@@ -10,51 +10,52 @@
   observable variables and loops 
   as seen in Watcher.js
 */
-G.Future = function(context, key, watcher) {
+G.future = function(context, key, watcher) {
   this.$context = context;
   this.$key = key;
   this.$cause = watcher
 }
+G.future.compiled = true;
 
-G.Future.prototype.call = function(method) {
+G.future.prototype.call = function(method) {
   if (this.$future) {
     if (this.$key) {
       G._addWatcher(this.$context, this.$key, this, '$watchers');
       var value = G.value.current(this);
     }
 
-    var computed = G.Future.invoke(this);                //    Invoke computation callback
+    var computed = G.future.invoke(this);                //    Invoke computation callback
     //if (computed == null)
-    //  G.Future.revoke(this)
+    //  G.future.revoke(this)
     if (this.$getter.$arguments.length){
-      G.Future.watch(this.$context, this.$key, this)
+      G.future.watch(this.$context, this.$key, this)
     } else{
       if (computed) 
-        G.Future.notify(this, value, computed)
+        G.future.notify(this, value, computed)
     }
 
     return this.$current
   } else {
-    G.Future.subscribe(this, null, this.$cause, this.$meta, method)
+    G.future.subscribe(this, null, this.$cause, this.$meta, method)
     return this;
   }
 }
-G.Future.prototype.uncall = function() {
+G.future.prototype.uncall = function() {
   if (this.$future) {
 
     var appl = this.$applications;
     if (appl)
       for (var i = 0; i < appl.length; i++)
-        G.Future.unsubscribe(appl[i].$context, appl[i].$key, this, appl[i].$meta, true)
+        G.future.unsubscribe(appl[i].$context, appl[i].$key, this, appl[i].$meta, true)
     this.$context.unwatch(this.$key, this)
     this.$current = undefined
   } else {
-    G.Future.unsubscribe(this.$context, this.$key, this.$cause)
+    G.future.unsubscribe(this.$context, this.$key, this.$cause)
   }
 }
 
 // make sure all used arguments have resolved value
-G.Future.prepare = function(watcher, trigger) {
+G.future.prepare = function(watcher, trigger) {
   var getter = watcher.$getter;
   var args = getter.$arguments;
   if (!args)
@@ -82,11 +83,11 @@ G.Future.prepare = function(watcher, trigger) {
   return true
 }
 
-G.Future.invoke = function(watcher, value) {
+G.future.invoke = function(watcher, value) {
   watcher.$computing = true;
 
-  if (G.Future.prepare(watcher, value)) {
-    var computed = G.Future.compute(watcher, value);                //    Invoke computation callback
+  if (G.future.prepare(watcher, value)) {
+    var computed = G.future.compute(watcher, value);                //    Invoke computation callback
   }
   G._observeProperties(value, watcher);
   watcher.$computing = undefined;
@@ -100,12 +101,12 @@ G.Future.invoke = function(watcher, value) {
     result.$cause = watcher
     result.$meta = watcher.$meta;
     result.$context = watcher.$context;
-    result.ondetach = G.Future._unsetValue;
+    result.ondetach = G.future._unsetValue;
     return result;
   }
 }
 
-G.Future._callValue = function() {
+G.future._callValue = function() {
   if (this.$multiple) {
     G.Array.inject(this, true)
     G.effects.each(this, G.call)
@@ -115,7 +116,7 @@ G.Future._callValue = function() {
   return;
 }
 
-G.Future.revoke = function(watcher, value) {
+G.future.revoke = function(watcher, value) {
   var current = G.value.current(watcher);
   if (current == watcher.$current)
   if (value && !value.$multiple && current && !current.$multiple) {
@@ -124,21 +125,21 @@ G.Future.revoke = function(watcher, value) {
   }
 }
 
-G.Future.notify = function(watcher, value, result) {
+G.future.notify = function(watcher, value, result) {
   var called = G.$called;
   G.record(result)
   var cause = G.$cause;
   G.$cause = watcher;
   var current = watcher.$current;
 
-  var old = G.Future.setValue(watcher, value, result);
+  var old = G.future.setValue(watcher, value, result);
   if (!old) {
     G.record.push(result)
     if (!current || result.valueOf() != current.valueOf()) {
       var appl = watcher.$applications;
       if (appl)
         for (var i = 0; i < appl.length; i++)
-          G.Future.update(appl[i], result);
+          G.future.update(appl[i], result);
     }
     G.record.pop(result)
     return true;
@@ -150,7 +151,7 @@ G.Future.notify = function(watcher, value, result) {
 }
 
 // Run computed property callback if all properties it uses are set
-G.Future.compute = function(watcher, value) {
+G.future.compute = function(watcher, value) {
   if (value === undefined)
     value = G.value.current(watcher);
 
@@ -185,7 +186,7 @@ G.Future.compute = function(watcher, value) {
   }
 }
 
-G.Future.watch = function(context, key, watcher) {
+G.future.watch = function(context, key, watcher) {
   var callback = watcher.$getter || watcher;
   for (var i = 0; i < callback.$arguments.length; i++) {
     watcher.$computing = i < callback.$arguments.length - 1;
@@ -194,7 +195,7 @@ G.Future.watch = function(context, key, watcher) {
   }
 }
 
-G.Future.unwatch = function(context, key, watcher) {
+G.future.unwatch = function(context, key, watcher) {
   var callback = watcher.$getter || watcher;
   for (var i = 0; i < callback.$arguments.length; i++) {
     var args = callback.$arguments[i]
@@ -215,12 +216,12 @@ G.Future.unwatch = function(context, key, watcher) {
     }
   }
 }
-G.Future.setValue = function(watcher, value, result) {
+G.future.setValue = function(watcher, value, result) {
   var current = watcher.$current;
   if (!current || (!current.$multiple && result)) {
   
     if (watcher.$current)                               // uncall state changes made on future directly
-      G.Future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
+      G.future.revokeCalls(watcher.$current, watcher)   // e.g. future.set('prop', value)
     watcher.$current = result;
     if ((value || G.$caller).$multiple) {
       result.$multiple = true;
@@ -263,20 +264,20 @@ G.Future.setValue = function(watcher, value, result) {
   }
 }
 
-G.Future.revokeCalls = function(value, watcher) {
+G.future.revokeCalls = function(value, watcher) {
   var effects = G.effects.caused(value.$source || value, watcher)
   if (effects)
     for (var i = 0; i < effects.length; i++)
       effects[i].uncall();
 }
-G.Future._getValue = function() {
+G.future._getValue = function() {
   if (this.$current && !this.$current.$multiple)
     return this.$current.valueOf();
   return this.$current
 }
-G.Future._unsetValue = function() {
+G.future._unsetValue = function() {
   var current = this.$cause.$current;
-  G.Future.revokeCalls(this, this.$cause)
+  G.future.revokeCalls(this, this.$cause)
   if (this == current)
     if (this.$multiple) {
       this.$cause.$current = G.Array.getPrevious(this) || G.Array.getNext(this);
@@ -285,7 +286,7 @@ G.Future._unsetValue = function() {
     }
 }
 
-G.Future.unsubscribe = function(context, key, watcher, meta, soft) {
+G.future.unsubscribe = function(context, key, watcher, meta, soft) {
   if (!soft) {
     for (var i = 0; i < watcher.$applications.length; i++) {
       if (watcher.$applications[i].$context == context 
@@ -303,7 +304,7 @@ G.Future.unsubscribe = function(context, key, watcher, meta, soft) {
   }
 }
 
-G.Future.unobserve = function(watcher, application) {
+G.future.unobserve = function(watcher, application) {
   if (!watcher) return;
   if (!watcher.$applications || watcher.$unsubscribing) return;
   var index = watcher.$applications.indexOf(application);
@@ -311,7 +312,7 @@ G.Future.unobserve = function(watcher, application) {
 }
 
 
-G.Future.update = function(app, result) {
+G.future.update = function(app, result) {
   var cause = G.$cause;
   G.$cause = app;
   if (app.$method)
@@ -322,9 +323,9 @@ G.Future.update = function(app, result) {
 }
 
 // Apply future to new context
-G.Future.subscribe = function(context, key, watcher, meta, method) {
+G.future.subscribe = function(context, key, watcher, meta, method) {
   if (key) {
-    var application = new G.Future(context, key);
+    var application = new G.future(context, key);
   } else {
     var application = context;
     var context = application.$context;
@@ -356,7 +357,7 @@ G.Future.subscribe = function(context, key, watcher, meta, method) {
   return application
 }
 
-G.Future.catchAll = function(property) {
+G.future.catchAll = function(property) {
   return function() {
     var result = [property];
     for (var i = 0; i < arguments.length; i++)

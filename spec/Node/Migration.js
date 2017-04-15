@@ -189,7 +189,7 @@ describe('G.Node migration', function() {
 
     expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
     expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal']))
-    expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['tight', 'header']))
+    expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['header', 'tight']))
 
     article.migrate(function() {
       return G.Node('article', {}, 
@@ -198,7 +198,7 @@ describe('G.Node migration', function() {
     })
 
     expect(G.stringify(ValueGroup(article.class))).to.eql(G.stringify(['custom']))
-    expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['best', 'deal']))
+    expect(G.stringify(ValueGroup(button.class))).to.eql(G.stringify(['deal', 'best']))
     expect(G.stringify(ValueGroup(h1.class))).to.eql(G.stringify(['header']))
   })
 

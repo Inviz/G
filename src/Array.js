@@ -307,39 +307,25 @@ G.Array.guessPosition = function(value, old, cause) {
       }
     }
   }
-  // first meta argument is number
-  if (value.$meta || value.$representation) {
-    var id = value.$representation || value.$meta[0];
-    if (typeof id == 'number') {
-      for (var prev = old; prev; prev = prev.$previous) {
-        if (prev.$meta && typeof prev.$meta[0] == 'number') {
-          if (prev.$meta[0] <= id)
-            return prev
-        }
+  // compare by meta (nodes, numbers, etc)
+  for (var prev = old; prev; prev = prev.$previous) {
+    if (prev != value) {
+      var order = G.meta.compare(value.$meta, prev.$meta);
+      if (order != null) {
+        if (order == -1)
+          return prev
+        else 
+          var last = prev;
       }
-      return false;
     }
-    // comparable objects, like nodes
-    if (id && id.comparePosition) {
-      for (var prev = old; prev; prev = prev.$previous) {
-        if (prev != value)
-          if (prev.$meta && prev.$meta[0] && prev.$meta[0].comparePosition) {
-            if (id.comparePosition(prev.$meta[0]) == -1)
-              return prev
-            else 
-              var last = prev;
-          }
-        else
-          var self = value;
-      }
-      if (!last || G.Array.isAfter(value, last))
-        return value.$previous || false;
-      else
-        return false;
-    }
-  } else {
-
   }
+  if (!last)
+    return value.$previous || (value.$next ? false : null)
+  else if (G.Array.isAfter(value, last))
+    return value.$previous || false;
+  else
+    return false;
+
 }
 
 // Switch values arraylike flag
@@ -442,7 +428,6 @@ G.Array.verbs = {
 
   // Add value on top of the stack 
   push: function(value, old) {
-    // if push() was inside iterator
     var after = G.Array.guessPosition(value, old);
     if (after === false) { 
       G.Array.verbs.before(value, G.Array.first(old)); // place as tail

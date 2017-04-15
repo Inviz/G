@@ -51,7 +51,7 @@ G.create = function(context, key, value, a1, a2, a3) {
   case 'object': case 'function':
     if (value.$getter) {                              // 1. Computed property value
       if (value.$future) {
-        var result = new G.Future(context, key, value)
+        var result = new G.future(context, key, value)
       } else {
         var computed = G.compute(value);              //    Invoke computation callback
         if (computed == null)                         //    Proceed if value was computed
@@ -106,7 +106,7 @@ G.create = function(context, key, value, a1, a2, a3) {
 G.unbox = G.call
 G.prototype.call = function(verb, old) {
   if (this.$future)
-    return G.Future.call(this, old) 
+    return G.future.call(this, old) 
   
   if (typeof verb == 'string')
     verb = G.verbs[verb];
@@ -169,7 +169,7 @@ G.prototype.uncall = function(soft, unformatted) {
       return this.$target.uncall();                   
     return this;  
   } else if (this.$future) {  
-    return G.Future.uncall(this)  
+    return G.future.uncall(this)  
   }  
   
   var context = this.$context;  
@@ -221,7 +221,7 @@ G.prototype.uncall = function(soft, unformatted) {
 
       else if (!G.value.current(this))
         // undo side effects in futures that observe the value as a property
-        G.Future.revokeCalls(G.value.current(this.$computed[i]), this.$computed[i]);
+        G.future.revokeCalls(G.value.current(this.$computed[i]), this.$computed[i]);
 
     }
     this.$computed = undefined;
@@ -236,7 +236,7 @@ G.prototype.uncall = function(soft, unformatted) {
   if (!recalling && !soft) {
     var cause = this.$cause;
     if (this.$key && cause && cause.$cause && cause.$cause.$future)
-      G.Future.unobserve(cause.$cause, cause)
+      G.future.unobserve(cause.$cause, cause)
     G.record.unlink(from, G.record.last(value), true);// Patch graph and detach the tree at top
   }
   if (typeof this.$composable == 'function') {

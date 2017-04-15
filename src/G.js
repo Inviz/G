@@ -1,16 +1,16 @@
 // Wrap functions, export methods to G namespace
-// This function will be called initially
+// This function will be called at the end of the file
 G.compile = function() {
   var verbs = G.compile.struct(G, {})
   for (var name in G) {
     // Find Uppercase methods
     var first = name.charAt(0)
-    if (first == first.toUpperCase() && first != first.toLowerCase())
+    if (first == first.toUpperCase() && first != first.toLowerCase() || (G[name] && G[name].compiled))
       verbs = G.compile.struct(G[name])
   }
   for (var property in G.prototype)
-    if (!G.Future.prototype[property])
-      G.Future.prototype[property] = G.Future.catchAll(property)
+    if (!G.future.prototype[property])
+      G.future.prototype[property] = G.future.catchAll(property)
 }
 G.compile.struct = function(struct) {
   // Convert G.watch to G.prototype.watch

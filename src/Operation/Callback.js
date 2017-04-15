@@ -48,14 +48,14 @@ G.callback.proxy = function(value, watcher) {
 
 G.callback.getter = function(value, watcher) {
   var old = watcher.$current;
-  watcher.$current = G.Future.invoke(watcher, value);
+  watcher.$current = G.future.invoke(watcher, value);
   if (watcher.$current) {
     var result = watcher.$current.call('set')
     if (old)
       G.revoke(old)
     return result;
   } else {
-    G.Future.revoke(watcher, value)
+    G.future.revoke(watcher, value)
   }
   return result;
 }
@@ -103,13 +103,13 @@ G.callback.future = function(value, watcher, old) {
       effects = G.effects.caused(last, watcher)
     }
     if (watcher.$future) {
-      var result = G.Future.invoke(watcher, target);
+      var result = G.future.invoke(watcher, target);
       if (result) {
-        result.call = G.Future._callValue;
-        if (!G.Future.notify(watcher, target, result))
+        result.call = G.future._callValue;
+        if (!G.future.notify(watcher, target, result))
           effects = undefined;
       } else {
-        G.Future.revoke(watcher, target)
+        G.future.revoke(watcher, target)
       }
     } else {
       watcher.$computing = true;

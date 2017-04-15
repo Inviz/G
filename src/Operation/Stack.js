@@ -1,22 +1,21 @@
 /*
-  History allows concurrent state modification.
-  Values from different sources make a stack,
-  of which the top value is used. When top value
+  Stack allows concurrent state modification.
+  Values from different sources make a "history",
+  of which the last value is used. When last value
   is recalled, the previous value is applied.
 
-  Different sources are identified by extra arguments
-  (or lack of thereof)
+  Different sources are identified by extra arguments.
+  Lack of extra arguments counts as identity as well,
+  those values are treated as more important
 
   object.set('a', 1);               // will write 1 with meta of undefined
   object.set('a', 2);               // will rewrite 1, because meta matches
   object.set('a', 3, 'super pony'); // makes stack of of 2 and 3 (distinct meta)
-  object.a.recall('super pony');    // pops 3 from stack, reverts to 2
+  object.a.runcall();               // pops 3 from stack, `object.a` is `2` again
+  object.a.uncall()                 // cleans up the stack, `object.a` becomes `undefined`
 */
 
 // Find operation in group or history that matches meta of a given operation 
-
-
-
 G.stack = function(value, old, verb) {
   if (!verb && value.$multiple)
     for (var prec = value; prec = prec.$preceeding;) 
@@ -27,6 +26,8 @@ G.stack = function(value, old, verb) {
     return G.stack.match(value.$meta, old)      //   Attempt to find value with same meta in history 
 };
 
+// Decide if multiple values with same identity 
+// will make a list or one will replace another
 G.stack.isReplacing = function(value, old, verb) {
   if (!verb || !old)
     return;
@@ -41,6 +42,7 @@ G.stack.isReplacing = function(value, old, verb) {
   return true;
 }
 
+// Check if value was ejected from its stack
 G.stack.isLinked = function(value) {
   if (G.value.current(value) === value)
     return true;
@@ -51,6 +53,15 @@ G.stack.isLinked = function(value) {
   return false;
 }
 
+// Check if value is/was in the stack
+G.stack.hasLinks = function(value) {
+  return value.$succeeding || value.$preceeding
+}
+
+// Find first value in the stack/array tree that matches meta.
+// The function can be given the result of its own execution 
+// to be used as iterator and find multiple values: 
+//     while ((value = G.stack.match(meta, value))) {}
 G.stack.match = function(meta, old) {
   // Allow meta to be passed as array
   if (meta && meta.length == 1 && (!meta[0] || meta[0] instanceof Array))
@@ -86,10 +97,6 @@ G.stack.matches = function(context, key, value, meta, callback) {
   return result;
 }
 
-G.stack.hasLinks = function(value) {
-  return value.$succeeding || value.$preceeding
-}
-
 
 // Replace one operation in history with another 
 // Removed value keeps its pointers
@@ -120,33 +127,6 @@ G.stack.update = function(value, old, other) {
     G.stack.rebase(other, value);                 //    Replace it in history
     return undefined;                               //    Keep old value assigned
   }
-};
-
-G.meta = function() {
-
-}
-
-// Compare two arrays of arguments 
-G.meta.equals = function(meta1, meta2) {
-  if (meta1 == meta2)
-    return true;
-  if ((!meta1 && meta2) || (meta1 && !meta2) || meta1.length !== meta2.length)
-    return false;
-  for (var i = 0; i < meta1.length; i++)
-    if (meta1[i] !== meta2[i])
-      return false;
-  return true;
-};
-
-G.meta.set = function(op, meta) {
-  while (meta && meta.length < 2 && (meta[0] == null || meta[0] instanceof Array))
-    meta = meta[0] || undefined
-  if (meta)
-    op.$meta = meta
-}
-
-G.meta.isPriority = function(op) {
-  return !op.$meta
 };
 
 G.verbs = {

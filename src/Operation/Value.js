@@ -1,5 +1,3 @@
-
-
 // Process pure value transformations 
 G.value = function(value, old) {
   var formatters = value.$context.$formatters;        // Formatters configuration for whole context
