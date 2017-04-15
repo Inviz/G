@@ -147,7 +147,30 @@ G.prototype.call = function(verb, old) {
     G.record(value, old, verb);                        // Register in graph and remember caller op/callback
   
   G.value.apply(result);                               // Assign value to context
-  G.effects(result || value, old, other, verb);        // Propagate change to listeners
+
+  if (!result)
+    result = value;
+
+  if (result && result.$merging) {
+    result.observe(result.$merging)
+    result.$merging = undefined;
+  }
+
+
+  var replacing = result.$multiple && (!old || old.$preceeding != result);
+  if (result !== old || result.$multiple)             // Decide if value should be propagated
+    G.effects(value, replacing ? other : old)
+
+  if (old && old.$iterators)
+    G.Array.iterate(value, old.$iterators)            // Invoke array's active iterators
+
+  if (result.$multiple  && other  && (!verb || verb.multiple)) {
+    if (G.Array.isLinked(other)) {
+      G.effects(other, other.$context === result.$context && other.$key === result.$key)
+    } else {
+      G.uncall(other)
+    }
+  }
   return value;
 };
 

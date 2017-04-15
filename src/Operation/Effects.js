@@ -1,44 +1,46 @@
 // Propagate new value and notify observers
-G.effects = function(result, old, other, verb) {
-  if (result && result.$merging) {
-    result.observe(result.$merging)
-    result.$merging = undefined;
+G.effects = function(value, old) {
+  G.record.push(value);                            // Put operation onto the caller stack
+  G.effects.propagate(value, old);// Apply side effects and invoke observers 
+  if (value !== old && old !== true) {
+    G.notify(value.$context, value.$key, value, old)// Trigger user callbacks 
   }
-  var replacing = result.$multiple && (!old || old.$preceeding != result);
-  if (result !== old || result.$multiple) {           // Decide if value should be propagated                 // Save value in its context
-    G.record.push(result);                            // Put operation onto the caller stack
-    G.effects.propagate(result, replacing ? other : old);// Apply side effects and invoke observers 
-    if (old && old.$iterators)
-      G.Array.iterate(result, old.$iterators)         // Invoke array's active iterators
-    if (result !== old) {
-      G.notify(result.$context, result.$key, result, replacing ? other : old)// Trigger user callbacks 
-    }
-    G.record.pop(old);
-  }
-
-  if (result.$multiple  && other  && (!verb || verb.multiple)) {
-    if (G.Array.isLinked(other)) {
-      G.record.push(other);                           // Put operation onto the caller stack
-      G.effects.propagate(other);                     // Apply side effects and invoke observers 
-      //if (old && old.$iterators)
-      //  G.Array.iterate(result, old.$iterators)     // Invoke array's active iterators
-      G.record.pop(undefined);
-    } else {
-      G.uncall(other)
-    }
-    if (other.$context !== result.$context ||
-        other.$key !== result.$key)
-      G.notify(other.$context, other.$key, other)     // Trigger user callbacks 
-  }
+  G.record.pop(old);
 }
 
-G.$effects = []
-G.effects.push = function() {
-  G.$effects.push()
+G.effects.push = function(value, old) {
+  var index = G.$effects.indexOf(old);
+  if (index > -1) {
+    if (index % 2 == 0) {                             // 1. simplify A->B, B->C to A -> C
+      G.$effects[index] = value;
+    } else {                                          
+      if (value === G.$effects[index + 1])            // 2. negate A->B, B->A
+        G.$effects.splice(index, 2)
+      //else                                            // 3. update A->B, A->C to A-> C
+      //  G.$effects[index - 1] = value;
+    }
+  } else {
+    G.$effects.push(value, old);
+  }
 };
-G.effects.pop = function() {
-  var effects = G.$effects.pop();
-  return effects;
+G.effects.transact = function() {
+  G.$effects = []
+};
+G.effects.commit = function(shallow) {
+  while (G.$effects && G.$effects.length) {
+    var effects = G.$effects;
+    
+    G.effects.transact();                             // record effects of effects
+
+    for (var i = 0; i < effects.length; i += 2) {
+      G.effects()
+    }
+
+
+    if (shallow && G.$effects.length)                 // if shallow flag is given
+      return;                                         // do not commit effects of effects
+  }
+  G.$effects = null; 
 }
 
 // Process all side effects for the value. 

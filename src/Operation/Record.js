@@ -211,6 +211,8 @@ G.record.isLinked = function(value) {
   return value.$caller && (!value.$before || value.$before.$after == value);
 }
 
+// return last(est) record in a tree 
+// (last ... of last grandchild of last child of a value)
 G.record.last = function(value) {
   var last = value;
   for (var after = value; after = after.$after;)
