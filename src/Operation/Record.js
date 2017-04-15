@@ -42,10 +42,10 @@ G.record.sequence = function(value, old, verb) {
       && old && old.$caller === G.$caller) {          //    If new value has the same caller as old
     var before = G.value.unformatted(old).$before;
     if (before)
-      G.link(before, value);                          //    Connect new value to old's previous ops
+      G.record.link(before, value);                   //    Connect new value to old's previous ops
   } else if (G.$called) {                             // 2. Tracking side effects:  
     var unformatted = G.value.unformatted(value);
-    G.link(G.$called, unformatted, true)              
+    G.record.link(G.$called, unformatted, true)              
     G.$called = value;                                //   Continue writing at parent's point
   } else if (G.$caller){
     var unformatted = G.value.unformatted(value);
@@ -53,7 +53,7 @@ G.record.sequence = function(value, old, verb) {
       if (op === unformatted)                         // 3. Operation is already in record
         break;
       if (!op.$after)
-        G.link(op, unformatted)                       // 4. Writing at the end
+        G.record.link(op, unformatted)                // 4. Writing at the end
     }
   }
   return value;
@@ -82,7 +82,7 @@ G.record.pop = function(old) {
   G.$caller = G.$callers.pop();                       // Revert global pointers to previous values 
   if (!G.$caller || !G.$caller.$context) {            // Reset $called pointer on top level
     if (G.$called && G.$called.$after)                // Patch up graph to point to next ops
-      G.link(G.$called, G.$called.$after)             
+      G.record.link(G.$called, G.$called.$after)             
     G.$called = null;
   }
 };
@@ -101,7 +101,7 @@ G.record.match = function(context, key) {
 // Record transformed value as a local effect
 G.record.transformation = function(value, old, last, transform) {
   value.$transform = transform;                       //    Store transformation function
-  G.link(last, value)                                 //    Keep reference to input value 
+  G.record.link(last, value)                          //    Keep reference to input value 
   return value
 }
 
@@ -118,7 +118,7 @@ G.record.causation = function(value) {
 G.record.reuse = function(value) {
   var last = G.record.last(value); 
   if (value.$caller != G.$caller) {
-    G.link(value.$before, last.$after);               // detach effect from old graph
+    G.record.link(value.$before, last.$after);        // detach effect from old graph
     G.record.causation(value);                        // set new caller
     last.$after = undefined
   }
@@ -150,7 +150,7 @@ G.record.find = function(value, cause) {
 }
 
 // Make a two-way connection between two operations in graph
-G.link = function(old, value) {
+G.record.link = function(old, value) {
   if (old == value) {
     return
     //throw new Error('Cant link to itself')
@@ -161,10 +161,10 @@ G.link = function(old, value) {
 }
 
 // Remove all operations from the graph in span between `from` and `to`
-G.unlink = function(from, to, hard) {
+G.record.unlink = function(from, to, hard) {
   if (from.$before) {                           // If there're operation before
     if (from.$before.$after == from)
-      G.link(from.$before, to.$after);            //   Connect previous & next operations
+      G.record.link(from.$before, to.$after);   //   Connect previous & next operations
   } else if (to.$after) {                       // Or if it was first,
     if (!to.$after.$transform)                  // edge case: Removing transform from array
       to.$after.$before = undefined             //   Shift history 
@@ -178,12 +178,12 @@ G.unlink = function(from, to, hard) {
 },
 
 // Helper to create transaction operation
-G.transact = function(value) {
+G.record.transact = function(value) {
   return G.$caller = value || new G
 },
 
 // Undo all state changes since transaction has started
-G.abort = function(value) {
+G.record.abort = function(value) {
   G.$recaller = value
   last = G.effects.each(value, G.uncall)
   G.$recaller = null
@@ -193,16 +193,16 @@ G.abort = function(value) {
 },
 
 // Reapply previously aborted transaction
-G.commit = function(value) {
+G.record.commit = function(value) {
   return G.effects.each(value, G.call);
 };
 
-G.finalize = function() {
+G.record.finalize = function() {
   G.$caller = null;
 }
 
 // Find last operation in graph
-G.head = function(value) {
+G.record.head = function(value) {
   while (value.$after)
     value = value.$after
   return value

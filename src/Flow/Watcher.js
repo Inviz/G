@@ -48,7 +48,7 @@ G.prototype.watch = function(key, watcher, watching) {
         method(head, watcher);
         G.record.pop(head)
         if (after)
-          G.link(G.head(head), after)                // Patch graph
+          G.record.link(G.record.head(head), after);  // Patch graph
       }
     }
   }

@@ -441,7 +441,7 @@ describe ('Effects', function() {
       G.watch(A, 'key-left', watcher2);
       G.watch(A, 'key', watcher2);
       
-      var transaction = G.transact() // same as `G.$caller = new G`
+      var transaction = G.record.transact() // same as `G.$caller = new G`
 
       A.set('key', 'test');
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'test', 'test', 'test', 'test', 'test']));
@@ -481,7 +481,7 @@ describe ('Effects', function() {
       G.watch(A, 'key', watcher2);
 
       
-      var transaction = G.transact() // same as `G.$caller = new G`
+      var transaction = G.record.transact() // same as `G.$caller = new G`
 
 
       A.set('key', 'test');
@@ -869,7 +869,7 @@ describe ('Effects', function() {
       G.watch(context, 'title', watcher);
 
       
-      var transaction = G.transact() // same as `G.$caller = new G`
+      var transaction = G.record.transact() // same as `G.$caller = new G`
 
 
       G.set(context, 'key', 'test')
@@ -905,7 +905,7 @@ describe ('Effects', function() {
       expect(G.stringify(StateGraph(transaction))).to.eql(G.stringify([transaction, 'kek', 'buba', 'grotesque', 'grotesque123', 'grotesque']));
       
 
-      G.abort(transaction)
+      G.record.abort(transaction)
       expect(context.xaxa).to.eql(undefined)
       expect(context.zozo).to.eql(undefined)
       expect(context.key).to.eql(undefined)
@@ -913,7 +913,7 @@ describe ('Effects', function() {
       
       G.$debug(transaction);
 
-      G.commit(transaction)
+      G.record.commit(transaction)
       expect(context.xaxa).to.eql(transaction.$after)
       expect(context.zozo).to.eql(transaction.$after.$after)
       expect(context.key).to.eql(G.value.formatted(transaction.$after.$after.$after))

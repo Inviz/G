@@ -134,3 +134,5 @@ G.$debug.prototype.toString = function(tree, deep) {
 G.$debug.prototype.toCleanString = function(tree, deep) {
   return this.toString().replace(/<[^>]+>/g, '')
 }
+
+G.debugging = location.search.indexOf('debug') > -1

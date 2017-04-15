@@ -19,7 +19,7 @@ G.value = function(value, old) {
       result.$formatted = group                       //   store formatting configuration
     }
     G.stack.rebase(value, result);                  // Replace value in the stack of values for key
-    G.link(result, after);
+    G.record.link(result, after);
     if (multiple) {
       result.$multiple = true;
       var other = G.value.current(value);

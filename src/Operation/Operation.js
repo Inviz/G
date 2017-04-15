@@ -237,7 +237,7 @@ G.prototype.uncall = function(soft, unformatted) {
     var cause = this.$cause;
     if (this.$key && cause && cause.$cause && cause.$cause.$future)
       G.Future.unobserve(cause.$cause, cause)
-    G.unlink(from, G.record.last(value), true)        // Patch graph and detach the tree at top
+    G.record.unlink(from, G.record.last(value), true);// Patch graph and detach the tree at top
   }
   if (typeof this.$composable == 'function') {
     this.$composable();
@@ -261,5 +261,3 @@ G.fork = function(primitive, value) {
   op.$meta = value.$meta;
   return op;
 };
-
-G.debugging = location.search.indexOf('debug') > -1

@@ -32,6 +32,15 @@ G.effects = function(result, old, other, verb) {
   }
 }
 
+G.$effects = []
+G.effects.push = function() {
+  G.$effects.push()
+};
+G.effects.pop = function() {
+  var effects = G.$effects.pop();
+  return effects;
+}
+
 // Process all side effects for the value. 
 // When value is applied initially, it invokes all observers
 // When value is re-applied, it attempts to reuse effects
