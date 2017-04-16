@@ -1,3 +1,14 @@
+/*
+  Operations can be tagged with three additional arguments
+  which act as identity. Values with same context and key,
+  but different meta make a stack of values, of which only
+  top value is used. If that top value is recalled, context
+  switches key to the new head of the stack.
+
+  If first meta argument is a number or object with `comparePosition`
+  method, it is used to sort values in array. 
+*/
+
 G.meta = function() {
 
 }

@@ -3,13 +3,13 @@
 Operations have three pairs of mutable pointers that 
 make up linked lists:
 
-Effect  - $before/$after + $caller
+Record  - $before/$after + $caller
 A graph of causation, doubles up as transaction. 
 
-History - $preceeding/$succeeding 
+Stack - $preceeding/$succeeding 
 A stack of concurrent values for the key of specific context
 
-Group   - $previous/$next 
+Array   - $previous/$next 
 A groupping of values, similar to array.
 
 */
@@ -211,7 +211,7 @@ G.record.isLinked = function(value) {
   return value.$caller && (!value.$before || value.$before.$after == value);
 }
 
-// return last(est) record in a tree 
+// return last record in a tree 
 // (last ... of last grandchild of last child of a value)
 G.record.last = function(value) {
   var last = value;

@@ -113,7 +113,7 @@ G.callback.future = function(value, watcher, old) {
       }
     } else {
       watcher.$computing = true;
-      G._observeProperties(target, watcher);
+      G.callback.observe(target, watcher);
       watcher(target);
       watcher.$computing = false;
     }
@@ -138,7 +138,7 @@ G.callback.revoke = function(value, watcher) {
 }
 
 // Parse function to see which properties it uses
-G.analyze = function(fn) {
+G.callback.analyze = function(fn) {
   if (fn.$arguments) return fn;
   var string = String(fn)
 
@@ -180,7 +180,21 @@ G.analyze = function(fn) {
     }
   return fn;
 }
+G.callback.observe = function(array, callback) {
+  var properties = (callback.$getter || callback).$properties
+  if (properties) {
+    for (var j = 0; j < properties.length; j++)
+      G.watch(array, properties[j][0], callback)
+  }
+}
 
+G.callback.unobserve = function(array, callback) {
+  var properties = (callback.$getter || callback).$properties
+  if (properties) {
+    for (var j = 0; j < properties.length; j++)
+      G.unwatch(array, properties[j][0], callback)
+  }
+}
 
 G.callback.pass = function(value) {
   return value;

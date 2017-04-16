@@ -40,7 +40,7 @@ G.effects.revoke = function(value, bypass) {
   if (watchers) {
     for (var i = 0; i < watchers.length; i++) {
       if ((watchers[i].$getter || watchers[i]).$properties)
-        G._unobserveProperties(value, watchers[i])
+        G.callback.unobserve(value, watchers[i])
     }
   }
 }
@@ -131,7 +131,7 @@ G.effects.propagate = function(value, old) {
       if (!present || present.indexOf(group[i]) == -1)
         G.callback(value, group[i], old, true);
       else if ((group[i].$getter || group[i]).$properties)
-        G._observeProperties(value, group[i]);
+        G.callback.observe(value, group[i]);
   if (observers)
     for (var i = 0; i < observers.length; i++)
       if (!present || present.indexOf(observers[i]) == -1)

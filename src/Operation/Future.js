@@ -59,7 +59,7 @@ G.future.prepare = function(watcher, trigger) {
   var getter = watcher.$getter;
   var args = getter.$arguments;
   if (!args)
-    args = G.analyze(getter).$arguments;
+    args = G.callback.analyze(getter).$arguments;
 
   for (var i = 0; i < args.length; i++) {
     var context = watcher.$context;
@@ -89,7 +89,7 @@ G.future.invoke = function(watcher, value) {
   if (G.future.prepare(watcher, value)) {
     var computed = G.future.compute(watcher, value);                //    Invoke computation callback
   }
-  G._observeProperties(value, watcher);
+  G.callback.observe(value, watcher);
   watcher.$computing = undefined;
   if (computed != null) {                            //    Proceed if value was computed
     if (computed.$referenced)

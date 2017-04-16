@@ -129,7 +129,7 @@ G.Node.prototype.setArguments = function(tag, attributes) {
   if (definition) {
     
     if (!definition.$arguments)
-      G.analyze(definition);
+      G.callback.analyze(definition);
     if (definition.$arguments.length) {
       if (!this.$role) {
         this.$role = new G.future(this, null)

@@ -95,7 +95,7 @@ G.Array.children = function(parent, callback, argument) {
 
 G.prototype.forEach = function(callback) {
   if (!callback.$arguments)
-    G.analyze(callback);
+    G.callback.analyze(callback);
 
   for (var first = this; first.$previous;)
     first = first.$previous;
@@ -126,7 +126,7 @@ G.Array.uniterate = function(array, iterators) {
   if (!iterators)
     iterators = array.$iterators;
   for (var i = 0; i < iterators.length; i++) {
-    G._unobserveProperties(array, iterators[i]);
+    G.callback.unobserve(array, iterators[i]);
   }
   for (var i = iterators.length; --i > -1;) {
     var j = array.$iterators.indexOf(iterators[i]);

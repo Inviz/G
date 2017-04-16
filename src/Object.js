@@ -1,4 +1,17 @@
+/*
+  Observable objects are dictionaries on steroids.
+  They allow outside objects to listen for changes.
+  
+  G.Operation is a triplet of `context`, `key` and `value` 
+  as in `context[key] = value`. G objects are containers 
+  for named state changes.
 
+  It is possible to treat any javascript object as observable
+  with generic versions of the functions like:
+    - `G.each(object, callback)`
+    - `G.watch(object, key, callback)`
+    - `G.set(object, key, value)`
+*/
 
 // Iterate keys
 G.prototype.each = function(callback) {

@@ -23,7 +23,7 @@ G.prototype.watch = function(key, watcher, watching) {
     watcher = G.callback.pass;
   
   if (!watcher.$arguments)
-    G.analyze(watcher);
+    G.callback.analyze(watcher);
   var value = this[key], meta;
   if (watcher.$returns) {
     var cb = watcher;
@@ -100,7 +100,7 @@ G.prototype.define = function(key, callback) {
     callback = key;
     key = undefined
   }
-  G.analyze(callback);
+  G.callback.analyze(callback);
   if (!callback.$arguments.length) {                  // 1. Adding value formatter
     G._addWatcher(this, key, callback, '$formatters');
     var current = this[key];
@@ -331,21 +331,7 @@ G.prototype.unobserve = function(source) {
   G.$called = called;
 }
 
-G._observeProperties = function(array, callback) {
-  var properties = (callback.$getter || callback).$properties
-  if (properties) {
-    for (var j = 0; j < properties.length; j++)
-      G.watch(array, properties[j][0], callback)
-  }
-}
 
-G._unobserveProperties = function(array, callback) {
-  var properties = (callback.$getter || callback).$properties
-  if (properties) {
-    for (var j = 0; j < properties.length; j++)
-      G.unwatch(array, properties[j][0], callback)
-  }
-}
 
 G._addWatcher = function(self, key, watcher, property) {
   var watchers = self[property]
