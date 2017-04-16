@@ -231,31 +231,9 @@ G.prototype.uncall = function(soft, unformatted) {
     } else if (current === value) {
       current = undefined
       G.value.clear(this);                            // 4. Removing key from context 
-    }  
-    G.notify(context, this.$key, null, value)         // Notify 
-  }
-  if (!recalling) G.$recaller = this                  // Set global flag to detect recursion
-  G.effects.each(value, G.revoke)                          // Recurse to recall side effects
-  if (!recalling) G.$recaller = null;                 // Reset recursion pointer
-  if (this.$computed) {
-    for (var i = 0; i < this.$computed.length; i++) {
-      if (this.$computed[i].$current)
-        G.revoke(this.$computed[i].$current);
-
-      else if (!G.value.current(this))
-        // undo side effects in futures that observe the value as a property
-        G.future.revokeCalls(G.value.current(this.$computed[i]), this.$computed[i]);
-
-    }
-    this.$computed = undefined;
-  }
-  var watchers = context && context.$watchers && context.$watchers[this.$key];
-  if (watchers) {
-    for (var i = 0; i < watchers.length; i++) {
-      if ((watchers[i].$getter || watchers[i]).$properties)
-        G._unobserveProperties(value, watchers[i])
     }
   }
+  G.effects.revoke(value, undefined);                 // Revoke side effects produced by value
   if (!recalling && !soft) {
     var cause = this.$cause;
     if (this.$key && cause && cause.$cause && cause.$cause.$future)

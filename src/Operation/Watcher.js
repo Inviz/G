@@ -371,13 +371,3 @@ G._removeWatcher = function(self, key, watcher, property) {
       watchers[key] = undefined
   }
 }
-
-G._revokeEffect = function(value, cause) {
-  var effects = G.effects.caused(value, cause);
-  if (effects) {
-    for (var i = 0; i < effects.length; i++) {
-      G.revoke(effects[i])
-    }
-  }
-}
-

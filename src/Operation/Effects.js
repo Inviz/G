@@ -1,13 +1,51 @@
 // Propagate new value and notify observers
-G.effects = function(value, old) {
-  G.record.push(value);                            // Put operation onto the caller stack
-  G.effects.propagate(value, old);// Apply side effects and invoke observers 
+G.effects = function(value, old, bypass) {
+  if (!bypass && G.$effects)
+    return G.effects.push(value, old);
+  G.record.push(value);                             // Put operation onto the caller stack
+  G.effects.propagate(value, old);                  // Apply side effects and invoke observers 
   if (value !== old && old !== true) {
     G.notify(value.$context, value.$key, value, old)// Trigger user callbacks 
   }
   G.record.pop(old);
 }
 
+// Undo all effects (and effects of effects) produced by operation
+G.effects.revoke = function(value, bypass) {
+  if (!bypass && G.$effects)
+    return G.effects.push(undefined, value);
+  if (value.$multiple || !G.value.current(value))
+    G.notify(value.$context, value.$key, undefined, value)// Trigger user callbacks 
+  var recalling = G.$recaller;
+  if (!recalling)
+    G.$recaller = value                  // Set global flag to detect recursion
+  G.effects.each(value, G.revoke)                     // Recurse to recall side effects
+  if (!recalling)
+    G.$recaller = null;                 // Reset recursion pointer
+
+  var context = value.$context; 
+  if (value.$computed) {
+    for (var i = 0; i < value.$computed.length; i++) {
+      if (value.$computed[i].$current)
+        G.revoke(value.$computed[i].$current);
+
+      else if (!G.value.current(value))
+        // undo side effects in futures that observe the value as a property
+        G.future.revokeCalls(G.value.current(value.$computed[i]), value.$computed[i]);
+
+    }
+    value.$computed = undefined;
+  }
+  var watchers = context && context.$watchers && context.$watchers[value.$key];
+  if (watchers) {
+    for (var i = 0; i < watchers.length; i++) {
+      if ((watchers[i].$getter || watchers[i]).$properties)
+        G._unobserveProperties(value, watchers[i])
+    }
+  }
+}
+
+// Schedule side effection for propagation
 G.effects.push = function(value, old) {
   var index = G.$effects.indexOf(old);
   if (index > -1) {
@@ -23,9 +61,20 @@ G.effects.push = function(value, old) {
     G.$effects.push(value, old);
   }
 };
+
+// Start effect transaction, during which all state changes
+// will be invisible to observers. Useful to ensure that
+// callbacks will observe all commited changes at once.
+// It also reduces amount of recursion when executing changes
+// in complex graphs. 
 G.effects.transact = function() {
   G.$effects = []
 };
+
+// Propagate buffered state changes, and record the side effects.
+// Unless `shallow` flag is passed, buffered effects will 
+// be commited repeatedly until all chain of changes is fully propagated.
+// Otherwise effects of effects will be available in record for manual commit
 G.effects.commit = function(shallow) {
   while (G.$effects && G.$effects.length) {
     var effects = G.$effects;
@@ -33,12 +82,15 @@ G.effects.commit = function(shallow) {
     G.effects.transact();                             // record effects of effects
 
     for (var i = 0; i < effects.length; i += 2) {
-      G.effects()
+      if (effects[i] == null)
+        G.effects.revoke(effects[i + 1], true);
+      else
+        G.effects(effects[i], effects[i + 1], true);
     }
 
 
     if (shallow && G.$effects.length)                 // if shallow flag is given
-      return;                                         // do not commit effects of effects
+      return G.$effects;                              // do not commit effects of effects
   }
   G.$effects = null; 
 }

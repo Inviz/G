@@ -90,6 +90,7 @@ describe ('Effects', function() {
       }));
     });
 
+
     it('should track transformations and side effects togethez', function() {
 
       // Two different objects 
@@ -426,6 +427,286 @@ describe ('Effects', function() {
       expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['lol', 'lol', 'lol666', 'lol']));
       return expect(context.asis.valueOf()).to.eql('lol');
     });
+  })
+  describe('Buffering', function() {
+
+    it('should transact side effects in callbacks', function() {
+      var context, op, op2, subject;
+      context = {
+        'context': 'context'
+      };
+      subject = {
+        'subject': 'subject'
+      };
+
+      // Callback causes two side effects 
+      G.watch(context, 'key', function(value) {
+        G.set(subject, 'mutated', value + 123);
+        G.set(context, 'asis', value);
+      });
+      G.effects.transact();
+      op = G.set(context, 'key', 'value', 'meta1', 'scope');
+      expect(context.key).to.eql(op);
+      expect(subject.mutated).to.eql(undefined);
+      expect(context.asis).to.eql(undefined);
+      G.effects.commit()
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value123');
+      expect(context.asis.valueOf()).to.eql('value');
+
+      // side effects are aware of their sequence 
+      expect(subject.mutated.$before).to.eql(op);
+      expect(subject.mutated.$after).to.eql(context.asis);
+      expect(context.asis.$before).to.eql(subject.mutated);
+      expect(context.asis.$after).to.eql(void 0);
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        'subject': 'subject',
+        mutated: 'value123'
+      }));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value',
+        asis: 'value'
+      }));
+
+      G.effects.transact();
+      op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
+      expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('value123');
+      expect(context.asis.valueOf()).to.eql('value');
+      G.effects.commit()
+
+      expect(subject.mutated.valueOf()).to.eql('zalue123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue123', 'zalue']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'zalue',
+        asis: 'zalue'
+      }));
+
+      G.effects.transact();
+      G.recall(context.key, 'meta2', 'scope');
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('zalue123');
+      expect(context.asis.valueOf()).to.eql('zalue');
+      G.effects.commit()
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value123');
+      expect(context.asis.valueOf()).to.eql('value');
+      expect(subject.mutated.$before).to.eql(context.key);
+      expect(subject.mutated.$after).to.eql(context.asis);
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value123', 'value']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value',
+        asis: 'value'
+      }));
+
+      G.effects.transact();
+      G.recall(context.key, 'meta1', 'scope');
+      expect(subject.mutated.valueOf()).to.eql('value123');
+      expect(context.asis.valueOf()).to.eql('value');
+      G.effects.commit()
+      expect(context.mutated).to.eql(void 0);
+      expect(context.asis).to.eql(void 0);
+      expect(context.key).to.eql(void 0);
+
+      G.effects.transact();
+      G.call(op2);
+      expect(context.key).to.eql(op2);
+      expect(context.mutated).to.eql(void 0);
+      expect(context.asis).to.eql(void 0);
+
+      G.effects.commit();
+      expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('zalue123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue123', 'zalue']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'zalue',
+        asis: 'zalue'
+      }));
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'zalue123'
+      }));
+
+
+      G.effects.transact();
+      G.call(op);
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('zalue123');
+      expect(context.asis.valueOf()).to.eql('zalue');
+      G.effects.commit();
+
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value', 'zalue']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value123', 'value']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'value',
+        asis: 'value'
+      }));
+      return expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'value123'
+      }));
+    });
+
+    it ('should transact effects and transforms together', function() {
+
+      // Two different objects 
+      var context, op, op2, subject;
+      context = {
+        'context': 'context'
+      };
+      subject = {
+        'subject': 'subject'
+      };
+
+      // Callback causes two side effects 
+      G.watch(context, 'key', function(value) {
+
+        // One over different object 
+        G.set(subject, 'mutated', value + 123);
+
+        // And another changes key in the same object 
+        G.set(context, 'asis', value);
+      });
+
+      // The object also has a formatting accessor 
+      G.define(context, 'key', function(value) {
+        return value + 666;
+      });
+
+      G.effects.transact();
+      op = G.set(context, 'key', 'value', 'meta1', 'scope');
+      expect(context.key).to.eql(op);
+      expect(context.key.valueOf()).to.eql('value666');
+      expect(subject.mutated).to.eql(undefined);
+      expect(context.asis).to.eql(undefined);
+      G.effects.commit()
+
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        'subject': 'subject',
+        mutated: 'value666123'
+      }));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666']));
+      expect(G.stringify(ValueStack(context.asis))).to.eql(G.stringify(['value666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+
+      // Second operation over same key with different meta values 
+      // (puts this value on top of the stack, references old value) 
+      
+      G.effects.transact();
+      op2 = G.set(context, 'key', 'zalue', 'meta2', 'scope');
+      expect(context.key).to.eql(op2);
+      expect(context.key.valueOf()).to.eql('zalue666');
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(context.asis.valueOf()).to.eql('value666');
+      G.effects.commit()
+
+      expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(G.stringify(ValueStack(context.asis))).to.eql(G.stringify(['zalue666']));
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'zalue666',
+        asis: 'zalue666'
+      }));
+
+      // We recall that second operation to fall back to first 
+
+      G.effects.transact();
+      G.recall(context.key, 'meta2', 'scope');
+      expect(context.key).to.eql(op);
+      expect(context.key.valueOf()).to.eql('value666');
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(context.asis.valueOf()).to.eql('zalue666');
+      G.effects.commit()
+
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        'context': 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+
+      // The first operation is also recalled, objects are cleaned up 
+      // (only local variable in this spec holds reference to operations now) 
+
+      G.effects.transact();
+      G.recall(context.key, 'meta1', 'scope');
+      expect(context.key).to.eql(undefined);
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(context.asis.valueOf()).to.eql('value666');
+      G.effects.commit()
+
+      expect(context.mutated).to.eql(void 0);
+      expect(context.asis).to.eql(void 0);
+      expect(context.key).to.eql(void 0);
+
+      // Reapply operation stored here in the local variable 
+      // It brings up whole graph of state with it 
+      G.effects.transact();
+      G.call(op2);
+      expect(context.key).to.eql(op2);
+      expect(context.mutated).to.eql(void 0);
+      expect(context.asis).to.eql(void 0);
+
+      G.effects.commit();
+      //expect(context.key).to.eql(op2);
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(subject.mutated.$before.valueOf()).to.eql('zalue666');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['zalue', 'zalue666', 'zalue666123', 'zalue666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'zalue666',
+        asis: 'zalue666'
+      }));
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'zalue666123'
+      }));
+
+      // Reapply first operation 
+      G.effects.transact();
+      G.call(op);
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('zalue666123');
+      expect(context.asis.valueOf()).to.eql('zalue666');
+      G.effects.commit();
+
+      expect(context.key).to.eql(op);
+      expect(subject.mutated.valueOf()).to.eql('value666123');
+      expect(G.stringify(ValueStack(context.key))).to.eql(G.stringify(['value666', 'zalue666']));
+      expect(G.stringify(StateGraph(context.key))).to.eql(G.stringify(['value', 'value666', 'value666123', 'value666']));
+      expect(G.stringify(context)).to.eql(G.stringify({
+        context: 'context',
+        key: 'value666',
+        asis: 'value666'
+      }));
+      expect(G.stringify(subject)).to.eql(G.stringify({
+        subject: 'subject',
+        mutated: 'value666123'
+      }));
+    })
+
   })
   describe('Updating', function() {
     it('should propagate value through callbacks and rebuild the tree', function() {
