@@ -1,3 +1,23 @@
+/*
+  Callbacks are functions that depend upon one or many
+  variables and are triggered when those variables change.
+
+  Callbacks are only triggered for top value in the stack.
+  Callbacks are triggered for each value of array, like iterators.
+
+  Callbacks 
+  Callback can be of multiple types:
+    - *Property transformer* can mutate input value
+    - *Proxy* passes all state changes to another object
+    - *Property watcher* listens for one property
+    - *Computed property* listens for multiple properties, assigns value
+    - *Future* listens for multiple properties
+      If a future observes object
+      If a future observes array, it act as iterator and can compute mapped collection
+
+*/
+
+
 // Invoke watcher whatever type it is
 // Callback functions do not care about their calling context
 G.callback = function(value, watcher, old) {

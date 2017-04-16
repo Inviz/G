@@ -1,13 +1,55 @@
-// Propagate new value and notify observers
+// Propagate new value by notifying observers
+// When value is applied initially, it invokes all observers
+// When value is re-applied, it attempts to reuse effects
 G.effects = function(value, old, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(value, old);
-  G.record.push(value);                             // Put operation onto the caller stack
-  G.effects.propagate(value, old);                  // Apply side effects and invoke observers 
+
+  G.record.push(value); // Put operation onto the caller stack
+
+// Process all side effects for the value. 
+  var watchers = value.$context.$watchers;            // Watchers configuration for whole context
+  if (watchers)                                       // is stored in sub-object
+    var group = watchers[value.$key]
+
+  var observers = value.$context.$observers;
+  var iterators = value.$iterators;
+  var present, removed
+
+  // Reapply 
+  for (var after = value; after = after.$after;) {
+    if (after.$caller !== value) continue;
+    var cause = after.$cause;
+    if (observers && observers.indexOf(cause) > -1
+    ||  group     &&     group.indexOf(cause) > -1
+    || cause == null) {
+      after.call();
+      (present || (present = [])).push(cause)
+    } else if (!iterators || iterators.indexOf(after) == -1) {
+      (removed || (removed = [])).push(after)
+    }
+  }
+  if (removed)
+    for (var i = 0; i < removed.length; i++) {
+      var recalled = G.revoke(removed[i]);
+      if (value.$after == recalled)
+        value.$after = G.value.formatted(removed[i]).$after
+    }
+  if (group)
+    for (var i = 0; i < group.length; i++)
+      if (!present || present.indexOf(group[i]) == -1)
+        G.callback(value, group[i], old, true);
+      else if ((group[i].$getter || group[i]).$properties)
+        G.callback.observe(value, group[i]);
+  if (observers)
+    for (var i = 0; i < observers.length; i++)
+      if (!present || present.indexOf(observers[i]) == -1)
+        G.callback(value, observers[i], old, true);
   if (value !== old && old !== true) {
     G.notify(value.$context, value.$key, value, old)// Trigger user callbacks 
   }
   G.record.pop(old);
+  return value;
 }
 
 // Undo all effects (and effects of effects) produced by operation
@@ -95,49 +137,6 @@ G.effects.commit = function(shallow) {
   G.$effects = null; 
 }
 
-// Process all side effects for the value. 
-// When value is applied initially, it invokes all observers
-// When value is re-applied, it attempts to reuse effects
-G.effects.propagate = function(value, old) {
-  var watchers = value.$context.$watchers;            // Watchers configuration for whole context
-  if (watchers)                                       // is stored in sub-object
-    var group = watchers[value.$key]
-
-  var observers = value.$context.$observers;
-  var iterators = value.$iterators;
-  var present, removed
-
-  // Reapply 
-  for (var after = value; after = after.$after;) {
-    if (after.$caller !== value) continue;
-    var cause = after.$cause;
-    if (observers && observers.indexOf(cause) > -1
-    ||  group     &&     group.indexOf(cause) > -1
-    || cause == null) {
-      after.call();
-      (present || (present = [])).push(cause)
-    } else if (!iterators || iterators.indexOf(after) == -1) {
-      (removed || (removed = [])).push(after)
-    }
-  }
-  if (removed)
-    for (var i = 0; i < removed.length; i++) {
-      var recalled = G.revoke(removed[i]);
-      if (value.$after == recalled)
-        value.$after = G.value.formatted(removed[i]).$after
-    }
-  if (group)
-    for (var i = 0; i < group.length; i++)
-      if (!present || present.indexOf(group[i]) == -1)
-        G.callback(value, group[i], old, true);
-      else if ((group[i].$getter || group[i]).$properties)
-        G.callback.observe(value, group[i]);
-  if (observers)
-    for (var i = 0; i < observers.length; i++)
-      if (!present || present.indexOf(observers[i]) == -1)
-        G.callback(value, observers[i], old, true);
-  return value;
-}
 
 
 // Iterate side effects caused by value 

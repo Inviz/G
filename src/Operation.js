@@ -113,8 +113,8 @@ G.prototype.call = function(verb, old) {
   if (old === undefined)
     old = G.value.current(this);
 
-  var value  = G.value(this, old);                  // Transform/format value 
-  var other  = G.stack(value, old, verb);           // Find value with matching meta in history
+  var value  = G.value(this, old);                    // Transform/format value 
+  var other  = G.stack(value, old, verb);             // Find value with matching meta in history
   var result = G.value.process(value, old, other, verb)
   value = G.value.reuse(result, value)                // Use it instead of value, if possible
   verb  = G.Array.process(result, other, verb);       // Attempt to put it back at its place in collection
@@ -157,9 +157,10 @@ G.prototype.call = function(verb, old) {
   }
 
 
-  var replacing = result.$multiple && (!old || old.$preceeding != result);
-  if (result !== old || result.$multiple)             // Decide if value should be propagated
+  if (result !== old || result.$multiple) {            // Decide if value should be propagated
+    var replacing = result.$multiple && (!old || old.$preceeding != result);
     G.effects(value, replacing ? other : old)
+  }
 
   if (old && old.$iterators)
     G.Array.iterate(value, old.$iterators)            // Invoke array's active iterators
