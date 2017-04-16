@@ -252,7 +252,7 @@ G.Node.prototype.getTextContent = function() {
 
 G.Node.prototype.getData = function() {
   return this.data || this.values 
-              || (this.itemscope && this.microdata);
+              || (this.itemscope && this.scope);
 }
 G.Node.prototype.getURL = function() {
   if (this.href)
@@ -315,7 +315,7 @@ G.Node.prototype.onChange = function(key, value, old) {
   if (callback)
     callback.call(this, value, old)
 
-  if (this.itemprop && G.Node.itemvalues[key] && this.microdata) {
+  if (this.itemprop && G.Node.itemvalues[key] && this.scope) {
     G.Node.updateTrigger(this, 'itemprop');
   } else if (this.name && G.Node.valueattributes[key]) {
     G.Node.updateTrigger(this, 'name');
@@ -470,17 +470,17 @@ G.Node.tags = {
 G.Node.prototype.onregister = function() {
   for (var child = this; child != this.$next; child = child.$following) {
     G.Node.inherit(child);
-    if (child.itemprop && child.$microdata) {
+    if (child.itemprop && child.$scope) {
       if (topmost == null)
-        if (!(topmost = this.$microdata))
+        if (!(topmost = this.$scope))
           for (var top = this.$parent; top; top = top.$parent) {
-            if (top.$microdata) {
-              var topmost = top.$microdata;
+            if (top.$scope) {
+              var topmost = top.$scope;
               break;
             }
           }
-      if (topmost && child.$microdata == topmost) {
-        var val = child.$microdata.get(child.itemprop, child);
+      if (topmost && child.$scope == topmost) {
+        var val = child.$scope.get(child.itemprop, child);
         if (val) val.call()
       }
     }

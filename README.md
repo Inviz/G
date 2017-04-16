@@ -73,4 +73,4 @@ A groupping of values, similar to array.
 
 *G.Node.Values* - Representation of form data. Provides observable access to structured fieldnames, and current state of form fields.
 
-*G.Node.Microdata* - Nestable resources bound to DOM by conventions of microdata. Provides 2-way access to data, can populate templates when data is changed.
+*G.Node.Scope* - Nestable resources bound to DOM by conventions of microdata. Provides 2-way access to data, can populate templates when data is changed.

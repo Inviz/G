@@ -414,22 +414,22 @@ describe('G.Node data', function() {
       )
     );
 
-    form.microdata.push('url', 'gunslinger.html');
+    form.scope.push('url', 'gunslinger.html');
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$first.$next.href)).to.eql('gunslinger.html')
 
     form.$last.$last.set('itemprop', 'greeting')
-    expect(String(form.microdata.greeting)).to.eql('Hello')
+    expect(String(form.scope.greeting)).to.eql('Hello')
 
-    form.microdata.unshift('greeting', 'Bonjour')
-    expect(String(form.microdata.greeting)).to.eql('Hello')
-    expect(String(form.microdata.greeting.$previous)).to.eql('Bonjour')
+    form.scope.unshift('greeting', 'Bonjour')
+    expect(String(form.scope.greeting)).to.eql('Hello')
+    expect(String(form.scope.greeting.$previous)).to.eql('Bonjour')
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     expect(String(form.$last.$last.$previous.getTextContent())).to.eql('Bonjour')
     
-    form.microdata.unset('greeting', 'Bonjour')
-    expect(String(form.microdata.greeting)).to.eql('Hello')
-    expect(form.microdata.greeting.$previous).to.eql(undefined)
+    form.scope.unset('greeting', 'Bonjour')
+    expect(String(form.scope.greeting)).to.eql('Hello')
+    expect(form.scope.greeting.$previous).to.eql(undefined)
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     expect(String(form.$last.$last.$previous.href)).to.eql('gunslinger.html')
   })
@@ -443,32 +443,32 @@ describe('G.Node data', function() {
       )
     );
 
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({url: 'boris.html'}))
 
     form.$last.merge({
       itemscope: true,
       itemprop: 'person'
     })
-    expect(form.$last.$first.$microdata).to.eql(form.$last.microdata);
-    expect(form.$last.$first.microdata).to.eql(form.$last.microdata);
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+    expect(form.$last.$first.$scope).to.eql(form.$last.scope);
+    expect(form.$last.$first.scope).to.eql(form.$last.scope);
+    expect(G.stringify(form.scope)).to.eql(G.stringify({person: {url: 'boris.html'}}))
 
-    var microdata = form.$last.microdata;
+    var microdata = form.$last.scope;
     var itemprop = form.$last.itemprop.uncall()
 
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({url: 'boris.html'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({url: 'boris.html'}))
 
     itemprop.call()
-    expect(form.$last.microdata).to.eql(microdata)
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+    expect(form.$last.scope).to.eql(microdata)
+    expect(G.stringify(form.scope)).to.eql(G.stringify({person: {url: 'boris.html'}}))
 
 
     var itemscope = form.$last.itemscope.uncall()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: 'Hello', url: 'boris.html'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({person: 'Hello', url: 'boris.html'}))
 
     debugger
     itemscope.call()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({person: {url: 'boris.html'}}))
   });
   it ('should change microdata values', function() {
     var form = new G.Node('article', {itemscope: true},
@@ -478,65 +478,65 @@ describe('G.Node data', function() {
         new G.Node('span', {}, 'Hello')
       )
     );
-    expect(String(form.microdata.url)).to.eql('boris.html')
+    expect(String(form.scope.url)).to.eql('boris.html')
 
-    form.microdata.set('url', 'horror.html', 'zug')
+    form.scope.set('url', 'horror.html', 'zug')
     expect(String(form.$last.$first.href)).to.eql('horror.html')
 
-    form.microdata.url.uncall()
+    form.scope.url.uncall()
     expect(String(form.$last.$first.href)).to.eql('boris.html')
 
-    var boris = form.microdata.url.uncall();
+    var boris = form.scope.url.uncall();
     expect(String(form.$last.$first.tag)).to.eql('span')
 
     boris.call()
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['boris.html', 'horror.html']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html']))
 
-    form.microdata.preset('url', 'zorro.html', 'xoxo')
+    form.scope.preset('url', 'zorro.html', 'xoxo')
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html']))
 
     form.$last.$last.set('itemprop', 'url')
     expect(G.stringify(ValueStack(boris))).to.eql(G.stringify(['zorro.html', 'boris.html', 'horror.html']))
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html', 'Hello']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     
-    var gomes = form.microdata.overlay('url', 'Gomes', 'hulk')
+    var gomes = form.scope.overlay('url', 'Gomes', 'hulk')
     expect(G.stringify(ValueStack(gomes))).to.eql(G.stringify(['Hello', 'Gomes']))
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
     gomes.uncall()
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Hello']))
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html', 'Hello']))
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(G.stringify(ValueStack(form.$last.$last.$first.text))).to.eql(G.stringify(['Hello']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
 
     gomes.call()
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
     expect(String(form.$last.$first.href)).to.eql('boris.html')
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
-    var holmes = form.microdata.overlay(boris, 'Holmes', 'hulk')
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+    var holmes = form.scope.overlay(boris, 'Holmes', 'hulk')
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello', 'Gomes']))
     expect(G.stringify(ValueStack(holmes))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['Holmes', 'Gomes']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['Holmes', 'Gomes']))
     expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html', 'Holmes']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
     holmes.uncall()
-    expect(G.stringify(ValueStack(form.microdata.url))).to.eql(G.stringify(['Hello', 'Gomes']))
-    expect(G.stringify(ValueStack(form.microdata.url.$previous))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
-    expect(G.stringify(ValueGroup(form.microdata.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
+    expect(G.stringify(ValueStack(form.scope.url))).to.eql(G.stringify(['Hello', 'Gomes']))
+    expect(G.stringify(ValueStack(form.scope.url.$previous))).to.eql(G.stringify(['zorro.html', 'boris.html', 'Holmes', 'horror.html']))
+    expect(G.stringify(ValueGroup(form.scope.url))).to.eql(G.stringify(['boris.html', 'Gomes']))
     expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
@@ -552,10 +552,10 @@ describe('G.Node data', function() {
       )
     );
     var john = form.$last;
-    expect(G.stringify(form.microdata.clean())).to.eql(G.stringify({person: {name: 'John Johnson', url: 'john.html'}}))
+    expect(G.stringify(form.scope.clean())).to.eql(G.stringify({person: {name: 'John Johnson', url: 'john.html'}}))
     
-    form.microdata.push('person', {name: 'Ivan Ivanov', url: 'ivan.html'})
-    expect(G.stringify(form.microdata.clean())).to.eql(G.stringify({person: [{name: 'John Johnson', url: 'john.html'}, {name: 'Ivan Ivanov', url: 'ivan.html'}]}))
+    form.scope.push('person', {name: 'Ivan Ivanov', url: 'ivan.html'})
+    expect(G.stringify(form.scope.clean())).to.eql(G.stringify({person: [{name: 'John Johnson', url: 'john.html'}, {name: 'Ivan Ivanov', url: 'ivan.html'}]}))
     
     var ivan = form.$last;
     expect(john).to.not.eql(ivan)
@@ -563,38 +563,38 @@ describe('G.Node data', function() {
     expect(String(ivan.$last.href)).to.eql('ivan.html')
 
 
-    form.microdata.unshift('person', {url: 'anonymous.html'})
+    form.scope.unshift('person', {url: 'anonymous.html'})
     var anon = john.$previous;
     expect(anon).to.not.eql(john)
     expect(anon.$first.getTextContent()).to.eql('')
     expect(String(anon.$last.href)).to.eql('anonymous.html')
-    expect(String(anon.microdata.name)).to.eql('')
+    expect(String(anon.scope.name)).to.eql('')
     
-    anon.microdata.set('name', 'Anonymous')
+    anon.scope.set('name', 'Anonymous')
     expect(anon.$first.getTextContent()).to.eql('Anonymous')
 
-    var name = anon.microdata.name.uncall();
+    var name = anon.scope.name.uncall();
     expect(anon.$first.getTextContent()).to.eql('')
-    expect(String(anon.microdata.name)).to.eql('')
+    expect(String(anon.scope.name)).to.eql('')
 
     name.call()
     expect(anon.$first.getTextContent()).to.eql('Anonymous')
-    expect(String(anon.microdata.name)).to.eql('Anonymous')
+    expect(String(anon.scope.name)).to.eql('Anonymous')
 
     name.uncall()
     expect(anon.$first.getTextContent()).to.eql('')
-    expect(String(anon.microdata.name)).to.eql('')
+    expect(String(anon.scope.name)).to.eql('')
 
-    var merged = anon.merge('microdata', {
+    var merged = anon.merge('scope', {
       name: 'Vasya',
       url: 'vasya.html'
     })
-    expect(String(anon.microdata.name)).to.eql('Vasya')
+    expect(String(anon.scope.name)).to.eql('Vasya')
     expect(anon.$first.getTextContent()).to.eql('Vasya')
 
     merged.uncall()
     expect(anon.$first.getTextContent()).to.eql('')
-    expect(String(anon.microdata.name)).to.eql('')
+    expect(String(anon.scope.name)).to.eql('')
 
   })
 
@@ -802,80 +802,80 @@ describe('G.Node data', function() {
     var input = form.$last.$first;
     var submit = form.$last.$last;
 
-    expect(form.microdata).to.not.eql(undefined)
-    expect(input.microdata).to.eql(form.microdata)
-    expect(String(form.microdata.your_name)).to.eql('boris.html')
+    expect(form.scope).to.not.eql(undefined)
+    expect(input.scope).to.eql(form.scope)
+    expect(String(form.scope.your_name)).to.eql('boris.html')
 
     input.set('href', 'vasya.html')
-    expect(String(form.microdata.your_name)).to.eql('vasya.html')
+    expect(String(form.scope.your_name)).to.eql('vasya.html')
 
     input.set('itemprop', 'MY_NAME')
-    expect(String(form.microdata.MY_NAME)).to.eql('vasya.html')
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(String(form.scope.MY_NAME)).to.eql('vasya.html')
+    expect(form.scope.your_name).to.eql(undefined)
 
     input.set('href', 'johny.html')
-    expect(String(form.microdata.MY_NAME)).to.eql('johny.html')
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(String(form.scope.MY_NAME)).to.eql('johny.html')
+    expect(form.scope.your_name).to.eql(undefined)
 
     input.uncall();
-    expect(form.microdata.MY_NAME).to.eql(undefined)
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(form.scope.MY_NAME).to.eql(undefined)
+    expect(form.scope.your_name).to.eql(undefined)
 
     input.set('href', 'jackie.html')
-    expect(form.microdata.MY_NAME).to.eql(undefined)
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(form.scope.MY_NAME).to.eql(undefined)
+    expect(form.scope.your_name).to.eql(undefined)
 
     input.call();
-    expect(String(form.microdata.MY_NAME)).to.eql('jackie.html')
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(String(form.scope.MY_NAME)).to.eql('jackie.html')
+    expect(form.scope.your_name).to.eql(undefined)
 
     input.set('itemprop', 'her_name')
-    expect(String(form.microdata.her_name)).to.eql('jackie.html')
-    expect(form.microdata.her_name.$meta).to.eql([input])
-    expect(form.microdata.MY_NAME).to.eql(undefined)
-    expect(form.microdata.your_name).to.eql(undefined)
+    expect(String(form.scope.her_name)).to.eql('jackie.html')
+    expect(form.scope.her_name.$meta).to.eql([input])
+    expect(form.scope.MY_NAME).to.eql(undefined)
+    expect(form.scope.your_name).to.eql(undefined)
 
     // make submit provide microdata 
     submit.set('itemprop', 'submission_button');
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
     // use attribute instead of text content
     var value = submit.set('content', 'the_button');
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'the_button'}))
 
     // fall back to text content
     var value = submit.content.uncall();
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
     // add new input
     var input3 = new G.Node('meta', {itemprop: 'comment'}, 'Boo!')
     submit.$parent.appendChild(input3)
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello', comment: 'Boo!'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello', comment: 'Boo!'}))
     expect(input3.$watchers.itemprop).to.not.eql(undefined)
     
     input3.itemprop.uncall()
     expect(input3.$watchers.itemprop).to.eql(undefined)
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Hello'}))
 
     submit.$first.set('text', 'Goodbye')
 
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
 
     var textnode = submit.$first.uncall()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
 
     textnode.call()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'Goodbye'}))
 
     submit.set('href', 'zozo.html')
 
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
 
     submit.$first.uncall()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: 'zozo.html'}))
 
     submit.href.uncall()
-    expect(G.stringify(form.microdata)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
+    expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
   })
 
   it ('should chain microdata scopes', function() {
@@ -895,96 +895,96 @@ describe('G.Node data', function() {
     var first = form.$last.$previous;
     var second = form.$last;
 
-    expect(form.microdata).to.not.eql(second.microdata)
-    expect(form.microdata.person).to.eql(second.microdata)
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
-    expect(String(form.microdata.person.your_name)).to.eql('vasya.html')
-    expect(String(form.microdata.header)).to.eql('What is your name?')
+    expect(form.scope).to.not.eql(second.scope)
+    expect(form.scope.person).to.eql(second.scope)
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('vasya.html')
+    expect(String(form.scope.header)).to.eql('What is your name?')
 
     second.$first.set('href', 'jackie.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
-    expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('jackie.html')
 
     second.uncall();
-    expect(String(form.microdata.person.your_name)).to.eql('boris.html')
-    expect(form.microdata.person.$previous).to.eql(undefined)
-    expect(form.microdata.person.$next).to.eql(undefined)
+    expect(String(form.scope.person.your_name)).to.eql('boris.html')
+    expect(form.scope.person.$previous).to.eql(undefined)
+    expect(form.scope.person.$next).to.eql(undefined)
 
     second.call()
-    expect(String(form.microdata.person.your_name)).to.eql('jackie.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('jackie.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     second.$first.set('href', 'joey.html')
-    expect(String(form.microdata.person.your_name)).to.eql('joey.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('joey.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     var bye = second.$last.set('itemprop', 'your_name')
-    expect(String(form.microdata.person.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.your_name.$previous)).to.eql('joey.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     second.$last.unset('itemprop', 'your_name')
-    expect(String(form.microdata.person.your_name)).to.eql('joey.html')
-    expect(form.microdata.person.your_name.$next).to.eql(undefined)
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('joey.html')
+    expect(form.scope.person.your_name.$next).to.eql(undefined)
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     bye.call()
-    expect(String(form.microdata.person.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.your_name.$previous)).to.eql('joey.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     first.uncall()
-    expect(String(form.microdata.person.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
-    expect(form.microdata.person.$previous).to.eql(undefined)
+    expect(String(form.scope.person.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.your_name.$previous)).to.eql('joey.html')
+    expect(form.scope.person.$previous).to.eql(undefined)
 
     second.$parent.appendChild(first)
-    expect(String(form.microdata.person.your_name)).to.eql('boris.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.$previous.your_name.$previous)).to.eql('joey.html')
+    expect(String(form.scope.person.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.$previous.your_name.$previous)).to.eql('joey.html')
     expect(second.$next).to.eql(first)
     expect(first.$previous).to.eql(second);
 
     G.swap(first, second);
     expect(second.$previous).to.eql(first);
     expect(first.$next).to.eql(second);
-    expect(String(form.microdata.person.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.your_name.$previous)).to.eql('joey.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.your_name.$previous)).to.eql('joey.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('boris.html')
 
     G.swap(first, second);
-    expect(String(form.microdata.person.your_name)).to.eql('boris.html')
-    expect(String(form.microdata.person.$previous.your_name)).to.eql('Bye')
-    expect(String(form.microdata.person.$previous.your_name.$previous)).to.eql('joey.html')
+    expect(String(form.scope.person.your_name)).to.eql('boris.html')
+    expect(String(form.scope.person.$previous.your_name)).to.eql('Bye')
+    expect(String(form.scope.person.$previous.your_name.$previous)).to.eql('joey.html')
     expect(second.$next).to.eql(first)
     expect(first.$previous).to.eql(second);
 
     var extra = new G.Node('label', {itemprop: 'header'}, 'Extra header!');
     form.prependChild(extra)
 
-    expect(String(form.microdata.header)).to.eql('What is your name?')
-    expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
+    expect(String(form.scope.header)).to.eql('What is your name?')
+    expect(String(form.scope.header.$previous)).to.eql('Extra header!')
 
     form.appendChild(extra)
-    expect(String(form.microdata.header)).to.eql('Extra header!')
-    expect(String(form.microdata.header.$previous)).to.eql('What is your name?')
+    expect(String(form.scope.header)).to.eql('Extra header!')
+    expect(String(form.scope.header.$previous)).to.eql('What is your name?')
 
     form.appendChild(header)
-    expect(String(form.microdata.header)).to.eql('What is your name?')
-    expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
+    expect(String(form.scope.header)).to.eql('What is your name?')
+    expect(String(form.scope.header.$previous)).to.eql('Extra header!')
 
     form.removeChild(extra)
-    expect(String(form.microdata.header)).to.eql('What is your name?')
-    expect(form.microdata.header.$previous).to.eql(undefined)
+    expect(String(form.scope.header)).to.eql('What is your name?')
+    expect(form.scope.header.$previous).to.eql(undefined)
 
     var wrapper = G.Node('footer', null, extra);
 
     form.appendChild(wrapper)
-    expect(String(form.microdata.header)).to.eql('Extra header!')
-    expect(String(form.microdata.header.$previous)).to.eql('What is your name?')
+    expect(String(form.scope.header)).to.eql('Extra header!')
+    expect(String(form.scope.header.$previous)).to.eql('What is your name?')
 
     G.swap(wrapper, header)
-    expect(String(form.microdata.header)).to.eql('What is your name?')
-    expect(String(form.microdata.header.$previous)).to.eql('Extra header!')
+    expect(String(form.scope.header)).to.eql('What is your name?')
+    expect(String(form.scope.header.$previous)).to.eql('Extra header!')
   })
 })

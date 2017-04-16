@@ -1,5 +1,5 @@
 describe('Subclassing', function() {
-  it ('should be able to subclass Node and Microdata', function() {
+  it ('should be able to subclass Node and Scope', function() {
 
 
     var App = {}; 
@@ -34,7 +34,7 @@ describe('Subclassing', function() {
 
 
     App.Node.Body = function () {
-      this.microdata = new App.Model;
+      this.scope = new App.Model;
       this.setArguments.apply(this, arguments);
     };
     App.Node.Body.prototype = new App.Node;
@@ -44,7 +44,7 @@ describe('Subclassing', function() {
 
 
     // Register model classes by keys, so they would 
-    // be instantiated instead of generic Microdata
+    // be instantiated instead of generic Scope
     App.Node.prototype.itemprops = 
     App.Model.prototype.constructors = {
       articles: App.Article,
@@ -69,22 +69,22 @@ describe('Subclassing', function() {
       </li></ul></section>'
     var doc = App.Node(body);
 
-    expect(doc.microdata instanceof App.Model).to.eql(true)
+    expect(doc.scope instanceof App.Model).to.eql(true)
     expect(doc instanceof App.Node.Body).to.eql(true)
     expect(doc.$first instanceof App.Node.Body).to.eql(false)
     expect(doc.$first instanceof App.Node).to.eql(true)
-    expect(doc.$first.$first.$first.microdata instanceof App.Article).to.eql(true)
-    expect(doc.$first.$first.$first.microdata.comments instanceof App.Comment).to.eql(true)
-    expect(JSON.stringify(doc.microdata.the_articles.clean())).to.eql(JSON.stringify({title: 'Goodbye'}))
-    expect(JSON.stringify(doc.microdata.the_articles.$previous.clean())).to.eql(JSON.stringify({title: 'Hello',"comments":{"body":"Lol"}}))
+    expect(doc.$first.$first.$first.scope instanceof App.Article).to.eql(true)
+    expect(doc.$first.$first.$first.scope.comments instanceof App.Comment).to.eql(true)
+    expect(JSON.stringify(doc.scope.the_articles.clean())).to.eql(JSON.stringify({title: 'Goodbye'}))
+    expect(JSON.stringify(doc.scope.the_articles.$previous.clean())).to.eql(JSON.stringify({title: 'Hello',"comments":{"body":"Lol"}}))
 
     doc.$first.$first.$first.set('itemtype', 'serenade');
-    expect(doc.$first.$first.$first.microdata instanceof App.Article).to.eql(false)
-    expect(doc.$first.$first.$last.microdata instanceof App.Article).to.eql(true)
-    expect(doc.microdata.the_articles instanceof App.Article).to.eql(true)
-    expect(doc.microdata.the_articles.$previous instanceof App.Article).to.eql(false)
-    expect(JSON.stringify(doc.microdata.the_articles.clean())).to.eql(JSON.stringify({title: 'Goodbye'}))
-    expect(JSON.stringify(doc.microdata.the_articles.$previous.clean())).to.eql(JSON.stringify({title: 'Hello',"comments":{"body":"Lol"}}))
+    expect(doc.$first.$first.$first.scope instanceof App.Article).to.eql(false)
+    expect(doc.$first.$first.$last.scope instanceof App.Article).to.eql(true)
+    expect(doc.scope.the_articles instanceof App.Article).to.eql(true)
+    expect(doc.scope.the_articles.$previous instanceof App.Article).to.eql(false)
+    expect(JSON.stringify(doc.scope.the_articles.clean())).to.eql(JSON.stringify({title: 'Goodbye'}))
+    expect(JSON.stringify(doc.scope.the_articles.$previous.clean())).to.eql(JSON.stringify({title: 'Hello',"comments":{"body":"Lol"}}))
 
   })
 
