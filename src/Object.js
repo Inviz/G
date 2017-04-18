@@ -53,48 +53,6 @@ G.prototype.clean = function(shallow) {
   return result
 };
 
-// Serialize nested object to query string
-G.prototype.toString = function(prefix) {
-  var keys = Object.keys(this);
-  var result = '';
-  if (!prefix)
-    prefix = '';
-  for (var j = 0; j < keys.length; j++) {
-    if (keys[j].charAt(0) == '$')
-      continue;
-    var value = this[keys[j]];
-    if (value == null)
-      continue;
-    
-    while (value.$previous)
-      value = value.$previous; 
-    if (value.$next) {
-      var i = 0;
-      for (var i = 0; value; i++) {
-        if (typeof value.valueOf() == 'object') {
-          var string = value.toString(prefix + keys[j] + '[' + i + ']');
-          if (string)
-            result += (result ? '&' : '') + string
-        } else {
-          var subkey = prefix ? prefix + '[' + keys[j] + ']' : keys[j];
-          result += (result ? '&' : '') + subkey + '[]=' + encodeURIComponent(value);
-        }
-        value = value.$next;
-      }
-    } else {
-      if (typeof value.valueOf() == 'object') {
-        var string = value.toString(prefix + keys[j] + '[' + i + ']');
-        if (string)
-          result += (result ? '&' : '') + string;
-      } else {
-        var subkey = prefix ? prefix + '[' + keys[j] + ']' : keys[j];
-        result += (result ? '&' : '') + subkey + '=' + encodeURIComponent(value)
-      }
-    }
-  }
-  return result;
-}
-
 // Get value that matches meta arguments
 G.prototype.get = function(key, value) {
   if (!this.hasOwnProperty(key) || this[key] == null || !this[key].$context)

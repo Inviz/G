@@ -171,7 +171,6 @@ G.Location.prototype.match = function(input, cursor, params) {
             result[param] = params[param]
       }
     } else if (this.key) {
-      debugger
       if (url.charAt(end) != '/') {         // interpret file name as id
         var result = Object.create(this)
         result.id = path;

@@ -194,7 +194,7 @@ describe('G.Node rendering', function() {
   });
 
   it ('should initialize tree from DOM node', function() {
-    var html = "<div><h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- /if --> <h2>For real</h2></div>"
+    var html = "<div><h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2></div>"
     var fragment = document.createRange().createContextualFragment(html);
 
     var tree = G.Node(fragment);
@@ -208,10 +208,19 @@ describe('G.Node rendering', function() {
           ['p', {},
             'is'],
           ' wonderful'],
+        ['else', {}, 
+          'Or not'],
         ' ',
         ['h2', {}, 'For real']
       ]
     ]))
+
+    debugger
+    var condition = tree.$first.$first.$next.uncall();
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1><!-- else -->Or not<!-- end --> <h2>For real</h2>')
+
+    condition.call()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2>')
   })
 
 

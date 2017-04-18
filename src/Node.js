@@ -41,6 +41,9 @@ G.Node = function(tag, attributes) {
             var self = Node.fromElement(tag)
           }
         } else {
+          if (tag instanceof G.Node) {
+            return tag.cloneNode();
+          }
           var self = new Node;
         }
     }
@@ -83,37 +86,22 @@ G.Node.fromElement = function(element, shallow, mapping) {
       }
       break;
     case 3:
+      debugger
       var self = new this(null, element.textContent);
       break;
-    case 8:
+    case 8: 
+      var tag = G.Node.getCommentDirective(element);
+      var self = this.construct(mapping[tag] || tag);
       break;
     case 11:
       var self = new this;
   }
   self.$node = element;
 
+  if (!shallow && element.childNodes)
+    G.Node.eachChild(element, G.Node.buildNode, self);
   element.$operation = self;
-  for (var i = 0; i < element.childNodes.length; i++) {
-    var child = element.childNodes[i];
-    // If found a comment in children
-    if (child.nodeType == 8) {
-      var tag = child.nodeValue.trim().split(' ')[0];
-      for (var j = i; j < element.childNodes.length; j++) {
-        if (element.childNodes[j].nodeType == 8) {
-          // If found closing comment
-          if (element.childNodes[j].nodeValue.trim().substring(0, tag.length + 1) == '/' + tag) {
-            var rule = this(tag)
-            self.appendChild(rule)
-            while (++i < j)
-              rule.appendChild(this.fromElement(element.childNodes[i], mapping))
-          }
-        }
-      }
-    } else {
-      var node = this.fromElement(child, mapping);
-      self.appendChild(node)
-    }
-  }
+
   return self;
 }
 
@@ -170,7 +158,7 @@ G.Node.prototype.inject   = function() {
   } else {
     if (this.$node)
       G.Node.place(this)
-    else
+    if (!this.$node || this.$node.nodeType != 1)
       G.Array.children(this, G.Node.place)
   }
   if (this.text != null)
@@ -682,9 +670,12 @@ G.Node.prototype.place = function() {
 
   if (!this.$node) return;
   
-  for (var parent = this; parent = parent.$parent || parent.$cause;)      // find closest parent that is in dom
-    if (parent.$node)
+  for (var parent = this; parent = parent.$parent || parent.$cause;) {     // find closest parent that is in dom
+    if (parent.$node && parent.$node.nodeType == 8)
+      debugger
+    if (parent.$node && parent.$node.nodeType != 8)
       break;
+  }
 
   var anchor = G.Node.findNextElement(this, parent);
   if (anchor === false)
@@ -740,9 +731,11 @@ G.Node.prototype.detach = function(force) {
   if (force)
     G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
   if (this.$node) {
-    if (this.$node.parentNode)
+    if (this.$node.parentNode) {
       this.$node.parentNode.removeChild(this.$node)
-  } else 
+    }
+  }
+  if (!this.$node || this.$node.nodeType == 8) 
     G.Array.children(this, G.Node.detach, force)
 }
 
@@ -877,6 +870,12 @@ G.Node.prototype.migrate = function(tree, key) {
 
   return this;
 };
+G.Node.buildNode = function(child, parent) {
+  if (child.nodeType)
+    parent.appendChild(G.Node.fromElement(child))
+  else
+    parent.appendChild(child)
+}
 
 G.Node.migrateNode = function(child, parent, matches, region, migrated) {
   var current = migrated[migrated.length - 1];
@@ -915,6 +914,7 @@ G.Node.migrateNode = function(child, parent, matches, region, migrated) {
     }
   }
   migrated.push(result)
+  return result;
 };
 
 G.Node.create = function(object) {
@@ -945,18 +945,41 @@ G.Node.cleanNode = function(child, parent, migrated) {
   }
 };
 
-G.Node.eachChild = function(node, callback, a1, a2, a3, a4) {
+G.Node.eachChild = function(node, callback, a1, a2, a3, a4, stack) {
   if (node instanceof Array) {
     for (var i = 2; i < node.length; i++)
       if (node[i] != null)
         callback.call(this, node[i], a1, a2, a3, a4);
-  } else if (node.nodeType == 1) {
-    for (var child = node.firstChild; child; child = child.nextSibling)
-      callback.call(this, child, a1, a2, a3, a4);
+  } else if (node.childNodes) {
+    for (var child = node.firstChild; child; child = child.nextSibling) {
+        // If found a comment in children
+        if (child.nodeType == 8) {
+          var tag = G.Node.getCommentDirective(child);
+          if (tag) {
+            if (!stack) stack = []
+            if (tag === 'end') {
+              var parent = stack.pop()
+              continue;
+            } else {
+              if (tag.indexOf('els') == 0)
+                stack.pop()
+              var parent = this(child);
+              callback.call(this, parent, stack && stack[stack.length - 1] || a1, a2, a3, a4);
+              stack.push(parent)
+              continue
+            }
+          }
+        }
+        callback.call(this, child, stack && stack[stack.length - 1] || a1, a2, a3, a4);
+    }
   } else {
     for (var child = node.$first; child; child = child.$next)
       callback.call(this, child, a1, a2, a3, a4);
   }
+}
+
+G.Node.getCommentDirective = function(comment) {
+  return comment.nodeValue.trim().split(' ')[0];
 }
 
 G.Node.eachAttribute = function(node, callback, a1, a2, a3) {
@@ -965,7 +988,7 @@ G.Node.eachAttribute = function(node, callback, a1, a2, a3) {
       for (var property in node[1])
         callback.call(this, property, node[1][property], a1, a2, a3);
     }
-  } else if (node.nodeType == 1) {
+  } else if (node.attributes && node.attributes.length != null) {
     for (var i = 0, attribute; attribute = node.attributes[i++];)
       callback.call(this, attribute.name, attribute.value, a1, a2, a3);
   } else {

@@ -1,12 +1,13 @@
-// An observable storage for field values and query string k/v pairs
-// Values with composite keys like `people[1][name]` are both accessible
-// as absolute and parsed path like `people.$first.name`
+/*An observable storage for field values and query string k/v pairs
+Values with composite keys like `people[1][name]` are both accessible
+as absolute and parsed path like `people.$first.name`
 
-// When new entries are added into those parsed arrays of objects
-// representing fieldsets, it will clone & sync fieldset DOM automatically 
+`G.Data` inherits parts of `G.Scope` logic related to DOM-binding.
+When new entries are added into those parsed arrays of objects
+representing fieldsets, it will clone & sync fieldset nodes automatically 
 
-// Disabled inputs, or unchecked checkboxes and radiobuttons
-// do not provide value, just like if you submitted the form
+Disabled inputs, or unchecked checkboxes and radiobuttons
+do not provide value, following HTML form submission logic */
 G.Data = function() {
   G.apply(this, arguments);
 }
@@ -16,6 +17,7 @@ G.Data.prototype.adoptNode = G.Scope.prototype.adoptNode;
 G.Data.prototype.cleanNode = G.Scope.prototype.cleanNode;
 G.Data.prototype.callNode  = G.Scope.prototype.callNode;
 G.Data.prototype.ownNode   = G.Scope.prototype.ownNode;
+G.Data.prototype.toString  = G.Scope.prototype.toString;
 G.Data.recursive = true;
 
 // parse input names like person[friends][n][name]

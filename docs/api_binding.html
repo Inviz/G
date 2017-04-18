@@ -1,0 +1,54 @@
+
+  var template = new G.Node('li', {itemscope: true, itemtype: 'projects'}, 
+    
+    new G.Node('h1', {itemprop: 'title'}),
+    new G.Node('if', {'description': true},
+      'Hello ', person.name, '!')
+    new G.Node('else',
+      'Bye ', person.name, '!')
+  );
+
+  Custom HTML template:
+  var template = new G.Node(`
+    <li itemtype="people">
+      <h1 itemprop="title">Project title</h1>
+      <if description>
+        Hello <echo name />!
+      </if>
+      <else>
+        Bye <echo description />!
+      </else>
+    </li>
+  `)
+
+  Valid HTML template:
+  var template = new G.Node(`
+    <li itemtype="projects" itemscope>
+      <h1 itemprop="title">Project title</h1>
+      <!-- if people -->
+        <ul>
+          <li itemtype="people" itemscope>
+            <h2 itemprop="name"></h2>
+            <span>Age is <!-- age --></span>
+          </li>
+        </ul>
+      <!-- /if -->
+      <!-- if description -->
+        Hello <!-- name -->!
+      <!-- else -->
+        Bye <!-- description -->!
+      <!-- end -->
+    </li>
+  `)
+
+  isomorphic HTML:
+  var template = new G.Node(`
+    <li itemtype="people">
+      <h1 itemprop="title">Project title</h1>
+      <!-- if description ->
+        Hello <!- name ->!
+      <!- else -->
+        Bye <!-- description -->Project description<!-- /description -->!
+      <!-- end -->
+    </li>
+  `)

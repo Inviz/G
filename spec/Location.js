@@ -388,5 +388,20 @@ describe('G.Location', function() {
 
   })
 
+  describe('Building', function() {
+    it ('should render nodes', function() {
+      var location = new G.Location({
+        people: {
+          key: 'project_id',
+          fetch: function() {
+            return {id: this.id, title: 'Hello'}
+          }
+        }
+      })
+    var route = location.match('/projects/333');
+
+    })
+  });
+
 
 })

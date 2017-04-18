@@ -18,7 +18,6 @@ as `G.unbox('Hello world', context, key)`
  * @constructor
  */
 var G = function(context, key, value, a1, a2, a3) {
-  //G.built = (G.built || (G.built = 0)) + 1;
   switch (arguments.length) {
     case 4: var args = [a1]; break;          // Use/merge extra arguments as meta
     case 5: var args = [a1, a2]; break;
@@ -105,7 +104,7 @@ G.create = function(context, key, value, a1, a2, a3) {
 // linked list of effects will not be altered 
 G.unbox = G.call
 G.prototype.call = function(verb, old) {
-  if (this.$future)
+  if (this.hasOwnProperty('$future'))
     return G.future.call(this, old) 
   
   if (typeof verb == 'string')
@@ -151,11 +150,10 @@ G.prototype.call = function(verb, old) {
   if (!result)
     result = value;
 
-  if (result && result.$merging) {
+  if (result.$merging) {
     result.observe(result.$merging)
     result.$merging = undefined;
   }
-
 
   if (result !== old || result.$multiple) {            // Decide if value should be propagated
     var replacing = result.$multiple && (!old || old.$preceeding != result);

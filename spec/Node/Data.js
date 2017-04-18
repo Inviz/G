@@ -466,7 +466,6 @@ describe('G.Node data', function() {
     var itemscope = form.$last.itemscope.uncall()
     expect(G.stringify(form.scope)).to.eql(G.stringify({person: 'Hello', url: 'boris.html'}))
 
-    debugger
     itemscope.call()
     expect(G.stringify(form.scope)).to.eql(G.stringify({person: {url: 'boris.html'}}))
   });
@@ -737,8 +736,6 @@ describe('G.Node data', function() {
     expect(String(form.$last.$last.value)).to.eql('eldar.html')
     expect(G.stringify(ValueStack(form.$last.$last.value))).to.eql(G.stringify(['eldar.html']))
 
-    console.error(123)
-    debugger
     horror.call()
     expect(G.stringify(ValueStack(form.values.url.$previous))).to.eql(G.stringify(['boris.html']))
     expect(G.stringify(ValueStack(form.values.url))).to.eql(G.stringify(['zorro.html', 'eldar.html', 'horror.html']))

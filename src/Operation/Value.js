@@ -30,7 +30,6 @@ G.value = function(value, old) {
   }
 };
 
-
 // Find result of last transformation over value
 G.value.formatted = function(value) {
   while (value.$after && value.$after.$transform)

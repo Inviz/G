@@ -4,15 +4,14 @@
 G.effects = function(value, old, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(value, old);
-
   G.record.push(value); // Put operation onto the caller stack
-
 // Process all side effects for the value. 
-  var watchers = value.$context.$watchers;            // Watchers configuration for whole context
+  var context = value.$context;
+  var watchers = context.$watchers;                   // Watchers configuration for whole context
   if (watchers)                                       // is stored in sub-object
     var group = watchers[value.$key]
 
-  var observers = value.$context.$observers;
+  var observers = context.$observers;
   var iterators = value.$iterators;
   var present, removed
 
@@ -46,7 +45,7 @@ G.effects = function(value, old, bypass) {
       if (!present || present.indexOf(observers[i]) == -1)
         G.callback(value, observers[i], old, true);
   if (value !== old && old !== true) {
-    G.notify(value.$context, value.$key, value, old)// Trigger user callbacks 
+    G.notify(context, value.$key, value, old)// Trigger user callbacks 
   }
   G.record.pop(old);
   return value;
