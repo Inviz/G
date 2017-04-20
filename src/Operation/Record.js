@@ -155,6 +155,8 @@ G.record.link = function(old, value) {
     return
     //throw new Error('Cant link to itself')
   }
+  if (old.$before == value && value)
+    debugger
   if ((old.$after = value)){
     old.$after.$before = old;
   }

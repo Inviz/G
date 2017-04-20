@@ -148,7 +148,9 @@ G.Array.register = function(left, right, parent) {
   if (left == right) throw new Error('left == right')
   if (!left) {
     if (parent) {
-      parent.$last = parent.$first = right;
+      parent.$first = right;
+      if (!parent.$last)
+        parent.$last = right;
       right.$parent = parent
     }
     if (right.onregister)
@@ -517,12 +519,14 @@ G.Array.verbs = {
     if (p){
       G.Array.link(p, value);
       G.Array.register(p, value, old.$parent)
+    } else if (parent) {
+      G.Array.link(parent, value, true);
+      G.Array.register(null, value, old.$parent)
     }
     if (n){
       G.Array.link(value, n);
       G.Array.register(value, n, old.$parent)
-    }
-    if (!p && !n && parent) {
+    } else if (!p && !n && parent) {
       G.verbs.append(value, parent);
     }
     return old;

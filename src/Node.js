@@ -23,6 +23,9 @@ G.Node = function(tag, attributes) {
 
   var Node = this.Node && this.Node.construct ? this.Node : this.construct ? this : G.Node;
   if (!(this instanceof G.Node)) {
+    if (Node.mapping[tag])
+      tag = Node.mapping[tag];
+
     switch (typeof tag) {
       case 'function':
         var self = new tag(attributes);
@@ -34,12 +37,17 @@ G.Node = function(tag, attributes) {
           var self = new Node(tag, attributes)
         break
       case 'object':
-        if (tag && tag.nodeType) {
+        if (tag == null) break;
+        if (tag.nodeType) {
           if (tag.$operation) {
             var self = tag.$operation
           } else {
             var self = Node.fromElement(tag)
           }
+        } else if (tag.push) {
+          var self = Node(tag[0], tag[1]);
+          for (var i = 2; i < tag.length; i++)
+            self.appendChild(tag[i])
         } else {
           if (tag instanceof G.Node) {
             return tag.cloneNode();
@@ -48,7 +56,6 @@ G.Node = function(tag, attributes) {
         }
     }
   } else {
-    
     var self = this;
     this.setArguments(tag, attributes);
   }
@@ -69,37 +76,38 @@ G.Node.extend = function(constructor) {
   constructor.prototype = new this;
   constructor.prototype.constructor = constructor;
   constructor.fromElement = this.fromElement;
+  constructor.eachChild   = this.eachChild;
   constructor.construct   = this.construct;
   constructor.mapping     = Object.create(G.Node.mapping);
   return constructor;
 }
 
-G.Node.fromElement = function(element, shallow, mapping) {
-  if (mapping === undefined)
-    mapping = this.mapping;
+G.Node.fromElement = function(element, shallow) {
   switch (element.nodeType) {
     case 1:
       var tag = element.tagName && element.tagName.toLowerCase();
-      var self = this.construct(mapping[tag] || tag);
+      var self = this.construct(tag);
       for (var i = 0; i < element.attributes.length; i++) {
         self.set(element.attributes[i].name, element.attributes[i].value, self)
       }
       break;
     case 3:
-      debugger
       var self = new this(null, element.textContent);
       break;
     case 8: 
       var tag = G.Node.getCommentDirective(element);
-      var self = this.construct(mapping[tag] || tag);
-      break;
+      var self = this.construct(tag);
+      self.$node = element;
+      self.detach()
+      self.$node = undefined;
+      return self;
     case 11:
       var self = new this;
   }
   self.$node = element;
 
   if (!shallow && element.childNodes)
-    G.Node.eachChild(element, G.Node.buildNode, self);
+    this.eachChild(element, G.Node.buildNode, self);
   element.$operation = self;
 
   return self;
@@ -147,24 +155,34 @@ G.Node.prototype.setArguments = function(tag, attributes) {
 
 
 G.Node.prototype.inject   = function() {
-  if (this.$parent) {
-    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
-    G.Node.schedule(this, this.$parent, '$attached', '$attaching')
-  }
   var called = G.Array.prototype.inject.apply(this, arguments);
+  if (this.$parent.$node)
+    this.attach();
+  
+  return called
+}
+
+
+G.Node.prototype.attach   = function(force) {
+  if (this.$parent) {
+    G.Node.unschedule(this, '$detached')
+  }
   var transaction = G.Node.$transaction
-  if (transaction) {
-    (transaction.$nodes || (transaction.$nodes = [])).push(this)
+  if (transaction && !force) {
+    G.Node.schedule(this, '$attached')
   } else {
+    if (!this.$node) // todo: attaching of conditional w/out visi
+      if (this.rule)
+        G.Array.children(this, G.Node.attach, true)
+      else
+        this.render()
     if (this.$node)
-      G.Node.place(this)
+      this.place()
     if (!this.$node || this.$node.nodeType != 1)
       G.Array.children(this, G.Node.place)
   }
-  if (this.text != null)
-    G.Node.updateTextContent(this);
   
-  return called
+  return this
 }
 
 
@@ -185,8 +203,9 @@ G.Node.prototype.eject = function() {
 G.Node.prototype.appendChild = function(child, verb, old) {
   if (!child) return;
   if (typeof child.valueOf() == 'string') {
-    var text = child;
-    child = new (this.constructor)(null, text)
+    child = new (this.constructor)(null, child.valueOf())
+  } else if (!(child instanceof G.Node) && !(child instanceof G.future)) {
+    child = this.constructor.construct(child);
   }
   if (G.Node.$migration)
     return;
@@ -317,11 +336,11 @@ G.Node.prototype.onChange = function(key, value, old) {
   var transaction = G.Node.$transaction
   if (transaction && arguments.length > 2) {
     if (value) {
-      G.Node.schedule(value, this, '$mutated', '$mutating')
+      G.Node.schedule(value, '$mutated')
       if (old)
-        G.Node.unschedule(old, this, '$mutated', '$mutating')
+        G.Node.unschedule(old, '$mutated')
     } else {
-      G.Node.schedule(old, this, '$mutated', '$mutating')
+      G.Node.schedule(old, '$mutated')
     }
     return
   } else {
@@ -478,6 +497,9 @@ G.Node.prototype.onregister = function() {
         val.call()
     }
   }
+
+  if (this.text != null)
+    G.Node.updateTextContent(this);
 }
 
 // Unregister node and its descendants 
@@ -521,18 +543,9 @@ G.Node.prototype.updateAttribute = function(value) {
 
 G.Node.prototype.render = function(deep) {
 
-  if (G.Node.isScheduled(this, this.$parent, '$detached'))
+  if (G.Node.isScheduled(this, '$detached'))
     return this.detach(true)
-  if (this.$attached) {
-    for (var i = 0; i < this.$attached.length; i++)
-      G.Node.place(this.$attached[i], true)
-    this.$attached = undefined;
-  }
-  if (this.$detached) {
-    for (var i = 0; i < this.$detached.length; i++)
-      this.$detached[i].detach(true)
-    this.$detached = undefined;
-  }
+
   
   if (!this.$node) {
     if (this.tag) {
@@ -555,8 +568,21 @@ G.Node.prototype.render = function(deep) {
     for (var i = this.$mutated.length; i--;) {
       var value = this.$mutated[i];
       this.updateAttribute(value);
-      G.Node.unschedule(value, this, '$mutated', '$mutating')
+      G.Node.unschedule(value, '$mutated')
     }
+  }
+  if (this.$attached || this.$detached) {
+    if (this.$attached) {
+      for (var i = 0; i < this.$attached.length; i++)
+        this.$attached[i].attach(true)
+      this.$attached = undefined;
+    }
+    if (this.$detached) {
+      for (var i = this.$detached.length; i--;)
+        this.$detached[i].detach(true)
+      this.$detached = undefined;
+    }
+    return;
   }
 
   if (deep !== false) {
@@ -577,27 +603,7 @@ G.Node.prototype.commit = function(soft) {
   for (var transaction = G.Node.$transaction; transaction;) {
     // if transaction is marked to render
     if (target) {
-      if (transaction.$mutations) {
-        for (var i = 0; transaction.$mutations[i]; i++) {
-          var attribute = transaction.$mutations[i];
-          if (attribute.$context)
-            attribute.$context.updateAttribute(attribute);
-        }
-      }
-      if (transaction.$detaching) {
-        for (var i = 0; transaction.$detaching[i]; i++) {
-          transaction.$detaching[i].detach(true)
-        }
-      }
-      if (transaction.$attaching) {
-        for (var i = 0; transaction.$attaching[i]; i++) {
-          var node = transaction.$attaching[i];
-          node.render()
-        }
-      }
-      transaction.$detaching = 
-      transaction.$mutations = 
-      transaction.$attaching = undefined
+      transaction.render()
       // pop the stack
       if (!soft)
         G.Node.$transaction = transaction.$transaction;
@@ -665,17 +671,16 @@ G.Node.prototype.descend = function() {
 // Place DOM node in relation to its G siblings
 // This method applies changes in G node to DOM 
 G.Node.prototype.place = function() {
-  G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
-  G.Node.unschedule(this, this.$parent, '$attached', '$attaching')
+  G.Node.unschedule(this, '$detached')
+  G.Node.unschedule(this, '$attached')
 
   if (!this.$node) return;
   
   for (var parent = this; parent = parent.$parent || parent.$cause;) {     // find closest parent that is in dom
-    if (parent.$node && parent.$node.nodeType == 8)
-      debugger
     if (parent.$node && parent.$node.nodeType != 8)
       break;
   }
+  if (!parent) return;
 
   var anchor = G.Node.findNextElement(this, parent);
   if (anchor === false)
@@ -707,12 +712,12 @@ G.Node.findNextElement = function(node, parent, limit) {
       return last;
     }
     if (prev == parent) {
-      return parent.firstChild || false;
+      return parent.$node.firstChild || false;
     } else if (prev.$node && prev.$node.parentNode == parent.$node) {
       var anchor = prev.$node.nextSibling;
       // avoid extra dom mutations when splicing children in transction
       while (anchor && 
-          G.Node.isScheduled(anchor, anchor.$parent, '$detached')) {
+          G.Node.isScheduled(anchor, '$detached')) {
         anchor = anchor.nextSibling
       }
       return anchor;
@@ -723,13 +728,12 @@ G.Node.findNextElement = function(node, parent, limit) {
 // Remove DOM node from its parent
 G.Node.prototype.detach = function(force) {
   var transaction = G.Node.$transaction
+  G.Node.unschedule(this, '$attached')
   if (transaction && !force) {
-    G.Node.unschedule(this, this.$parent, '$attached', '$attaching')
-    G.Node.schedule(this, this.$parent, '$detached', '$detaching')
+    G.Node.schedule(this, '$detached')
     return;
   }
-  if (force)
-    G.Node.unschedule(this, this.$parent, '$detached', '$detaching')
+  G.Node.unschedule(this, '$detached')
   if (this.$node) {
     if (this.$node.parentNode) {
       this.$node.parentNode.removeChild(this.$node)
@@ -739,38 +743,31 @@ G.Node.prototype.detach = function(force) {
     G.Array.children(this, G.Node.detach, force)
 }
 
-G.Node.isScheduled = function(node, target, local) {
+G.Node.isScheduled = function(node, local) {
+  var target = G.Node.$transaction;
+  if (!target) return;
   var array = target && target[local];
   if (array && array.indexOf(node) > -1)
     return true
 }
-G.Node.schedule = function(node, target, local, global) {
+G.Node.schedule = function(node, local) {
+  var target = G.Node.$transaction;
+  if (!target) return;
   var array = target[local];
   if (!array)
     array = target[local] = [];
   if (array.indexOf(node) == -1) {
     array.push(node)
-    var transaction = G.Node.$transaction
-    if (transaction) {
-      var mutations = transaction[global];
-      if (!mutations)
-        mutations = transaction[global] = [];
-      mutations.push(node)
-    }
   }
 }
-G.Node.unschedule = function(node, target, local, global) {
+G.Node.unschedule = function(node, local) {
+  var target = G.Node.$transaction;
+  if (!target) return;
   var array = target && target[local];
   if (array) {
     var index = array.indexOf(node);
     if (index > -1) {
       array.splice(index, 1)
-      var transaction = G.Node.$transaction
-      if (transaction && transaction[global]) {
-        var index = transaction[global].indexOf(node);
-        if (index > -1)
-          transaction[global].splice(index, 1)
-      }
     }
   }
 }
@@ -782,7 +779,7 @@ G.Node.getTag = function(node) {
   else if (node.nodeType == 1)
     return node.tagName.toLowerCase()
   else
-    return node.tag;
+    return node.tag || node.rule;
 }
 
 G.Directive = function(attributes) {
@@ -804,9 +801,18 @@ G.Else = function(attributes) {
 }
 G.Else.prototype = new G.Directive 
 
+// noop, used for consistency when tree initialized from DOM 
+// with comments in it
+G.End = function(attributes) {
+  this.rule = 'end'
+  G.Directive.apply(this, arguments);
+}
+G.End.prototype = new G.Directive 
+
 G.Node.mapping = {
   'if': G.If,
-  'else': G.Else
+  'else': G.Else,
+  'end': G.End
 }
 
 
@@ -827,9 +833,17 @@ G.Node.prototype.migrate = function(tree, key) {
 
   var tag = G.Node.getTag(tree);
   
-  if (tag != this.tag) {                             // node types dont match
+  if (tag != (this.tag || this.rule)) {               // node types dont match
     var node = G.Node.create(tree);                   // replace instead of migration
     G.verbs.replace(node, this);
+    
+    if (node.$node) {
+      node.attach();
+    } else if (this.hasOwnProperty('$node')) {
+      node.attach()
+    }
+    this.detach()
+
     return node;
   }
 
@@ -872,7 +886,7 @@ G.Node.prototype.migrate = function(tree, key) {
 };
 G.Node.buildNode = function(child, parent) {
   if (child.nodeType)
-    parent.appendChild(G.Node.fromElement(child))
+    parent.appendChild(this.fromElement(child))
   else
     parent.appendChild(child)
 }
@@ -940,7 +954,9 @@ G.Node.matchNode = function(child, parent, keys, matches, region) {
 };
 
 G.Node.cleanNode = function(child, parent, migrated) {
+  
   if (migrated.indexOf(child) == -1) {
+    
     child.uncall()
   }
 };
@@ -951,30 +967,35 @@ G.Node.eachChild = function(node, callback, a1, a2, a3, a4, stack) {
       if (node[i] != null)
         callback.call(this, node[i], a1, a2, a3, a4);
   } else if (node.childNodes) {
-    for (var child = node.firstChild; child; child = child.nextSibling) {
-        // If found a comment in children
-        if (child.nodeType == 8) {
-          var tag = G.Node.getCommentDirective(child);
-          if (tag) {
-            if (!stack) stack = []
-            if (tag === 'end') {
-              var parent = stack.pop()
-              continue;
-            } else {
-              if (tag.indexOf('els') == 0)
-                stack.pop()
-              var parent = this(child);
-              callback.call(this, parent, stack && stack[stack.length - 1] || a1, a2, a3, a4);
-              stack.push(parent)
-              continue
-            }
+    for (var child = node.firstChild; child;) {
+      var next = child.nextSibling;
+      // If found a comment in children
+      if (child.nodeType == 8) {
+        var tag = G.Node.getCommentDirective(child);
+        if (tag) {
+          if (!stack) stack = []
+          if (tag === 'end') {
+            var parent = stack.pop()
+          } else {
+            if (tag.indexOf('els') == 0)
+              stack.pop()
+            var parent = this(child);
+            callback.call(this, parent, stack && stack[stack.length - 1] || a1, a2, a3, a4);
+            stack.push(parent)
+            child = next;
+            continue
           }
         }
-        callback.call(this, child, stack && stack[stack.length - 1] || a1, a2, a3, a4);
+      }
+      callback.call(this, child, stack && stack[stack.length - 1] || a1, a2, a3, a4);
+      child = next;
     }
   } else {
-    for (var child = node.$first; child; child = child.$next)
+    for (var child = node.$first; child;) {
+      var next = child.$next;
       callback.call(this, child, a1, a2, a3, a4);
+      child = next;
+    }
   }
 }
 

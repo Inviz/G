@@ -13,7 +13,7 @@ describe('G.Node rendering', function() {
         "Hello world"
       ),
       G.Node(
-        'if',
+        'xif',
         { published: true },
         "Published",
         G.Node(
@@ -23,7 +23,7 @@ describe('G.Node rendering', function() {
         )
       ),
       G.Node(
-        'else',
+        'xelse',
         null,
         "This this is not published",
         G.Node(
@@ -41,30 +41,30 @@ describe('G.Node rendering', function() {
 
 
 
-    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
+    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "xif", "Published", "button", "Unpublish", "xelse", "This this is not published", "button", "Publish", "p", "Test"])
   
     var IF = tree.$following.$following.$following;
     var ELSE = IF.$following.$following.$following.$following;
     
     IF.uncall()
-    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "else", "This this is not published", "button", "Publish", "p", "Test"])
+    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "xelse", "This this is not published", "button", "Publish", "p", "Test"])
   
     var unpublishButton = IF.$following.$following
     var publishButton = ELSE.$following.$following
     unpublishButton.uncall()
 
-    expect(ValueGroup(IF).map(tags)).to.eql(["if", "Published"])
+    expect(ValueGroup(IF).map(tags)).to.eql(["xif", "Published"])
 
     IF.call()
-    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "else", "This this is not published", "button", "Publish", "p", "Test"])
+    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "xif", "Published", "xelse", "This this is not published", "button", "Publish", "p", "Test"])
   
     unpublishButton.call()
-    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "if", "Published", "button", "Unpublish", "else", "This this is not published", "button", "Publish", "p", "Test"])
+    expect(ValueGroup(tree).map(tags)).to.eql(["div", "h1", "Hello world", "xif", "Published", "button", "Unpublish", "xelse", "This this is not published", "button", "Publish", "p", "Test"])
   
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
-    '<if published="true">Published<button class="blah">Unpublish</button></if>' +
-    '<else>This this is not published<button test="blah">Publish</button></else>' + 
+    '<xif published="true">Published<button class="blah">Unpublish</button></xif>' +
+    '<xelse>This this is not published<button test="blah">Publish</button></xelse>' + 
     '<p>Test</p></div>')
 
 
@@ -72,20 +72,20 @@ describe('G.Node rendering', function() {
     
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
-    '<else>This this is not published<button test="blah">Publish</button></else>' + 
+    '<xelse>This this is not published<button test="blah">Publish</button></xelse>' + 
     '<p>Test</p></div>')
     publishButton.uncall()
 
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
-    '<else>This this is not published</else>' + 
+    '<xelse>This this is not published</xelse>' + 
     '<p>Test</p></div>')
 
     G.Node.call(IF)
     ELSE.uncall()
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
-    '<if published="true">Published<button class="blah">Unpublish</button></if>' +
+    '<xif published="true">Published<button class="blah">Unpublish</button></xif>' +
     '<p>Test</p></div>')
 
 
@@ -94,7 +94,7 @@ describe('G.Node rendering', function() {
     IF.uncall()
     expect(tree.render().outerHTML).to.eql(
     '<div><h1>Hello world</h1>' + 
-    '<else>This this is not published<button test="blah">Publish</button></else>' + 
+    '<xelse>This this is not published<button test="blah">Publish</button></xelse>' + 
     '<p>Test</p></div>')
   })
 
@@ -193,6 +193,7 @@ describe('G.Node rendering', function() {
     '<p>Test</p></div>')
   });
 
+
   it ('should initialize tree from DOM node', function() {
     var html = "<div><h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2></div>"
     var fragment = document.createRange().createContextualFragment(html);
@@ -210,17 +211,128 @@ describe('G.Node rendering', function() {
           ' wonderful'],
         ['else', {}, 
           'Or not'],
+        ['end', {}],
         ' ',
         ['h2', {}, 'For real']
       ]
     ]))
 
-    debugger
     var condition = tree.$first.$first.$next.uncall();
-    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1><!-- else -->Or not<!-- end --> <h2>For real</h2>')
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>Or not <h2>For real</h2>')
 
     condition.call()
-    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2>')
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
+
+    tree.migrate([undefined, {}, 
+      ['div', {}, 
+        ['if', {}, 
+          'That ', 
+          ['p', {},
+            'aint'],
+          ' great'],
+        ['else', {}, 
+          'Or not'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ])
+    expect(G.stringify(TagTree(tree))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['if', {}, 
+          'That ', 
+          ['p', {},
+            'aint'],
+          ' great'],
+        ['else', {}, 
+          'Or not'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+    expect(tree.$first.$first.tag).to.eql(undefined)
+    expect(String(tree.$first.$first.rule)).to.eql('if')
+    expect(String(tree.$first.$first.$first.text)).to.eql('That ')
+    expect(tree.$node.firstChild.innerHTML).to.eql('That <p>aint</p> greatOr not <h2>For real</h2>')
+
+  })
+
+  it ('should initialize tree from DOM node and migrate it in transaction', function() {
+    var html = "<div><h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2></div>"
+    var fragment = document.createRange().createContextualFragment(html);
+
+    var tree = G.Node(fragment);
+
+    expect(G.stringify(TagTree(tree))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['h1', {}, 
+          ' Hello guys'],
+        ['if', {}, 
+          'This ', 
+          ['p', {},
+            'is'],
+          ' wonderful'],
+        ['else', {}, 
+          'Or not'],
+        ['end', {}],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+    tree.transact();
+    //expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1><!-- if -->This <p>is</p> wonderful<!-- else -->Or not<!-- end --> <h2>For real</h2>')
+    tree.render();
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
+    
+    var condition = tree.$first.$first.$next.uncall();
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
+
+    tree.render();
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>Or not <h2>For real</h2>')
+
+    expect(G.Node.$transaction.$attached).to.eql(undefined)
+    condition.call()
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>Or not <h2>For real</h2>')
+
+    tree.render();
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
+
+    expect(G.Node.$transaction.$attached).to.eql(undefined)
+    expect(G.Node.$transaction.$detached).to.eql(undefined)
+    tree.migrate([undefined, {}, 
+      ['div', {}, 
+        ['if', {}, 
+          'That ', 
+          ['p', {},
+            'aint'],
+          ' great'],
+        ['else', {}, 
+          'Or not'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ])
+    expect(G.stringify(TagTree(tree))).to.eql(G.stringify([undefined, {}, 
+      ['div', {}, 
+        ['if', {}, 
+          'That ', 
+          ['p', {},
+            'aint'],
+          ' great'],
+        ['else', {}, 
+          'Or not'],
+        ' ',
+        ['h2', {}, 'For real']
+      ]
+    ]))
+    expect(tree.$first.$first.tag).to.eql(undefined)
+    expect(String(tree.$first.$first.rule)).to.eql('if')
+    expect(String(tree.$first.$first.$first.text)).to.eql('That ')
+    expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
+    
+    debugger
+    tree.commit();
+    expect(tree.$node.firstChild.innerHTML).to.eql('That <p>aint</p> greatOr not <h2>For real</h2>')
+
   })
 
 
@@ -302,20 +414,20 @@ describe('G.Node rendering', function() {
     IF.uncall()
     G.Node.call(IF)
 
-    expect(tree.$attaching).to.eql([IF])
-    expect(tree.$detaching).to.eql([])
+    expect(tree.$attached).to.eql([IF])
+    expect(tree.$detached).to.eql([])
 
     G.Node.call(IF)
-    expect(tree.$attaching).to.eql([IF])
-    expect(tree.$detaching).to.eql([])
+    expect(tree.$attached).to.eql([IF])
+    expect(tree.$detached).to.eql([])
 
     IF.uncall()
-    expect(tree.$attaching).to.eql([])
-    expect(tree.$detaching).to.eql([IF])
+    expect(tree.$attached).to.eql([])
+    expect(tree.$detached).to.eql([IF])
     
     IF.uncall()
-    expect(tree.$attaching).to.eql([])
-    expect(tree.$detaching).to.eql([IF])
+    expect(tree.$attached).to.eql([])
+    expect(tree.$detached).to.eql([IF])
 
     tree.commit()
   })

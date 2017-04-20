@@ -91,7 +91,7 @@
     <script>
       mocha.setup('bdd');
       afterEach(function() {
-        G.$caller = G.$called = G.$cause = null;
+        G.$caller = G.$called = G.$cause = G.Node.$transaction = null;
       })
     </script>
     <script src="./Operation.js"></script>
