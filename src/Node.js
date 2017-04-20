@@ -333,22 +333,7 @@ G.Node.prototype.onChange = function(key, value, old) {
     return;
 
 
-  var transaction = G.Node.$transaction
-  if (transaction && arguments.length > 2) {
-    if (value) {
-      G.Node.schedule(value, '$mutated')
-      if (old)
-        G.Node.unschedule(old, '$mutated')
-    } else {
-      G.Node.schedule(old, '$mutated')
-    }
-    return
-  } else {
-    this.updateAttribute(value || old)
-    if (transaction && transaction.$mutations) {
-      var index = transaction.$mutations.indexOf(op)
-    }
-  }
+  this.updateAttribute(value, old)
 }
 
 G.Node.inherit = function(node) {
@@ -520,7 +505,21 @@ G.Node.prototype.decorate = function(value) {
   return result
 }
 
-G.Node.prototype.updateAttribute = function(value) {
+G.Node.prototype.updateAttribute = function(value, old, force) {
+  var transaction = G.Node.$transaction
+  if (transaction && arguments.length > 2) {
+    if (value) {
+      G.Node.schedule(value, '$mutated')
+      if (old)
+        G.Node.unschedule(old, '$mutated')
+    } else {
+      G.Node.schedule(old, '$mutated')
+    }
+    return
+  } else {
+    G.Node.unschedule(value, '$mutated')
+  }
+
   var old = this[value.$key];
   var descriptor = G.Node.attributes[value.$key];
   if (descriptor) {
@@ -551,7 +550,7 @@ G.Node.prototype.render = function(deep) {
     if (this.tag) {
       this.$node = document.createElement(this.tag);
       this.$node.$operation = this;
-      this.each(this.onChange, true);
+      this.each(this.updateAttribute, true);
     } else if (this.text) {
       this.$node = document.createTextNode(this.text);
       this.$node.$operation = this;
@@ -567,8 +566,7 @@ G.Node.prototype.render = function(deep) {
     var mutations = G.Node.$transaction.$mutations;
     for (var i = this.$mutated.length; i--;) {
       var value = this.$mutated[i];
-      this.updateAttribute(value);
-      G.Node.unschedule(value, '$mutated')
+      this.updateAttribute(value, undefined, true);
     }
   }
   if (this.$attached || this.$detached) {

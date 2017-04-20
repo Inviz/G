@@ -17,7 +17,7 @@
 G.prototype.each = function(callback) {
   var keys = Object.keys(this);
   for (var i = 0, key; key = keys[i++];)
-    if (key.charAt(0) != '$')
+    if (key.charAt(0) != '$' && this[key] !== undefined)
       callback.call(this, key, this[key]);
   return this;
 };

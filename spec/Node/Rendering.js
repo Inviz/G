@@ -329,7 +329,6 @@ describe('G.Node rendering', function() {
     expect(String(tree.$first.$first.$first.text)).to.eql('That ')
     expect(tree.$node.firstChild.innerHTML).to.eql('<h1> Hello guys</h1>This <p>is</p> wonderfulOr not <h2>For real</h2>')
     
-    debugger
     tree.commit();
     expect(tree.$node.firstChild.innerHTML).to.eql('That <p>aint</p> greatOr not <h2>For real</h2>')
 

@@ -98,6 +98,7 @@ describe('G.Node data', function() {
     input3.name.uncall()
 
     expect(input3.$watchers.name).to.eql(undefined)
+    form.render();
   })
 
   it ('should handle inputs of different types', function() {
@@ -156,6 +157,7 @@ describe('G.Node data', function() {
 
     checkbox.set('disabled', true)
     expect(G.stringify(form.values)).to.eql(G.stringify({your_name: 'Boris'}))
+    form.render();
   })
 
   it ('should handle prefixed inputs of different types', function() {
@@ -269,6 +271,8 @@ describe('G.Node data', function() {
       'person[your_name]': 'Boris',
       person: {your_name: 'Boris'}
     }))
+
+    form.render();
   })
   
   it ('should register compound fieldnames in forms', function() {
@@ -366,6 +370,8 @@ describe('G.Node data', function() {
     expect(Number(form.values.person.age)).to.eql(27)
     expect(Number(age.value)).to.eql(27)
     expect(Number(form.values['person[age]'])).to.eql(27)
+
+    form.render();
   })
   
   it ('should register arraylike fieldnames in forms', function() {
@@ -403,6 +409,7 @@ describe('G.Node data', function() {
     expect(G.stringify(ValueGroup(form.values.person.interests))).to.eql(G.stringify(['Magazines', 'Modern Laser Disks', 'Ubuquitous Morality']))
 
 
+    form.render();
   })
 
   it ('should clone elements when adding new microdata values', function() {
@@ -432,6 +439,8 @@ describe('G.Node data', function() {
     expect(form.scope.greeting.$previous).to.eql(undefined)
     expect(String(form.$last.$last.getTextContent())).to.eql('Hello')
     expect(String(form.$last.$last.$previous.href)).to.eql('gunslinger.html')
+
+    form.render();
   })
 
   it ('should change microdata scopes', function() {
@@ -468,6 +477,8 @@ describe('G.Node data', function() {
 
     itemscope.call()
     expect(G.stringify(form.scope)).to.eql(G.stringify({person: {url: 'boris.html'}}))
+
+    form.render();
   });
   it ('should change microdata values', function() {
     var form = new G.Node('article', {itemscope: true},
@@ -539,6 +550,7 @@ describe('G.Node data', function() {
     expect(G.stringify(ValueStack(form.$last.$first.href))).to.eql(G.stringify(['boris.html']))
     expect(String(form.$last.$last.getTextContent())).to.eql('Gomes')
 
+    form.render();
   })
 
 
@@ -595,6 +607,8 @@ describe('G.Node data', function() {
     expect(anon.$first.getTextContent()).to.eql('')
     expect(String(anon.scope.name)).to.eql('')
 
+
+    form.render();
   })
 
   it ('should parse numeric indecies', function() {
@@ -614,6 +628,8 @@ describe('G.Node data', function() {
     form.appendChild(new G.Node('input', {name: 'tags[3]', value: 'Delta'}))
     expect(G.stringify(ValueGroup(form.values.tags))).to.eql(G.stringify(['Charlie', 'Alfa', 'Bravo', 'Delta']))
 
+
+    form.render();
   })
 
   it ('should parse numeric indecies of objects', function() {
@@ -633,6 +649,8 @@ describe('G.Node data', function() {
     form.appendChild(new G.Node('input', {name: 'person[3][name]', value: 'Delta'}))
     expect(G.stringify(ValueGroup(form.values.person))).to.eql(G.stringify([{name: 'Charlie'}, {name: 'Alfa'}, {name: 'Bravo'}, {name: 'Delta'}]))
 
+
+    form.render();
   })
 
 
@@ -648,6 +666,8 @@ describe('G.Node data', function() {
 
     expect(String(form.$last.$previous.value)).to.eql('Ivan Ivanov')
     expect(String(form.$last.value)).to.eql('ivan.html')
+
+    form.render();
   })
 
   it ('should clone fieldsets in reverse order', function() {
@@ -667,6 +687,8 @@ describe('G.Node data', function() {
 
     expect(String(form.$first.$next.value)).to.eql('Goga Georgiev')
     expect(String(form.$first.$next.$next.value)).to.eql('goga.html')
+
+    form.render();
   })
 
   xit ('should clone numeric nested fieldsets', function() {
@@ -699,6 +721,7 @@ describe('G.Node data', function() {
     expect(String(goga.url)).to.eql('george.html')
 
 
+    form.render();
   })
 
   it ('should change form values', function() {
@@ -787,6 +810,8 @@ describe('G.Node data', function() {
       ['input', 'url[]','eldar.html'],
       ['input', 'url[]','Hello']
     ]))
+
+    form.render();
   })
   it ('should inherit microdata object from parent scope', function() {
     var form = new G.Node('article', {itemscope: true},
@@ -873,6 +898,8 @@ describe('G.Node data', function() {
 
     submit.href.uncall()
     expect(G.stringify(form.scope)).to.eql(G.stringify({her_name: 'jackie.html', submission_button: ''}))
+
+    form.render();  
   })
 
   it ('should chain microdata scopes', function() {
@@ -983,5 +1010,6 @@ describe('G.Node data', function() {
     G.swap(wrapper, header)
     expect(String(form.scope.header)).to.eql('What is your name?')
     expect(String(form.scope.header.$previous)).to.eql('Extra header!')
+    form.render();
   })
 })
