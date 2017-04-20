@@ -14,11 +14,11 @@
 */
 
 // Iterate keys
-G.prototype.each = function(callback) {
+G.prototype.each = function(callback, a1, a2) {
   var keys = Object.keys(this);
   for (var i = 0, key; key = keys[i++];)
     if (key.charAt(0) != '$' && this[key] !== undefined)
-      callback.call(this, key, this[key]);
+      callback.call(this, key, this[key], a1, a2);
   return this;
 };
 

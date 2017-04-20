@@ -333,7 +333,7 @@ G.Node.prototype.onChange = function(key, value, old) {
     return;
 
 
-  this.updateAttribute(value, old)
+  this.updateAttribute(key, value, old)
 }
 
 G.Node.inherit = function(node) {
@@ -505,9 +505,9 @@ G.Node.prototype.decorate = function(value) {
   return result
 }
 
-G.Node.prototype.updateAttribute = function(value, old, force) {
+G.Node.prototype.updateAttribute = function(key, value, old, force) {
   var transaction = G.Node.$transaction
-  if (transaction && arguments.length > 2) {
+  if (transaction && !force) {
     if (value) {
       G.Node.schedule(value, '$mutated')
       if (old)
@@ -520,12 +520,14 @@ G.Node.prototype.updateAttribute = function(value, old, force) {
     G.Node.unschedule(value, '$mutated')
   }
 
-  var old = this[value.$key];
-  var descriptor = G.Node.attributes[value.$key];
+  var old = this[key];
+  var descriptor = G.Node.attributes[key];
   if (descriptor) {
     
     var descripted = descriptor.call(this, value, old);
     if (descripted === null)
+      return;
+    
     if (descripted !== undefined)
       value = descripted
 
@@ -533,9 +535,9 @@ G.Node.prototype.updateAttribute = function(value, old, force) {
   if (this.tag) {
     var formatted = this.decorate(old);
     if (formatted) {
-      this.$node.setAttribute(value.$key, formatted);
+      this.$node.setAttribute(key, formatted);
     } else {
-      this.$node.removeAttribute(value.$key)
+      this.$node.removeAttribute(key)
     }
   }
 }
@@ -550,7 +552,7 @@ G.Node.prototype.render = function(deep) {
     if (this.tag) {
       this.$node = document.createElement(this.tag);
       this.$node.$operation = this;
-      this.each(this.updateAttribute, true);
+      G.Node.eachAttribute.call(this, this, this.updateAttribute, undefined, true);
     } else if (this.text) {
       this.$node = document.createTextNode(this.text);
       this.$node.$operation = this;
@@ -566,7 +568,7 @@ G.Node.prototype.render = function(deep) {
     var mutations = G.Node.$transaction.$mutations;
     for (var i = this.$mutated.length; i--;) {
       var value = this.$mutated[i];
-      this.updateAttribute(value, undefined, true);
+      this.updateAttribute(value.$key, value, undefined, true);
     }
   }
   if (this.$attached || this.$detached) {
