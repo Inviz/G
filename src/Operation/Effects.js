@@ -5,6 +5,8 @@ G.effects = function(value, old, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(value, old);
   G.record.push(value); // Put operation onto the caller stack
+  if (G.onStateChange)
+    G.onStateChange(value, old);
 // Process all side effects for the value. 
   var context = value.$context;
   var watchers = context.$watchers;                   // Watchers configuration for whole context
@@ -55,6 +57,8 @@ G.effects = function(value, old, bypass) {
 G.effects.revoke = function(value, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(undefined, value);
+  if (G.onStateChange)
+    G.onStateChange(undefined, value);
   if (value.$multiple || !G.value.current(value))
     G.notify(value.$context, value.$key, undefined, value)// Trigger user callbacks 
   var recalling = G.$recaller;
@@ -90,14 +94,12 @@ G.effects.revoke = function(value, bypass) {
 G.effects.push = function(value, old) {
   var index = G.$effects.indexOf(old);
   if (index > -1) {
-    if (index % 2 == 0) {                             // 1. simplify A->B, B->C to A -> C
+    if (index % 2 == 0)                              // 1. simplify A->B, B->C to A -> C
       G.$effects[index] = value;
-    } else {                                          
-      if (value === G.$effects[index + 1])            // 2. negate A->B, B->A
-        G.$effects.splice(index, 2)
+    if (value === G.$effects[index + 1])            // 2. negate A->B, B->A
+      G.$effects.splice(index, 2)
       //else                                            // 3. update A->B, A->C to A-> C
       //  G.$effects[index - 1] = value;
-    }
   } else {
     G.$effects.push(value, old);
   }

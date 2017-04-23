@@ -1,18 +1,48 @@
 /*
-  Stack allows concurrent state modification.
-  Values from different sources make a "history",
-  of which the last value is used. When last value
+  Stack is a history of changes to value done by
+  different codepaths concurrently. It is sort of changelog,
+  of which the last entry is current. When last value
   is recalled, the previous value is applied.
 
-  Different sources are identified by extra arguments.
-  Lack of extra arguments counts as identity as well,
-  those values are treated as more important
+  Extra arguments provided to setter determine identity of value.
+  When value changes, but the stack already has another value with
+  the same identity, the entry in the stack is updated. If the
+  updated value was not current, the change is invisible to observers.
 
-  object.set('a', 1);               // will write 1 with meta of undefined
-  object.set('a', 2);               // will rewrite 1, because meta matches
-  object.set('a', 3, 'super pony'); // makes stack of of 2 and 3 (distinct meta)
-  object.a.runcall();               // pops 3 from stack, `object.a` is `2` again
-  object.a.uncall()                 // cleans up the stack, `object.a` becomes `undefined`
+    object.set('a', 1, 'user1');  // will write `1` with meta of undefined
+    object.set('a', 2, 'user1');  // will rewrite `1`, because meta matches
+    object.set('a', 3, 'user2');  // makes stack of of `2` and `3` (distinct meta)
+    object.a.uncall();            // pops `3` from stack, `object.a` is `2` again
+    object.a.uncall()             // empties the stack, `object.a` becomes `undefined`
+
+  Values without extra arguments are treated as more important and 
+  can't be shadowed by values with meta. Still there can be only one
+  such value in the stack at time. 
+
+  Stack is a handy mechanism that enables default values, as well as
+  exclusive concurrent state changes. It is useful for dynamic declarative
+  programming, where multiple rules could have effects over the same
+  variables and can be toggled dynamically to recompute the state.
+
+  Example would be a question "Should we send notification to Joe?"
+  The answer can be influenced by Joe's status or subscription, 
+  importance of the event, chatroom being current and other rules. 
+  A complicated algorithmic if/else tree can be
+  simplified: Mutually exclusive (nested else branches) could 
+  be groupped together and turned into independent declarative rules.
+  For example, Joe being offline and Joe having "Do not disturb" 
+  status could become a single "availability" stack of values. Chat-room
+  wide messages shoutiness and messages in inactive channels could use
+  a single "importance" stack of values. The best kind of code for this
+  would be 
+
+  When a new rule matches (Joe's online now!) 
+  or stops matching (Joe went to other chatroom) within life-cycle of
+  an application, it is possible for the system to know how 
+  visible that change is, and only run computations
+  that listen for that specific piece of state change. 
+
+  
 */
 
 // Find operation in group or history that matches meta of a given operation 

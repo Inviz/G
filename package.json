@@ -12,7 +12,8 @@
   },
   "keywords": [],
   "scripts": {
-    "build": "cat src/Operation.js src/Compiler.js src/Object.js src/Watcher.js src/Transaction.js src/Callback.js src/Future.js src/History.js src/Array.js src/Node.js> dist/g.js"
+    "build": "cat src/Operation.js src/Operation/Value.js src/Operation/Record.js src/Operation/Stack.js src/Operation/Meta.js src/Operation/Callback.js src/Operation/Effects.js src/Operation/Watcher.js src/Operation/Future.js src/Operation/Debug.js src/Object.js src/Array.js src/Node.js src/Scope.js src/Data.js src/Location.js src/G.js > dist/g.js"
   },
   "main": "./dist/Operation.js"
 }
+

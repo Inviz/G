@@ -205,7 +205,7 @@ G.compile.toggler = function(name) {
 
 G.compile()
 
-G.Location(location);
+//G.Location(location);
 
 
 if (typeof global !== "undefined")
