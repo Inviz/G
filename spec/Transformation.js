@@ -277,6 +277,7 @@ describe('Transformation', function() {
       alice.set('name', 'Legory Gorgeous')
       alice.set('bio', 'Taught by elvez')
       alice.set('title', 'Devourer of worlds')
+      alice.rank.uncall()
       var Alice = G.transformation.commit();
 
 
@@ -284,7 +285,6 @@ describe('Transformation', function() {
       bob.set('name', 'Giggidy Gorgeous')
       bob.set('bio', 'Raised by gnomes')
       bob.title.uncall()
-      bob.rank.uncall()
       var Bob = G.transformation.commit();
 
       G.transformation(alice, Bob.rebase(Alice, true))
@@ -295,6 +295,7 @@ describe('Transformation', function() {
       expect(alice.rank).to.eql(undefined);
       expect(String(bob.name)).to.eql('Giggidy Gorgeous');
       expect(String(bob.bio)).to.eql('Raised by gnomes');
+      expect(Number(bob.rank)).to.eql(2);
       expect(bob.title).to.eql(undefined);
 
       G.transformation(bob, Alice.rebase(Bob, true))
