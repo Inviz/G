@@ -39,14 +39,14 @@ G.prototype.clean = function(shallow) {
           if (next && next instanceof G) {
             result[key].push(next.clean())
           } else {
-            result[key].push(next)
+            result[key].push(next.valueOf())
           }
         }
       } else {
         if (this[key] && this[key] instanceof G) {
           result[key] = this[key].clean()
         } else {
-          result[key] = this[key]
+          result[key] = this[key] && this[key].valueOf()
         }
       }
     }

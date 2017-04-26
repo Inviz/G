@@ -113,12 +113,266 @@ describe('Transformation', function() {
     it ('should generate nested object operation', function() {
       var object = new G({ctx: {}});
       G.transformation.transact(object);
-      object.ctx.set('key', {});
-      expect(G.transformation.commit()).to.eql({
+      object.ctx.set('key', 123);
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.APPLY('ctx', 
+          new jot.PUT('key', 123)
+        )
+      ]).simplify().serialize())
+    })
+  })
+  describe('Diffing', function() {
+    it ('should diff strings', function() {
+      var object = new G({'test': 'hello'});
+      G.transformation.transact(object);
+      object.set('test', 'hello brother!');
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.APPLY('test', 
+          new jot.LIST([
+            new jot.SPLICE(5, '', ' brother!')
+          ]).simplify()
+        )
+      ]).simplify().serialize())
+    })
+
+    it ('should diff native arrays', function() {
+      var object = new G();
+      object.set('test', ['hello', 'world'])
+      G.transformation.transact(object);
+      object.set('test', ['world', 'destroyed']);
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.APPLY('test', 
+          new jot.LIST([
+            new jot.SPLICE(0, ['hello'], []),
+            new jot.SPLICE(1, [], ['destroyed'])
+          ]).simplify()
+        )
+      ]).simplify().serialize())
+    })
+
+    it ('should diff different G objects', function() {
+      var object = new G();
+      object.set('test', {
+        hello: 1,
+        world: 'yes'
+      })
+      G.transformation.transact(object);
+      object.set('test', {
+        destroyed: 1,
+        world: 'no'
+      });
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.APPLY('test', 
+          new jot.LIST([
+            new jot.APPLY('world', 
+              new jot.SET('yes', 'no')),
+            new jot.REM('hello'),
+            new jot.PUT('destroyed', 1)
+          ])).simplify(),
+      ]).simplify().serialize())
+    })
+
+    it ('should diff merged properties', function() {
+      var object = new G();
+      object.set('test', {
+        hello: 1,
+        world: 'yes'
+      })
+      G.transformation.transact(object);
+      object.merge('test', {
+        destroyed: 1,
+        world: 'no'
+      });
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.APPLY('test', 
+          new jot.LIST([
+            new jot.PUT('destroyed', 1),
+            new jot.APPLY('world', 
+              new jot.SET('yes', 'no'))
+          ])).simplify(),
+      ]).simplify().serialize())
+    })
+  });
+
+  describe('Tracking', function() {
+
+    xit ('should generate nested merge operation', function() {
+      var object = new G();
+      G.transformation.transact(object);
+      object.merge({
         ctx: {
-          key: new jot.SET(undefined, {})
+          key: 123
         }
       })
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.PUT('ctx', {}),
+        new jot.APPLY('ctx', 
+          new jot.PUT('key', 123)
+        )
+      ]).simplify().serialize())
+    })
+    it ('should combine local & nested operations in order', function() {
+      var object = new G();
+      G.transformation.transact(object);
+      object.set('ctx', {});
+      object.ctx.set('key', 123)
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.PUT('ctx', {}),
+        new jot.APPLY('ctx', 
+          new jot.PUT('key', 123)
+        )
+      ]).simplify().serialize())
+    })
+    it ('should ignore side effects not reachable by transaction', function() {
+      var object = new G;
+      var effect = new G;
+      G.transformation.transact(object);
+      object.set('key', 123);
+      object.watch('key', function(value) {
+        effect.set('key', value)
+      })
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+          new jot.PUT('key', 123)
+      ]).simplify().serialize())
+    })
+    it ('should not ignore side effects reachable by transaction', function() {
+      var object = new G;
+      var effect = object.set('effect', {});
+
+      G.transformation.transact(object);
+      object.set('key', 123);
+      object.watch('key', function(value) {
+        effect.set('key', value)
+      })
+      expect(G.transformation.commit().serialize())
+      .to.eql(new jot.LIST([
+        new jot.PUT('key', 123),
+        new jot.APPLY('effect', 
+          new jot.PUT('key', 123)
+        )
+      ]).simplify().serialize())
+    })
+  })
+
+  describe('Merging', function() {
+    it ('should merge operations over the same object', function() {
+      var data = {
+        name: 'Gregory Gorgeous',
+        bio: 'Raised by elves',
+        title: 'Destroyer of worlds',
+        rank: 2
+      };
+      var alice = new G(data);
+      var bob = new G(data);
+
+      G.transformation.transact(alice);
+      alice.set('name', 'Legory Gorgeous')
+      alice.set('bio', 'Taught by elvez')
+      alice.set('title', 'Devourer of worlds')
+      var Alice = G.transformation.commit();
+
+
+      G.transformation.transact(bob);
+      bob.set('name', 'Giggidy Gorgeous')
+      bob.set('bio', 'Raised by gnomes')
+      bob.title.uncall()
+      bob.rank.uncall()
+      var Bob = G.transformation.commit();
+
+      G.transformation(alice, Bob.rebase(Alice, true))
+
+      expect(String(alice.name)).to.eql('Giggidy Gorgeous');
+      expect(String(alice.bio)).to.eql('Taught by gnomes');
+      expect(String(alice.title)).to.eql('Devourer of worlds');
+      expect(alice.rank).to.eql(undefined);
+      expect(String(bob.name)).to.eql('Giggidy Gorgeous');
+      expect(String(bob.bio)).to.eql('Raised by gnomes');
+      expect(bob.title).to.eql(undefined);
+
+      G.transformation(bob, Alice.rebase(Bob, true))
+
+      expect(String(bob.name)).to.eql('Giggidy Gorgeous');
+      expect(String(bob.bio)).to.eql('Taught by gnomes');
+      expect(String(bob.title)).to.eql('Devourer of worlds');
+      expect(bob.rank).to.eql(undefined);
+    })
+
+
+    it ('should merge array operations', function() {
+      var data = {
+        oldies: ['Hola']
+      };
+      var alice = new G(data);
+      var bob = new G(data);
+
+      // CASE 1: Concurrent optimistic changes
+      // Alice added two things
+      G.transformation.transact(alice);
+      alice.push('oldies', 'Zuck')
+      alice.push('newbies', 'Andie')
+      var Alice = G.transformation.commit();
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Hola', 'Zuck'],
+        newbies: 'Andie'
+      }))
+
+      G.transformation.transact(bob);
+      bob.unshift('oldies', 'Arkham')
+      bob.push('newbies', 'Zonder')
+
+      // Bob added two things as well
+      var Bob = G.transformation.commit();
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Hola', 'Zuck'],
+        newbies: 'Andie'
+      }))
+
+      // Bob sent his commands to alice to sync, she rebases against her history
+      Bob2 = G.transformation(alice, Bob.rebase(Alice, true))
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola', 'Zuck'],
+        newbies: ['Andie', 'Zonder']
+      }))
+
+      // Alice sends her history before rebase to Bob, so Bob can rebase it against his
+      Alice2 = G.transformation(bob, Alice.rebase(Bob, true))
+
+      expect(bob.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola', 'Zuck'],
+        newbies: ['Andie', 'Zonder']
+      }))
+
+      // CASE 2: One-way changes 
+      G.transformation.transact(bob);
+      bob.oldies.uncall()
+      bob.newbies.uncall()
+      var Bob2 = G.transformation.commit();
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola', 'Zuck'],
+        newbies: ['Andie', 'Zonder']
+      }))
+      expect(bob.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola'],
+        newbies: 'Andie'
+      }))
+
+      Bob2 = G.transformation(alice, Bob2)
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola'],
+        newbies: 'Andie'
+      }))
     })
   })
 })

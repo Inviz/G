@@ -441,6 +441,8 @@ G.Node.attributes = {
   }
 }
 
+//G.Node.prototype.$unwrap = {class: true};
+
 G.Node.tags = {
   form: function() {
     this.set('values', {});
@@ -527,7 +529,7 @@ G.Node.prototype.updateAttribute = function(key, value, old, force) {
     var descripted = descriptor.call(this, value, old);
     if (descripted === null)
       return;
-    
+
     if (descripted !== undefined)
       value = descripted
 

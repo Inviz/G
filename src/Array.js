@@ -31,6 +31,43 @@ G.Array.prototype.call = function(verb, old) {
   else
     return G.Array.prototype.inject.apply(this, arguments);
 }
+
+// array.splice(0, 0, 123);
+// array.splice(0, 1, 123)
+// array.splice(0, 1)
+G.Array.prototype.splice = function(index, offset) {
+  for (var start = this; start.$previous;)
+    start = start.$previous;
+  for (var i = 0; ++i < index;) {
+    start = start.$next;
+    if (!start) return;
+  }
+  // replace
+  var argv = arguments.length - 2;
+  for (var i = argv; argv && offset; argv--) {
+    var next = start.$next;
+    start.swap(arguments[argv])
+    start = next;
+    offset--
+  }
+  // insert
+  for (var i = argv - offset; i-- > 0; i) {
+    debugger
+    var arg = arguments[2 + i];
+    if (index === 0)
+      start = G.before(arg, start)
+    else
+      start = G.after(arg, start)
+  }
+  // remove 
+  for (var i = offset - argv; i > 0; i--) {
+  debugger
+
+    var next = start.$next;
+    start.uncall();
+    start = next;
+  }
+}
 G.Array.prototype.inject = function(verb) {
   if (!this.$parent) {
     if (!this.$context)

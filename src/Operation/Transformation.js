@@ -33,49 +33,134 @@
   2. Generate jot operations on each change 
      (e.g. to sync with peers in real time)
 
-
+  G applies "our" changes right away, so UI feels responsive.
+  When syncing, history of unsaved operations is inverted
+  to go back to shared state, and then on top of that
+  it is rebased together with concurrent changes.
 
 */
-G.transformation = function() {
 
+// custom application logic that mutates G object
+G.transformation = function(object, ours, args) {
+  if (args) {
+    if (args.rebase) {
+      // generate commands to go back to shared history
+      // then re-apply our history concurrently with theirs
+      ours = args.rebase(ours)
+      var result = ours
+      args = undefined
+    }
+  }
+
+  switch (ours.type[1]) {
+    case 'LIST':
+
+      for (var i = 0; i < ours.ops.length; i++)
+        object = G.transformation(object, ours)
+
+      return object;
+
+    case 'APPLY':
+
+      switch (ours.type[0]) {
+        case 'objects':
+
+          for (var key in ours.ops) {
+            var value = G.transformation(object[key], ours.ops[key], [object, key]);
+            if (value == null)
+              continue
+            if (typeof value === 'object' && Object.keys(value).length == 0)
+              object[key].uncall(); // key was removed
+            else
+              object.set(key, value)
+          }
+
+          return result || object;
+
+      }
+
+      break;
+
+    case 'SPLICE':
+
+      switch (ours.type[0]) {
+        case 'sequences':
+        debugger
+          if (object.$multiple) {
+            
+            ours.hunks.forEach(function(hunk) {
+              // Append unchanged content before this hunk.
+              G.Array.prototype.splice.apply(object, [hunk.offset, hunk.old_value.length].concat(hunk.new_value))
+            });
+            return
+          };
+      }
+
+  }
+
+  // for all other commands fall back to jot apply() implementation
+  return ours.apply(object, args);
 };
+
+G.transformation.options = {
+  dontRename: true,
+  words: true
+}
 
 G.onStateChange = function(value, old) {
   var root = G.$operating;
   if (!root) return;
 
-  for (var context = value || old; context = context.$context;)
-    if (context === root)
-      break;
-  if (!root) return;
 
+  for (var context = value || old; context = context.$context;) {
+    if (context.$merging)                             // Ignore operations within object that is being constructed
+      return;                                         //   let object assignment op invoke `jot.diff()` instead
+                                                      // i.e. this.set('key', {abc: 123})
+
+    if (context === root)                             // only record operations that can be reached from root
+      break;                                          //   e.g. root.object.key
+  }
+  if (!context) return;
+
+
+  console.error((value || old).$context, (value || old).$key, value, old)
   var key = (value || old).$key;
   var log = G.$operations[key];
-  var ops = G.$operations.ops;
+
+    var o = old && old.valueOf();
+    if (typeof o == 'object' && o && o.clean)
+      o = o.clean();
   if (!value) {
-    ops.push(new jot.REM(key, old && old.valueOf()))
+    var op = new jot.REM(key, o)
   } else {
     var v = value.valueOf();
     if (typeof v == 'object' && v && v.clean)
       v = v.clean();
 
-    var o = old && old.valueOf();
-    if (typeof o == 'object' && o && o.clean)
-      o = o.clean();
-
     if (value.$multiple) {
       for (var index = 0, prev = value; prev = prev.$previous;)
         index++;
-      ops.push(new jot.APPLY(key, 
-        new jot.SPLICE(index, [], [v])));
+      var op = new jot.APPLY(key, 
+        new jot.SPLICE(index, [], [v]));
     } else if (!old) {
-      ops.push(new jot.PUT(key, v))
+      var op = new jot.PUT(key, v)
     } else {
-      ops.push(new jot.APPLY(key, 
-        new jot.SET(o, v)))
+      var op = new jot.APPLY(key, 
+        new jot.diff(o, v, G.transformation.options))
     }
   }
+
+  var cursor = op;
+  for (var context = value || old; context = context.$context;)
+    if (context !== root) {
+      console.log('APPLY', context.$key)
+      cursor = new jot.APPLY(context.$key, cursor)
+    } else {
+      G.$operations.ops.push(cursor)
+      break;
+    }
   
+  return cursor;  
 };
 
 G.transformation.transact = function(object) {
@@ -83,7 +168,7 @@ G.transformation.transact = function(object) {
   G.$operations = new jot.LIST([]);
 };
 
-G.transformation.commit = function(root) {
+G.transformation.commit = function() {
   var operations = G.$operations;
   G.$operations = G.$operating = null;
   return operations.simplify()

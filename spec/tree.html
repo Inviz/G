@@ -1,35 +1,19 @@
-
-<pre id="pre" style="font-family: Mono; font-size: 20px; line-height: 20px;">
-   
-    
-╭▱┬╮ ╭⏃┬┬┈╮
-⏀⏀⏀⏃ ⏀⏀⏀⏀╮⏃
-⏀⏀╭⏀╮ ╭⏀⏀⏀
-⏃ ⏀⏀⏀ △⏀⏀
-⏀ ⏀   ▢⏀⏀   
-  ⏀   ▢
-
-</pre>
+<script src="../lib/jot.js"></script>
 <script>
-pre.innerHTML = pre.innerHTML.replace(/ /g, '<span style="visibility: hidden">⏀</span>')
+var object1 = {
+  key: 'a',
+  sss: 'b',
+  test: {
+    z: 'b'
+  }
+};
+
+var object2 = {
+  key: 'c',
+  test: {
+    c: 'br'
+  }
+}
+
+console.log(jot.diff(object1, object2))
 </script>
-
-
-<pre id="pre2" style="font-family: Mono; font-size: 20px; line-height: 20px;">
-   
- 　　　
-　╭▱┬╮　╭△┬┬┈╮
-　▭▤▩△　▢▢▢▢╮△
-　▢◯╭▢╮　╭▢▢▢
-　◎　▢◎▢　△▢▢
-　▢　▢　　　△▢▢　　　
-　◌◌　▢　　　▢
-　　　◌◌
-</pre>
-
-<pre style="font-family: Mono; font-size: 20px; line-height: 20px;">
-
-╭╮
- ╲
-╰╯
-</pre>
