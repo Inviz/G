@@ -291,7 +291,7 @@ describe('Transformation', function() {
 
       expect(String(alice.name)).to.eql('Giggidy Gorgeous');
       expect(String(alice.bio)).to.eql('Taught by gnomes');
-      expect(String(alice.title)).to.eql('Devourer of worlds');
+      expect(alice.title).to.eql(undefined);
       expect(alice.rank).to.eql(undefined);
       expect(String(bob.name)).to.eql('Giggidy Gorgeous');
       expect(String(bob.bio)).to.eql('Raised by gnomes');
@@ -302,7 +302,7 @@ describe('Transformation', function() {
 
       expect(String(bob.name)).to.eql('Giggidy Gorgeous');
       expect(String(bob.bio)).to.eql('Taught by gnomes');
-      expect(String(bob.title)).to.eql('Devourer of worlds');
+      expect(alice.title).to.eql(undefined);
       expect(bob.rank).to.eql(undefined);
     })
 
@@ -357,7 +357,7 @@ describe('Transformation', function() {
       // CASE 2: One-way changes 
       G.transformation.transact(bob);
       bob.oldies.uncall()
-      bob.newbies.uncall()
+      var newb = bob.newbies.uncall()
       var Bob2 = G.transformation.commit();
 
       expect(alice.stringify()).to.eql(G.stringify({
@@ -369,11 +369,24 @@ describe('Transformation', function() {
         newbies: 'Andie'
       }))
 
-      Bob2 = G.transformation(alice, Bob2)
+      G.transformation(alice, Bob2)
       expect(alice.stringify()).to.eql(G.stringify({
         oldies: ['Arkham', 'Hola'],
         newbies: 'Andie'
       }))
+
+
+      // CASE 3: One-way redo
+      G.transformation.transact(bob);
+      newb.call()
+      var Bob3 = G.transformation.commit();
+
+      G.transformation(alice, Bob3)
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Hola'],
+        newbies: ['Andie', 'Zonder']
+      }))
+
     })
   })
 })

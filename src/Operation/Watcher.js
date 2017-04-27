@@ -231,7 +231,7 @@ G.prototype.observe = function(source, method, meta) {
     var source = this;
 
   } else if (!source.watch) {                        // 2. Merge plain static javascript object
-    return this[method].apply(this, arguments);      //    source.observe({a: 1})
+    return this[method].call(this, source, meta);      //    source.observe({a: 1})
   
   } else if (source.$source) {                       // 3. Chain G.Object by shallow-reference
     if (!meta) meta = source.$meta;                  //    source.observe(reference)

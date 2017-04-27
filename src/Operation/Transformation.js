@@ -46,7 +46,7 @@ G.transformation = function(object, ours, args) {
     if (args.rebase) {
       // generate commands to go back to shared history
       // then re-apply our history concurrently with theirs
-      ours = args.rebase(ours)
+      ours = args.rebase(ours) || ours
       var result = ours
       args = undefined
     }
@@ -69,8 +69,10 @@ G.transformation = function(object, ours, args) {
             var value = G.transformation(object[key], ours.ops[key], [object, key]);
             if (value == null)
               continue
-            if (typeof value === 'object' && Object.keys(value).length == 0)
-              object[key].uncall(); // key was removed
+            if (typeof value === 'object' && Object.keys(value).length == 0) {
+              if (object[key])
+                object[key].uncall(); // key was removed
+            }
             else
               object.set(key, value)
           }
