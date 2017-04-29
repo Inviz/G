@@ -307,7 +307,7 @@ describe('Transformation', function() {
     })
 
 
-    it ('should merge array operations', function() {
+    it ('should merge array mutations', function() {
       var data = {
         oldies: ['Hola']
       };
@@ -385,6 +385,82 @@ describe('Transformation', function() {
       expect(alice.stringify()).to.eql(G.stringify({
         oldies: ['Arkham', 'Hola'],
         newbies: ['Andie', 'Zonder']
+      }))
+
+    })
+
+
+    it ('should merge array movements', function() {
+      var data = {
+        oldies: ['Hola', 'Ticka', 'Zigg']
+      };
+      var alice = new G(data);
+      var bob = new G(data);
+
+      G.transformation.transact(alice);
+      G.after(G.Array.first(alice.oldies), G.Array.last(alice.oldies))
+      var Alice = G.transformation.commit();
+      
+
+      G.transformation.transact(bob);
+      bob.unshift('oldies', 'Arkham')
+      var Bob = G.transformation.commit();
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Ticka', 'Zigg', 'Hola']
+      }))
+
+      // Bob sent his commands to alice to sync, she rebases against her history
+      Bob2 = G.transformation(alice, Bob.rebase(Alice, true))
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka', 'Zigg', 'Hola']
+      }))
+
+      // Alice sends her history before rebase to Bob, so Bob can rebase it against his
+
+      Alice2 = G.transformation(bob, Alice.rebase(Bob, true))
+
+      expect(bob.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka', 'Zigg', 'Hola']
+      }))
+
+      // CASE 2: One-way changes 
+      G.transformation.transact(bob);
+      var newb = bob.oldies.uncall()
+      var newb2 = bob.oldies.uncall()
+      var Bob2 = G.transformation.commit();
+
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka', 'Zigg', 'Hola']
+      }))
+      expect(bob.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka']
+      }))
+
+      G.transformation(alice, Bob2)
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka']
+      }))
+
+
+      // CASE 3: One-way redo in wrong order
+      G.transformation.transact(bob);
+      newb.call()
+      var Bob3 = G.transformation.commit();
+
+      G.transformation(alice, Bob3)
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka', 'Hola']
+      }))
+
+      G.transformation.transact(bob);
+      newb2.call()
+      var Bob4 = G.transformation.commit();
+
+      G.transformation(alice, Bob4)
+      expect(alice.stringify()).to.eql(G.stringify({
+        oldies: ['Arkham', 'Ticka', 'Zigg', 'Hola']
       }))
 
     })

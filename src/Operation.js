@@ -156,14 +156,14 @@ G.prototype.call = function(verb, old) {
   }
 
   if (result !== old || result.$multiple) {            // Decide if value should be propagated
-    var replacing = result.$multiple && (!old || old.$preceeding != result);
-    G.effects(value, replacing ? other : old)
+    var adding = result.$multiple && (!old || old.$preceeding != result);
+    G.effects(value, adding ? other : old)
   }
 
   if (old && old.$iterators)
     G.Array.iterate(value, old.$iterators)            // Invoke array's active iterators
 
-  if (result.$multiple  && other  && (!verb || verb.multiple)) {
+  if (result.$multiple  && other  && (!verb || verb.multiple) && other !== value) {
     if (G.Array.isLinked(other)) {
       G.effects(other, other.$context === result.$context && other.$key === result.$key)
     } else {

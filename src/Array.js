@@ -52,7 +52,6 @@ G.Array.prototype.splice = function(index, offset) {
   }
   // insert
   for (var i = argv - offset; i-- > 0; i) {
-    debugger
     var arg = arguments[2 + i];
     if (index === 0)
       start = G.before(arg, start)
@@ -61,11 +60,7 @@ G.Array.prototype.splice = function(index, offset) {
   }
   // remove 
   for (var i = offset - argv; i > 0; i--) {
-  debugger
-
-    var next = start.$next;
-    start.uncall();
-    start = next;
+    start.$next.uncall();
   }
 }
 G.Array.prototype.inject = function(verb) {
@@ -412,6 +407,13 @@ G.Array.isLinked = function(value) {
   return value.$next   || value.$previous || 
         (value.$parent && value.$parent.$first === value)
 }
+G.Array.areLinked = function(value, another) {
+  for (var current = value; current = current.$next;)
+    if (current === another) return true;
+  for (var current = value; current = current.$previous;)
+    if (current === another) return true;
+  return false;
+}
 G.Array.multiple = true
 G.Array.verbs = {
 
@@ -420,8 +422,11 @@ G.Array.verbs = {
     if (value === old || value.$previous === old)
       return false;
 
-    if (value.$next || value.$previous)
+    if (value.$next || value.$previous) {
+      var moving = G.Array.areLinked(value, old)
+      value.$oldPrevious = value.$previous; // ugh hack
       G.Array.eject(value, true);
+    }
     
     if (!old.$next){
       if (!old.$following || old.$following.$parent === old)
@@ -438,6 +443,9 @@ G.Array.verbs = {
       G.Array.register(value, old.$next, old.$parent)
     G.Array.register(old, value, old.$parent)
 
+    if (moving) {
+      return value;
+    }
   },
 
   // place element before another
@@ -445,8 +453,11 @@ G.Array.verbs = {
     if (value === old || value.$next === old)
       return false;
 
-    if (value.$next || value.$previous)
+    if (value.$next || value.$previous) {
+      var moving = G.Array.areLinked(value, old)
+      value.$oldPrevious = value.$previous; // ugh hack
       G.Array.eject(value, true);
+    }
     if (old.$previous) {
       G.Array.link(old.$previous, value)
       G.Array.register(old.$previous, value, old.$parent)
@@ -456,6 +467,9 @@ G.Array.verbs = {
     G.Array.link(value, old)
     G.Array.register(value, old, old.$parent);
 
+    if (moving) {
+      return value;
+    }
   },
 
   pushOnce: function(value, old) {

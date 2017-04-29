@@ -5,8 +5,8 @@ G.effects = function(value, old, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(value, old);
   G.record.push(value); // Put operation onto the caller stack
-  if (G.onStateChange)
-    G.onStateChange(value, old);
+  if (G.$operating) 
+    G.transformation.push(value, old);
 // Process all side effects for the value. 
   var context = value.$context;
   var watchers = context.$watchers;                   // Watchers configuration for whole context
@@ -57,8 +57,8 @@ G.effects = function(value, old, bypass) {
 G.effects.revoke = function(value, bypass) {
   if (!bypass && G.$effects)
     return G.effects.push(undefined, value);
-  if (G.onStateChange)
-    G.onStateChange(undefined, value);
+  if (G.$operating)
+    G.transformation.push(undefined, value);
   if (value.$multiple || !G.value.current(value))
     G.notify(value.$context, value.$key, undefined, value)// Trigger user callbacks 
   var recalling = G.$recaller;

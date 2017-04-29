@@ -87,12 +87,14 @@ G.transformation = function(object, ours, args) {
 
       switch (ours.type[0]) {
         case 'sequences':
-        debugger
           if (object.$multiple) {
             
+            var index = 0;
+            debugger
             ours.hunks.forEach(function(hunk) {
+              index += hunk.offset;
               // Append unchanged content before this hunk.
-              G.Array.prototype.splice.apply(object, [hunk.offset, hunk.old_value.length].concat(hunk.new_value))
+              G.Array.prototype.splice.apply(object, [index, hunk.old_value.length].concat(hunk.new_value))
             });
             return
           };
@@ -109,7 +111,7 @@ G.transformation.options = {
   words: true
 }
 
-G.onStateChange = function(value, old) {
+G.transformation.push = function(value, old) {
   var root = G.$operating;
   if (!root) return;
 
@@ -129,21 +131,48 @@ G.onStateChange = function(value, old) {
   var key = (value || old).$key;
   var log = G.$operations[key];
 
-    var o = old && old.valueOf();
-    if (typeof o == 'object' && o && o.clean)
-      o = o.clean();
+  var o = old && old.valueOf();
+  if (typeof o == 'object' && o && o.clean)
+    o = o.clean();
   if (!value) {
-    var op = new jot.REM(key, o)
+    debugger
+    if (old.$multiple) {
+      for (var from = 0, prev = G.Array.getPrevious(old); prev ;prev = prev.$previous)
+        from++;
+      var op = new jot.APPLY(key, 
+          new jot.DEL(from, [o])
+      )
+    } else {
+
+      var op = new jot.REM(key, o)
+    }
   } else {
     var v = value.valueOf();
     if (typeof v == 'object' && v && v.clean)
       v = v.clean();
 
     if (value.$multiple) {
-      for (var index = 0, prev = value; prev = prev.$previous;)
-        index++;
-      var op = new jot.APPLY(key, 
-        new jot.SPLICE(index, [], [v]));
+      for (var to = 0, prev = value; prev = prev.$previous;)
+        to++;
+      if (value === old) {
+        for (var from = 0, prev = value.$oldPrevious; prev = prev && prev.$previous;)
+          from++;
+
+        //var op = new jot.APPLY(key, 
+        //  new jot.MOVE(from, 1, to));
+
+        // current MOVE implementation does not resolve conflicts with SPLICE, so 
+        // we use DEL + INS for now 
+        var op = 
+          new jot.APPLY(key, 
+              new jot.DEL(from, [v]).compose(new jot.INS(to, [v]))
+          )
+          debugger
+      } else {
+
+        var op = new jot.APPLY(key, 
+          new jot.SPLICE(to, [], [v]));
+      }
     } else if (!old) {
       var op = new jot.PUT(key, v)
     } else {
