@@ -465,4 +465,391 @@ describe('Transformation', function() {
 
     })
   })
+
+  describe('jot customizations', function() {
+    it ('splice partially remove beginning of LTR MOVE range',function() {
+      // short example
+      expect(
+        new jot.SPLICE(0, 1, "").compose(
+          new jot.SPLICE(1, 1, "")
+        ).apply(
+          new jot.MOVE(1, 2, 4)
+          .apply('ABCDEFG')
+        )
+      ).to.eql('DCEFG')
+      expect(
+        new jot.SPLICE(0, 2, "").rebase(
+          new jot.MOVE(1, 2, 4), true)
+      ).to.eql(
+        new jot.SPLICE(0, 1, "").compose(
+        new jot.SPLICE(1, 1, ""))
+      )
+      expect(new jot.MOVE(0, 1, 2)
+        .apply(new jot.SPLICE(0, 2, "").apply('ABCDEFG'))).to.eql('DCEFG')
+      expect(
+        new jot.MOVE(1, 2, 4).rebase(
+          new jot.SPLICE(0, 2, ""), true)
+      ).to.eql(
+        new jot.MOVE(0, 1, 2)
+      )
+
+      // long example
+      expect(
+        new jot.SPLICE(2, 6, "").rebase(
+          new jot.MOVE(5, 5, 13), true)
+        .apply(new jot.MOVE(5, 5, 13).apply('Re^guLA^RIie|s'))).to.eql('Reie|RIs')
+      expect(new jot.SPLICE(2, 6, "").rebase(
+          new jot.MOVE(5, 5, 13), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(2, 3, "").compose(
+        new jot.SPLICE(5, 3, "")).serialize()
+      )
+
+      expect(new jot.MOVE(2, 2, 7).apply('ReRIie|s')).to.eql('Reie|RIs');
+      expect(new jot.MOVE(5, 5, 13).rebase(
+          new jot.SPLICE(2, 6, ""), true)
+      ).to.eql(
+        new jot.MOVE(2, 2, 7)
+      )
+
+    })
+    it ('splice partially remove beginning of RTL MOVE range',function() {
+      expect(
+        new jot.SPLICE(1, 1, "").compose(
+          new jot.SPLICE(5, 1, "")
+        ).apply(
+          new jot.MOVE(5, 2, 1)
+          .apply('STUVWXYZ') // SXYTUVWZ
+        )
+      ).to.eql('SYTUVZ')
+      expect(
+        new jot.SPLICE(4, 2, "").rebase(
+         new jot.MOVE(5, 2, 1), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(1, 1, "").compose(
+          new jot.SPLICE(5, 1, "")
+        ).serialize()
+      )
+
+      expect(new jot.MOVE(4, 1, 1)
+        .apply(new jot.SPLICE(4, 2, "").apply('STUVWXYZ'))).to.eql('SYTUVZ')
+      expect(
+        new jot.MOVE(5, 2, 1).rebase(
+          new jot.SPLICE(4, 2, ""), true)
+      ).to.eql(
+        new jot.MOVE(4, 1, 1)
+      )
+
+
+      expect(new jot.MOVE(3, 2, 2).apply('R|eRIies')).to.eql('R|RIeies');
+      expect(new jot.MOVE(6, 5, 2).rebase(
+          new jot.SPLICE(3, 6, ""), true)
+      ).to.eql(
+        new jot.MOVE(3, 2, 2)
+      )
+      // longer example
+      expect(
+        new jot.SPLICE(3, 6, "").rebase(
+          new jot.MOVE(6, 5, 2), true)
+        .apply(new jot.MOVE(6, 5, 2).apply('R|e^guLA^RIies'))).to.eql('R|RIeies')
+
+
+    })
+
+    it('splice removes whole LTR MOVE range', function() {
+      expect(
+        new jot.SPLICE(0, 2, "").rebase(
+          new jot.MOVE(0, 2, 4), true)
+      ).to.eql(
+        new jot.SPLICE(2, 2, "")
+      )
+      expect(
+        new jot.MOVE(0, 2, 4).rebase(
+          new jot.SPLICE(0, 2, ""), true)
+      ).to.eql(
+        new jot.NO_OP
+      )
+      expect(new jot.LIST([
+        new jot.MOVE(0, 2, 4),
+        new jot.SPLICE(2, 2, "")
+      ]).apply('ABCDEFG')).to.eql('CDEFG')
+    })
+
+
+    it('splice removes whole RTL MOVE range', function() {
+      expect(
+        new jot.SPLICE(4, 2, "").rebase(
+          new jot.MOVE(4, 2, 0), true)
+      ).to.eql(
+        new jot.SPLICE(0, 2, "")
+      )
+      expect(
+        new jot.MOVE(4, 2, 0).rebase(
+          new jot.SPLICE(4, 2, ""), true)
+      ).to.eql(
+        new jot.NO_OP
+      )
+      expect(new jot.LIST([
+        new jot.MOVE(0, 2, 4),
+        new jot.SPLICE(2, 2, "")
+      ]).apply('ABCDEFG')).to.eql('CDEFG')
+    })
+
+    it('splice is within RTL MOVE range', function() {
+      expect(
+        new jot.SPLICE(4, 3, "").rebase(
+          new jot.MOVE(4, 7, 0), true)
+      ).to.eql(
+        new jot.SPLICE(0, 3, "")
+      )
+      expect(
+        new jot.MOVE(4, 7, 0).rebase(
+          new jot.SPLICE(4, 3, ""), true)
+      ).to.eql(
+        new jot.MOVE(4, 4, 0)
+      )
+    })
+
+
+    it('splice is within LTR MOVE range', function() {
+      expect(
+        new jot.SPLICE(1, 2, "").rebase(
+          new jot.MOVE(0, 4, 4), true)
+      ).to.eql(
+        new jot.SPLICE(1, 2, "")
+      )
+      expect(
+        new jot.SPLICE(1, 2, "").rebase(
+          new jot.MOVE(0, 4, 5), true)
+      ).to.eql(
+        new jot.SPLICE(2, 2, "")
+      )
+      expect(
+        new jot.MOVE(0, 4, 6).rebase(
+          new jot.SPLICE(1, 2, ""), true)
+      ).to.eql(
+        new jot.MOVE(0, 2, 4)
+      )
+      expect(
+        new jot.MOVE(0, 2, 4).rebase(
+          new jot.SPLICE(0, 2, ""), true)
+      ).to.eql(
+        new jot.NO_OP
+      )
+      expect(new jot.LIST([
+        new jot.MOVE(0, 2, 4),
+        new jot.SPLICE(2, 2, "")
+      ]).apply('ABCDEFG')).to.eql('CDEFG')
+    })
+
+    it('splice partially removes end of LTR MOVE range', function() {
+
+      expect(
+        new jot.SPLICE(0, 1, "").compose(
+        new jot.SPLICE(2, 1, "")
+      ).apply(new jot.MOVE(0, 2, 4).apply('ABCDEFG'))).to.eql('DAEFG')
+      expect(
+        new jot.SPLICE(1, 2, "").rebase(
+          new jot.MOVE(0, 2, 4), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(0, 1, "").compose(
+          new jot.SPLICE(2, 1, "")
+        ).serialize()
+      )
+      expect(new jot.MOVE(0, 1, 2).apply(
+        new jot.SPLICE(1, 2, "").apply('ABCDEFG')
+      )).to.eql('DAEFG')
+      expect(
+        new jot.MOVE(0, 2, 4).rebase(
+          new jot.SPLICE(1, 2, ""), true)
+      ).to.eql(
+        new jot.MOVE(0, 1, 2)
+      )
+
+      // longer example
+      expect(
+        new jot.SPLICE(6, 5, "").rebase(
+          new jot.MOVE(4, 5, 13), true)
+        .apply(new jot.MOVE(4, 5, 13).apply('ReguLA^RIi^e|s'))).to.eql('Regue|LAs')
+
+
+
+      expect(new jot.SPLICE(6, 5, "").rebase(
+          new jot.MOVE(4, 5, 13), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(4, 2, "").compose(
+        new jot.SPLICE(8, 3, "")).serialize()
+      )
+
+
+      expect(new jot.MOVE(2, 2, 7).apply('ReRIie|s')).to.eql('Reie|RIs');
+      expect(new jot.MOVE(5, 5, 13).rebase(
+          new jot.SPLICE(2, 6, ""), true)
+      ).to.eql(
+        new jot.MOVE(2, 2, 7)
+      )
+
+      var rebased = new jot.SPLICE(3, 7, "").rebase(
+        new jot.MOVE(0, 9, 23), true
+      );
+      expect(jot.SPLICE(0, 1, "").compose(
+          jot.SPLICE(16, 6, "")
+        ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('KLMNOPQRSTUVWABCXYZ')
+
+      expect(rebased.serialize()).to.eql(
+        jot.SPLICE(0, 1, "").compose(
+          jot.SPLICE(16, 6, "")
+        ).serialize()
+      )
+
+
+    })
+
+    it('splice partially removes end of RTL MOVE range', function() {
+      expect(new jot.SPLICE(2, 1, "").compose(
+        new jot.SPLICE(6, 1, "")
+      ).apply(new jot.MOVE(5, 2, 1).apply('STUVWXYZ'))).to.eql('SXTUVW')
+
+      expect(
+        new jot.SPLICE(6, 2, "").rebase(
+          new jot.MOVE(5, 2, 1), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(2, 1, "").compose(
+          new jot.SPLICE(6, 1, "")
+        ).serialize()
+      )
+      expect(new jot.MOVE(0, 1, 2).apply(
+        new jot.SPLICE(1, 2, "").apply('ABCDEFG')
+      )).to.eql('DAEFG')
+      expect(
+        new jot.MOVE(0, 2, 4).rebase(
+          new jot.SPLICE(1, 2, ""), true)
+      ).to.eql(
+        new jot.MOVE(0, 1, 2)
+      )
+
+      // longer example
+      expect(
+        new jot.MOVE(4, 5, 2).apply('a|foRE^MEnt^ioned')
+      ).to.eql('a|RE^MEfont^ioned')
+      expect(
+        new jot.SPLICE(4, 3, '').compose(
+          new jot.SPLICE(6, 3, '')
+        ).apply('a|RE^MEfont^ioned')
+      ).to.eql('a|REfoioned')
+
+      expect(
+        new jot.SPLICE(6, 6, "").rebase(
+          new jot.MOVE(4, 5, 2), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(4, 3, '').compose(
+          new jot.SPLICE(6, 3, '')
+        ).serialize()
+      )
+
+      expect(
+        new jot.SPLICE(6, 7, "").rebase(
+          new jot.MOVE(4, 5, 2), true).serialize()
+      ).to.eql(
+        new jot.SPLICE(4, 3, '').compose(
+          new jot.SPLICE(6, 4, '')
+        ).serialize()
+      )
+
+      expect(
+        new jot.SPLICE(6, 7, "").rebase(
+          new jot.MOVE(4, 5, 2), true)
+        .apply(
+          new jot.MOVE(4, 5, 2).apply('a|foRE^MEnti^oned')
+        )
+      ).to.eql('a|REfooned')
+
+      expect(
+        new jot.SPLICE(6, 6, "").rebase(
+          new jot.MOVE(4, 5, 2), true)
+        .apply(
+          new jot.MOVE(4, 5, 2).apply('a|foRE^MEnt^ioned')
+        )
+      ).to.eql('a|REfoioned')
+
+      expect(new jot.MOVE(4, 5, 2).rebase(
+        new jot.SPLICE(6, 6, ""), true
+      )).to.eql(
+        new jot.MOVE(4, 2, 2)
+      )
+
+    })
+
+    it ('splice has multiple hunks w LTR MOVE', function() {
+      var rebased = jot.SPLICE(3, 7, "").compose(
+        new jot.SPLICE(11, 3, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      )
+      debugger
+
+      
+      expect(rebased.serialize()).to.eql(
+        jot.SPLICE(0, 1, "").compose(
+          jot.SPLICE(8, 3, "").compose(
+          jot.SPLICE(13, 6, ""))).serialize()
+      )
+
+      expect(rebased.apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('KLMNOPQRVWABCXYZ')
+
+      expect(jot.SPLICE(3, 7, "").compose(
+        new jot.SPLICE(8, 3, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('KLMNOSTUVWABCXYZ')
+
+      expect(jot.SPLICE(3, 7, "").compose(
+        new jot.SPLICE(11, 3, "")
+      ).compose(
+        new jot.SPLICE(8, 3, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('KLMNOVWABCXYZ')
+    })
+
+
+    it ('splice has multiple hunks w LTR MOVE 2', function() {
+      expect(jot.SPLICE(2, 2, "").compose(
+        new jot.SPLICE(4, 2, "")
+      ).compose(
+        new jot.SPLICE(6, 2, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      ).serialize()).to.eql(
+
+        jot.SPLICE(1, 2, "").compose(
+          jot.SPLICE(14, 2, "").compose(
+            jot.SPLICE(16, 2, ""))).serialize()
+      )
+      expect(jot.SPLICE(2, 2, "").compose(
+        new jot.SPLICE(4, 2, "")
+      ).compose(
+        new jot.SPLICE(6, 2, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('JMNOPQRSTUVWABEFIXYZ')
+
+    })
+
+    it ('splice has multiple hunks w RTL MOVE', function() {
+      expect(jot.SPLICE(10, 2, "").compose(
+        new jot.SPLICE(12, 2, "")
+      ).compose(
+        new jot.SPLICE(14, 2, "")
+      ).compose(
+        new jot.SPLICE(16, 2, "")
+      ).compose(
+        new jot.SPLICE(18, 2, "")
+      ).rebase(
+        new jot.MOVE(13, 9, 3), true
+      ).apply(new jot.MOVE(13, 9, 3).apply('ABCDEFGHIJKLMNOPQRSTUVWXYZ')))
+        .to.eql('ABCOPSTDEFGHKLWX')
+    })
+
+  })
 })

@@ -90,7 +90,6 @@ G.transformation = function(object, ours, args) {
           if (object.$multiple) {
             
             var index = 0;
-            debugger
             ours.hunks.forEach(function(hunk) {
               index += hunk.offset;
               // Append unchanged content before this hunk.
@@ -127,7 +126,6 @@ G.transformation.push = function(value, old) {
   if (!context) return;
 
 
-  console.error((value || old).$context, (value || old).$key, value, old)
   var key = (value || old).$key;
   var log = G.$operations[key];
 
@@ -135,7 +133,6 @@ G.transformation.push = function(value, old) {
   if (typeof o == 'object' && o && o.clean)
     o = o.clean();
   if (!value) {
-    debugger
     if (old.$multiple) {
       for (var from = 0, prev = G.Array.getPrevious(old); prev ;prev = prev.$previous)
         from++;
@@ -143,7 +140,6 @@ G.transformation.push = function(value, old) {
           new jot.DEL(from, [o])
       )
     } else {
-
       var op = new jot.REM(key, o)
     }
   } else {
@@ -167,7 +163,6 @@ G.transformation.push = function(value, old) {
           new jot.APPLY(key, 
               new jot.DEL(from, [v]).compose(new jot.INS(to, [v]))
           )
-          debugger
       } else {
 
         var op = new jot.APPLY(key, 
@@ -184,7 +179,6 @@ G.transformation.push = function(value, old) {
   var cursor = op;
   for (var context = value || old; context = context.$context;)
     if (context !== root) {
-      console.log('APPLY', context.$key)
       cursor = new jot.APPLY(context.$key, cursor)
     } else {
       G.$operations.ops.push(cursor)
