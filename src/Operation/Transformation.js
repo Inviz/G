@@ -14,24 +14,12 @@
 
   This mechanism is often used in collaborative 
   editing environments, e.g. Google Docs.
-  G supports excellent jot (http://github.com/JoshData/jot)  
-  library by @JoshData, which provides additional methods
-  for math operations, working with dictionaries and arrays.
+  G uses O (http://github.com/Inviz/O) library that 
+  provides additional methods for math operations, 
+  working with dictionaries and arrays.
 
-  Jot has optional mechanism that compares
-  two JSON objects for changes and generates operation log,
-  but it is rather expensive to run over big JSON trees.
-
-  G provides a wrapper to avoid running diff logic for
-  code that uses G objects. G maintains the list of changes
-  to data and detects conflicts. It generates jot operations 
-  and applies the changes on demand. 
-
-  There are two ways to use op transforms in G:
-  1. Only invoke jot on detected concurrent changes.
-     (only syncing 1-way, e.g. by manually saving document)
-  2. Generate jot operations on each change 
-     (e.g. to sync with peers in real time)
+  G maintains the list of changes to data and can
+  apply list of other changes concurrently.
 
   G applies "our" changes right away, so UI feels responsive.
   When syncing, history of unsaved operations is inverted
@@ -159,10 +147,10 @@ G.transformation.push = function(value, old) {
 
         // current MOVE implementation does not resolve conflicts with SPLICE, so 
         // we use DEL + INS for now 
-        var op = 
-          new jot.APPLY(key, 
-              new jot.DEL(from, [v]).compose(new jot.INS(to, [v]))
-          )
+        var op = ['move', from, 1, to]
+        //  new jot.APPLY(key, 
+        //      new jot.DEL(from, [v]).compose(new jot.INS(to, [v]))
+        //  )
       } else {
 
         var op = new jot.APPLY(key, 

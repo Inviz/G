@@ -2,6 +2,12 @@ describe('Transformation', function() {
   describe('Generation', function() {
 
     it ('should generate number assigment operation', function() {
+
+      var l = jot.SPLICE(1, 1, 'a');
+      var r = jot.SPLICE(1, 2, 'b')
+      l.rebase(r, true)
+      r.rebase(l, true)
+      debugger
       var object = new G;
       G.transformation.transact(object);
       object.set('key', 123);
@@ -467,6 +473,186 @@ describe('Transformation', function() {
   })
 
   describe('jot customizations', function() {
+    it ('should insert text around MOVE ranges safely', function() {
+      // splice is outside of range affected by MOVE
+      expect(new jot.SPLICE(1, 1, "XYZ").rebase(
+        new jot.MOVE(2, 2, 6)
+      )).to.eql(
+        new jot.SPLICE(1, 1, "XYZ")
+      )
+
+      expect(new jot.SPLICE(6, 1, "XYZ").rebase(
+        new jot.MOVE(2, 2, 6)
+      )).to.eql(
+        new jot.SPLICE(6, 1, "XYZ")
+      )
+
+      expect(new jot.SPLICE(1, 1, "XYZ").rebase(
+        new jot.MOVE(4, 2, 2)
+      )).to.eql(
+        new jot.SPLICE(1, 1, "XYZ")
+      )
+
+      expect(new jot.SPLICE(6, 1, "XYZ").rebase(
+        new jot.MOVE(4, 2, 2)
+      )).to.eql(
+        new jot.SPLICE(6, 1, "XYZ")
+      )
+
+      // splice is between moved ranges
+      expect(new jot.SPLICE(6, 1, "XYZ").rebase(
+        new jot.MOVE(4, 2, 12)
+      )).to.eql(
+        new jot.SPLICE(4, 1, "XYZ")
+      )
+
+      expect(new jot.SPLICE(6, 1, "XYZ").rebase(
+        new jot.MOVE(12, 2, 2)
+      )).to.eql(
+        new jot.SPLICE(8, 1, "XYZ")
+      )
+    })
+
+
+    it ('should insert multiple chunks around and inside LTR range', function() {
+
+      // multiple insertions of text around MOVE
+      expect(new jot.SPLICE(2, 1, "XYZ").compose(
+        new jot.SPLICE(0, 1, "PS").compose(
+          new jot.SPLICE(9, 1, "TUV")
+        )
+      ).rebase(
+        new jot.MOVE(2, 2, 6), true
+      ).serialize()).to.eql(
+        new jot.SPLICE(0, 1, "PS").compose(
+          new jot.SPLICE(5, 1, "XYZ")
+        ).compose(
+          new jot.SPLICE(9, 1, "TUV")
+        ).serialize()
+      )
+
+      expect(
+        new jot.SPLICE(2, 1, "XYZ").compose(
+          new jot.SPLICE(0, 1, "PS").compose(
+            new jot.SPLICE(9, 1, "TUV")
+          )
+        ).rebase(
+          new jot.MOVE(2, 2, 6), true
+        ).apply(new jot.MOVE(2, 2, 6).apply('ABCDEFGH'))
+      ).to.eql('PSBEFXYZDTUVH')
+
+      expect(new jot.MOVE(2, 2, 6).rebase(
+        new jot.SPLICE(2, 1, "XYZ").compose(
+          new jot.SPLICE(0, 1, "PS").compose(
+            new jot.SPLICE(9, 1, "TUV")
+          )
+        ), true).apply(new jot.SPLICE(2, 1, "XYZ").compose(
+          new jot.SPLICE(0, 1, "PS").compose(
+            new jot.SPLICE(9, 1, "TUV")
+          )
+        ).apply('ABCDEFGH'))
+      ).to.eql('PSBEFXYZDTUVH')
+    })
+
+    it ('should insert multiple chunks around and inside RTL range', function() {
+      expect(new jot.SPLICE(6, 1, "XYZ").compose(
+        new jot.SPLICE(0, 1, "PS").compose(
+          new jot.SPLICE(11, 1, "TUV")
+        )
+      ).rebase(
+        new jot.MOVE(6, 2, 2), true
+      ).serialize()).to.eql(
+        new jot.SPLICE(0, 1, "PS").compose(
+          new jot.SPLICE(3, 1, "XYZ")
+        ).compose(
+          new jot.SPLICE(11, 1, "TUV")
+        ).serialize()
+      )
+
+      expect(new jot.MOVE(6, 2, 2).rebase(
+        new jot.SPLICE(6, 1, "XYZ").compose(
+          new jot.SPLICE(0, 1, "PS").compose(
+            new jot.SPLICE(11, 1, "TUV")
+          )
+        ), true
+      )).to.eql(
+        new jot.MOVE(7, 4, 3)
+      )
+
+      expect(new jot.SPLICE(6, 1, "XYZ").compose(
+        new jot.SPLICE(0, 1, "PS").compose(
+          new jot.SPLICE(11, 1, "TUV")
+        )
+      ).rebase(
+        new jot.MOVE(6, 2, 2), true
+      ))
+    })
+
+    it ('should insert text inside MOVE source range safely', function() {
+      // splice is at the start of source range
+      expect(new jot.SPLICE(4, 1, "XYZ").rebase(
+        new jot.MOVE(4, 2, 12), true
+      )).to.eql(
+        new jot.SPLICE(10, 1, "XYZ")
+      )
+      expect(new jot.MOVE(4, 2, 12).rebase(
+        new jot.SPLICE(4, 1, "XYZ"), true
+      )).to.eql(
+        new jot.MOVE(4, 4, 14)
+      )
+
+      expect(new jot.SPLICE(12, 1, "XYZ").rebase(
+        new jot.MOVE(12, 2, 2), true
+      )).to.eql(
+        new jot.SPLICE(2, 1, "XYZ")
+      )
+
+      expect(new jot.MOVE(12, 2, 2).rebase(
+        new jot.SPLICE(12, 1, "XYZ"), true
+      )).to.eql(
+        new jot.MOVE(12, 4, 2)
+      )
+
+      // splice is at the end of source range
+      expect(new jot.SPLICE(5, 1, "XYZ").rebase(
+        new jot.MOVE(4, 2, 12), true
+      )).to.eql(
+        new jot.SPLICE(11, 1, "XYZ")
+      )
+      expect(new jot.MOVE(4, 2, 12).rebase(
+        new jot.SPLICE(5, 1, "XYZ"), true
+      )).to.eql(
+        new jot.MOVE(4, 4, 14)
+      )
+
+      expect(new jot.SPLICE(13, 1, "XYZ").rebase(
+        new jot.MOVE(12, 2, 2), true
+      )).to.eql(
+        new jot.SPLICE(3, 1, "XYZ")
+      )
+
+      expect(new jot.MOVE(12, 2, 2).rebase(
+        new jot.SPLICE(13, 1, "XYZ"), true
+      )).to.eql(
+        new jot.MOVE(12, 4, 2)
+      )
+    })
+
+    it ('splice has multiple hunks that insert text', function() {
+    })
+
+    it ('splice removes MOVE target position', function() {
+      expect(
+        new jot.SPLICE(0, 1, "").compose(
+          new jot.SPLICE(1, 1, "")
+        ).apply(
+          new jot.MOVE(1, 2, 4)
+          .apply('ABCDEFG')
+        )
+      ).to.eql('DCEFG')
+    })
+
+
     it ('splice partially remove beginning of LTR MOVE range',function() {
       // short example
       expect(
@@ -780,7 +966,7 @@ describe('Transformation', function() {
 
     })
 
-    it ('splice has multiple hunks w LTR MOVE', function() {
+    it ('splice has multiple hunks w LTR MOVE 1', function() {
       var rebased = jot.SPLICE(3, 7, "").compose(
         new jot.SPLICE(11, 3, "")
       ).rebase(
@@ -830,25 +1016,110 @@ describe('Transformation', function() {
         new jot.SPLICE(4, 2, "")
       ).compose(
         new jot.SPLICE(6, 2, "")
+      ).compose(
+        new jot.SPLICE(8, 2, "")
       ).rebase(
         new jot.MOVE(0, 9, 23), true
-      ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('JMNOPQRSTUVWABEFIXYZ')
+      ).serialize()).to.eql(
+
+        jot.SPLICE(1, 2, "").compose(
+          jot.SPLICE(3, 2, "").compose(
+            jot.SPLICE(12, 2, "").compose(
+              jot.SPLICE(14, 2, "")))).serialize()
+      )
+      
+    })
+
+    it ('splice has multiple hunks w LTR MOVE 3', function() {
+      expect(jot.SPLICE(2, 2, "").compose(
+        new jot.SPLICE(4, 2, "")
+      ).compose(
+        new jot.SPLICE(6, 2, "")
+      ).compose(
+        new jot.SPLICE(8, 2, "")
+      ).compose(
+        new jot.SPLICE(10, 2, "")
+      ).compose(
+        new jot.SPLICE(12, 2, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      )).to.eql(
+        jot.SPLICE(1, 2, "").compose(
+          jot.SPLICE(3, 2, "")
+        ).compose(
+          jot.SPLICE(5, 2, "")
+        ).compose(
+          jot.SPLICE(7, 1, "")
+        ).compose(
+          jot.SPLICE(9, 2, "")
+        ).compose(
+          jot.SPLICE(11, 2, "")
+        ).compose(
+          jot.SPLICE(13, 2, "")
+        ).compose(
+          jot.SPLICE(14, 1, "")
+        )
+      )
+      expect(jot.SPLICE(2, 2, "").compose(
+        new jot.SPLICE(4, 2, "")
+      ).compose(
+        new jot.SPLICE(6, 2, "")
+      ).compose(
+        new jot.SPLICE(8, 2, "")
+      ).compose(
+        new jot.SPLICE(10, 2, "")
+      ).compose(
+        new jot.SPLICE(12, 2, "")
+      ).rebase(
+        new jot.MOVE(0, 9, 23), true
+      ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ')).to.eql('JMNQRUVABEFIYZ')
+    })
+
+    it ('splice has multiple hunks w LTR MOVE 4', function() {
+      expect(jot.SPLICE(2, 2, "").compose(
+        new jot.SPLICE(4, 2, "")
+      ).compose(
+        new jot.SPLICE(6, 2, "")
+      ).compose(
+        new jot.SPLICE(8, 2, "")
+      ).compose(
+        new jot.SPLICE(10, 2, "")
+      ).compose(
+        new jot.SPLICE(12, 2, "")
+      ).rebase(
+        new jot.MOVE(0, 12, 23), true
+      ).apply('MNOPQRSTUVWABCDEFGHIJKLXYZ')).to.eql('MNQRUVWABEFIJXYZ')
 
     })
 
     it ('splice has multiple hunks w RTL MOVE', function() {
-      expect(jot.SPLICE(10, 2, "").compose(
+      expect(jot.SPLICE(8, 2, "").compose(
+        new jot.SPLICE(10, 2, "")
+      ).compose(
         new jot.SPLICE(12, 2, "")
       ).compose(
         new jot.SPLICE(14, 2, "")
       ).compose(
         new jot.SPLICE(16, 2, "")
-      ).compose(
-        new jot.SPLICE(18, 2, "")
       ).rebase(
         new jot.MOVE(13, 9, 3), true
       ).apply(new jot.MOVE(13, 9, 3).apply('ABCDEFGHIJKLMNOPQRSTUVWXYZ')))
         .to.eql('ABCOPSTDEFGHKLWX')
+    })
+
+    it ('splice has multiple hunks w RTL MOVE 2', function() {
+      expect(jot.SPLICE(10, 4, "").compose(
+        new jot.SPLICE(12, 2, "")
+      ).compose(
+        new jot.SPLICE(14, 2, "")
+      ).compose(
+        new jot.SPLICE(16, 2, "")
+      ).rebase(
+        new jot.MOVE(13, 9, 3), true
+      ).apply(new jot.MOVE(13, 9, 3).apply('ABCDEFGHIJKLMNOPQRSTUVWXYZ')))
+        .to.eql('ABCOPSTDEFGHIJWX')
+
+
     })
 
   })

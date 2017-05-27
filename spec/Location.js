@@ -398,8 +398,7 @@ describe('G.Location', function() {
           }
         }
       })
-    var route = location.match('/projects/333');
-
+      var route = location.match('/projects/333');
     })
   });
 
